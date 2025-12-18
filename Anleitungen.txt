@@ -1,0 +1,6 @@
+Server:
+- STARTEN in Terminal --> npm run dev
+
+- BEENDEN in Terminal --> Ctrl + C
+
+- läuft auf --> http://localhost:3000/
