@@ -10,10 +10,10 @@ jobs:
           name: Install dependencies
           command: npm ci
       - run:
-          name: Build Next.js app
+          name: Build application
           command: npm run build
 
 workflows:
-  build_and_test:
+  build:
     jobs:
       - build
