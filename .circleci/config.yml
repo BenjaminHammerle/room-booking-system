@@ -1,0 +1,19 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:20.15
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - run:
+          name: Build Next.js app
+          command: npm run build
+
+workflows:
+  build_and_test:
+    jobs:
+      - build
