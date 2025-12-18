@@ -1,10 +1,8 @@
-import Image from "next/image";
-
 export default function Home() {
   return (
       <main className="p-8">
         <h1 className="text-3xl font-bold">
-          Raumbuchungssystem
+          Room Booking System
         </h1>
         <p className="mt-4">
           Studienprojekt – Next.js
@@ -12,3 +10,4 @@ export default function Home() {
       </main>
   );
 }
+
