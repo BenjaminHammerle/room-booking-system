@@ -19,14 +19,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    // suppressHydrationWarning verhindert, dass Browser-Erweiterungen diesen Fehler auslösen
+    <html lang="de" suppressHydrationWarning> 
+      <body className="antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>
