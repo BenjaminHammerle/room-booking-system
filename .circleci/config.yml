@@ -8,13 +8,19 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-deps-{{ checksum "package-lock.json" }}
-      - run: npm ci
+            - v2-deps-{{ checksum "package-lock.json" }}
+            - v2-deps-
+      - run:
+          name: Install dependencies
+          command: npm ci
       - save_cache:
+          key: v2-deps-{{ checksum "package-lock.json" }}
           paths:
             - node_modules
-          key: v1-deps-{{ checksum "package-lock.json" }}
-      - run: npm run build
+      - run:
+          name: Build Next.js
+          command: npm run build
+
 
 workflows:
   build_and_test:
