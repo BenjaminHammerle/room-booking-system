@@ -3,17 +3,20 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: cimg/node:20.15
+      - image: cimg/node:18.19
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: npm ci
-      - run:
-          name: Build application
-          command: npm run build
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "package-lock.json" }}
+      - run: npm ci
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-deps-{{ checksum "package-lock.json" }}
+      - run: npm run build
 
 workflows:
-  build:
+  build_and_test:
     jobs:
       - build

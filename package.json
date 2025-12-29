@@ -26,5 +26,8 @@
     "autoprefixer": "^10.4.23",
     "postcss": "^8",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
