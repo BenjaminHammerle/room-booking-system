@@ -4,48 +4,47 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { 
-  Calendar, Users, Monitor, BookOpen, Wifi, Check, X, 
-  Clock, LogOut, ShieldCheck, User, Settings, Lock, ChevronDown, List 
+  Calendar, Users, Monitor, BookOpen, Wifi, X, 
+  Clock, LogOut, ShieldCheck, List, SlidersHorizontal, 
+  ChevronLeft, ChevronRight, CheckCircle2, User as UserIcon,
+  Globe, ChevronDown, Settings, MapPin, AlertCircle, XCircle
 } from 'lucide-react';
-
-// Konfiguration der Zusatz-Addons
-const equipmentTypes = [
-  { id: 'beamer', name: 'Beamer', icon: Monitor },
-  { id: 'flipchart', name: 'Flipchart', icon: BookOpen },
-  { id: 'videoconf', name: 'Videokonferenz', icon: Monitor },
-  { id: 'sound', name: 'Soundanlage', icon: Wifi }
-];
-
-const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
 export default function RoomBookingPage() {
   const router = useRouter();
+  const [lang, setLang] = useState<'de' | 'en'>('de');
   
-  // Daten-States
+  // Data-Driven States
+  const [dbTrans, setDbTrans] = useState<any>({});
+  const [equipmentList, setEquipmentList] = useState<any[]>([]);
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+
+  // App States
   const [rooms, setRooms] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // UI-States
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [notification, setNotification] = useState<{msg: string, type: string} | null>(null);
-
-  // Buchungs-Konfiguration
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedTime, setSelectedTime] = useState('09:00');
-  const [duration, setDuration] = useState(1);
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-
-  // Profil-States
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // UI States
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showPickerModal, setShowPickerModal] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<any>(null);
+  const [duration, setDuration] = useState(1);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedTime, setSelectedTime] = useState('09:00');
+
+  // Filter States
+  const [minCapacity, setMinCapacity] = useState("");
+  const [maxDist, setMaxDist] = useState("");
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]); // KORREKTUR: State für Equipment-Filter
+
+  // Dynamischer Text-Helper
+  const t = (key: string) => dbTrans[key]?.[lang] || key;
 
   useEffect(() => {
     initApp();
@@ -54,58 +53,117 @@ export default function RoomBookingPage() {
   async function initApp() {
     setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/login');
-      return;
-    }
+    if (!session) { router.push('/login'); return; }
     setUser(session.user);
 
-    // Profil laden (Vorname, Nachname, Admin-Status)
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-    if (profile) {
-      setIsAdmin(profile.is_admin || false);
-      setFirstName(profile.first_name || "");
-      setLastName(profile.last_name || "");
+    // Alles parallel laden für Speed
+    const [transRes, equipRes, timesRes, roomsRes, bookingsRes, profileRes] = await Promise.all([
+      supabase.from('translations').select('*'),
+      supabase.from('equipment').select('*'),
+      supabase.from('timeslots').select('*').order('id'),
+      supabase.from('rooms').select('*'),
+      supabase.from('bookings').select('*'),
+      supabase.from('profiles').select('*').eq('id', session.user.id).single()
+    ]);
+
+    // Texte mappen
+    if (transRes.data) {
+      const tMap: any = {};
+      transRes.data.forEach(i => tMap[i.key] = { de: i.de, en: i.en });
+      setDbTrans(tMap);
     }
 
-    // Räume laden
-    const { data: rData } = await supabase.from('rooms').select('*');
-    // Alle Buchungen laden (für Slot-Check und Dashboard)
-    const { data: bData } = await supabase.from('bookings').select('*');
+    if (equipRes.data) setEquipmentList(equipRes.data);
+    if (timesRes.data) setTimeSlots(timesRes.data.map(ts => ts.time_string));
+    if (roomsRes.data) setRooms(roomsRes.data);
+    if (profileRes.data) {
+      setIsAdmin(profileRes.data.is_admin || false);
+      setFirstName(profileRes.data.first_name || "A");
+      setLastName(profileRes.data.last_name || "");
+    }
     
-    if (rData) setRooms(rData);
-    if (bData) setBookings(bData);
+    if (bookingsRes.data) {
+      setBookings(bookingsRes.data);
+      checkAutoRelease(bookingsRes.data);
+    }
+    
     setLoading(false);
   }
 
-  // LOGIK: Nächste 5 Termine ermitteln (inkl. aktuell laufende)
-  const getUpcomingBookings = () => {
+  // --- LOGIK: CHECK-IN & SICHERHEIT ---
+  const isCheckInWindowOpen = (booking: any) => {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentHour = now.getHours();
-
-    return bookings
-      .filter(b => {
-        if (b.user_id !== user?.id) return false;
-        if (b.booking_date > todayStr) return true;
-        if (b.booking_date === todayStr) {
-          const endHour = parseInt(b.start_time.split(':')[0]) + (b.duration || 1);
-          return endHour > currentHour;
-        }
-        return false;
-      })
-      .sort((a, b) => (a.booking_date + a.start_time).localeCompare(b.booking_date + b.start_time))
-      .slice(0, 5);
+    const [hours, minutes] = booking.start_time.split(':').map(Number);
+    const start = new Date(booking.booking_date);
+    start.setHours(hours, minutes, 0);
+    const end = new Date(start);
+    end.setHours(start.getHours() + (booking.duration || 1));
+    const thirtyMinsBefore = new Date(start.getTime() - 30 * 60000);
+    return now >= thirtyMinsBefore && now <= end && booking.status === 'active';
   };
 
-  // LOGIK: Belegung prüfen & Max Dauer berechnen
-  const isSlotOccupied = (roomId: string, time: string) => {
+  const handleCheckIn = async (booking: any) => {
+    if (!isCheckInWindowOpen(booking)) {
+      alert(t('checkin_early_error'));
+      return;
+    }
+
+    const isLocal = window.location.hostname === 'localhost';
+    
+    const verifyCode = async () => {
+      const input = prompt(t('checkin_prompt'));
+      if (input?.toUpperCase() === booking.booking_code) {
+        const { error } = await supabase.from('bookings').update({ is_checked_in: true, checked_in_at: new Date() }).eq('id', booking.id);
+        if (!error) { alert(t('checkin_ok')); initApp(); }
+      } else {
+        alert(t('checkin_wrong_code'));
+      }
+    };
+
+    if (isLocal) { await verifyCode(); return; }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const room = rooms.find(r => r.id === booking.room_id);
+      const R = 6371e3;
+      const dLat = (pos.coords.latitude - (room?.latitude || 47.2692)) * Math.PI / 180;
+      const dLon = (pos.coords.longitude - (room?.longitude || 11.3933)) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(pos.coords.latitude * Math.PI / 180) * Math.cos((room?.latitude || 47.2692) * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+      const dist = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+
+      if (dist <= 150) {
+        await verifyCode();
+      } else {
+        const ipCheck = await fetch('https://api.ipify.org?format=json').then(res => res.json());
+        if (ipCheck.ip.startsWith('138.22')) { await verifyCode(); }
+        else { alert(t('not_at_mci')); }
+      }
+    }, () => alert(t('gps_required')));
+  };
+
+  const checkAutoRelease = async (all: any[]) => {
+    const now = new Date();
+    const toRelease = all.filter(b => b.status === 'active' && !b.is_checked_in && (now.getTime() - new Date(`${b.booking_date}T${b.start_time}`).getTime()) / 60000 >= 10);
+    for (const b of toRelease) await supabase.from('bookings').update({ status: 'released' }).eq('id', b.id);
+  };
+
+  const handleCancel = async (id: string) => {
+    if (!confirm(t('confirm_cancel'))) return;
+    const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+    if (!error) initApp();
+  };
+
+  const handleUpdateProfile = async () => {
+    const { error } = await supabase.from('profiles').update({ first_name: firstName, last_name: lastName }).eq('id', user.id);
+    if (!error) { setShowSettingsModal(false); initApp(); }
+  };
+
+  // --- LOGIK: VERFÜGBARKEIT ---
+  const isSlotOccupied = (roomId: string, date: string, time: string) => {
     const checkHour = parseInt(time.split(':')[0]);
     return bookings.some(b => {
-      if (b.room_id !== roomId || b.booking_date !== selectedDate) return false;
+      if (b.room_id !== roomId || b.booking_date !== date || b.status !== 'active') return false;
       const start = parseInt(b.start_time.split(':')[0]);
-      const end = start + (b.duration || 1);
-      return checkHour >= start && checkHour < end;
+      return checkHour >= start && checkHour < (start + (b.duration || 1));
     });
   };
 
@@ -113,202 +171,279 @@ export default function RoomBookingPage() {
     if (!selectedRoom) return 1;
     const startHour = parseInt(selectedTime.split(':')[0]);
     let max = 0;
-    for (let h = startHour; h < 20; h++) {
+    for (let h = startHour; h < 21; h++) {
       const timeString = h < 10 ? `0${h}:00` : `${h}:00`;
-      if (isSlotOccupied(selectedRoom.id, timeString)) break;
+      if (isSlotOccupied(selectedRoom.id, selectedDate, timeString)) break;
       max++;
     }
-    return max;
+    return Math.min(max, 8);
   };
 
-  // AKTIONEN
-  const handleBooking = async () => {
-    if (!user || !selectedRoom) return;
-    const { error } = await supabase.from('bookings').insert([{
-      room_id: selectedRoom.id,
-      user_id: user.id,
-      booking_date: selectedDate,
-      start_time: selectedTime,
-      duration: duration,
-      user_email: user.email,
-      equipment: selectedEquipment
-    }]);
-
-    if (error) {
-      alert(error.message);
-    } else {
-      setShowModal(false);
-      setSelectedEquipment([]);
-      setNotification({ msg: "Erfolgreich reserviert!", type: "success" });
-      initApp();
+  // KORREKTUR: Filter-Logik für Ausstattung
+  const filteredRooms = rooms.filter(room => {
+    if (!room.is_active || isSlotOccupied(room.id, selectedDate, selectedTime)) return false;
+    if (minCapacity && room.capacity < parseInt(minCapacity)) return false;
+    if (maxDist && (room.floor || 0) > parseInt(maxDist)) return false;
+    
+    // Prüfen, ob der Raum ALLE gewählten Ausstattungs-IDs besitzt
+    if (selectedEquipment.length > 0) {
+        const hasAll = selectedEquipment.every(id => room.equipment && room.equipment.includes(id));
+        if (!hasAll) return false;
     }
-    setTimeout(() => setNotification(null), 3000);
+
+    return true;
+  });
+
+  const getUpcomingBookings = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return bookings
+      .filter(b => b.user_id === user?.id && b.status === 'active' && b.booking_date >= todayStr)
+      .sort((a, b) => (a.booking_date + a.start_time).localeCompare(b.booking_date + b.start_time))
+      .slice(0, 5);
   };
 
-  const handleUpdateProfile = async () => {
-    const { error } = await supabase.from('profiles').update({ first_name: firstName, last_name: lastName }).eq('id', user.id);
-    if (error) alert(error.message);
-    else { setNotification({ msg: "Profil aktualisiert!", type: "success" }); setTimeout(() => setNotification(null), 3000); }
-  };
-
-  const handleUpdatePassword = async () => {
-    if (newPassword !== confirmPassword) { alert("Passwörter ungleich!"); return; }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) alert(error.message);
-    else { setNotification({ msg: "Passwort geändert!", type: "success" }); setNewPassword(""); setConfirmPassword(""); }
-  };
-
-  if (loading) return <div className="h-screen flex items-center justify-center font-black text-blue-600 italic">ROOMRESERVE...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center font-bold text-[#004a87] italic uppercase tracking-widest">MCI RoomReserve...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
+    <div className="min-h-screen bg-[#F8F9FB] font-sans text-slate-900">
+      
       {/* NAVBAR */}
-      <nav className="bg-white border-b p-4 flex justify-between items-center sticky top-0 z-50 shadow-sm px-8">
-        <div className="font-black text-xl text-blue-600 flex items-center gap-2"><Calendar /> ROOMRESERVE</div>
-        
-        <div className="flex items-center gap-6">
-          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="border p-2 rounded-xl text-sm font-bold bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"/>
-          
-          <div className="relative">
-            <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-3 bg-gray-50 p-2 pr-4 rounded-2xl border hover:shadow-md transition-all outline-none">
-              <div className="bg-blue-600 w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold">
-                {firstName ? firstName.charAt(0) : user?.email?.charAt(0).toUpperCase()}
-              </div>
-              <div className="text-left hidden md:block">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">Mitarbeiter</p>
-                <p className="text-sm font-bold leading-tight">{firstName ? `${firstName} ${lastName}` : user?.email}</p>
-              </div>
-              <ChevronDown size={14} className="text-gray-400" />
+      <nav className="bg-white border-b sticky top-0 z-50 px-12 h-24 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-12">
+            <img src="/MCI.png" alt="MCI" className="h-20 w-auto object-contain cursor-pointer" onClick={() => router.push('/rooms')} />
+            <button onClick={() => router.push('/reservations')} className="flex items-center gap-2 text-slate-600 font-bold hover:text-[#004a87] transition">
+                <Calendar size={20} className="text-gray-300"/> {t('nav_bookings')}
+            </button>
+        </div>
+
+        <div className="flex items-center gap-8">
+            <button onClick={() => setLang(lang === 'de' ? 'en' : 'de')} className="flex items-center gap-2 text-xs font-bold uppercase text-gray-400 hover:text-[#004a87] transition">
+                <Globe size={16}/> {lang}
             </button>
 
-            {showUserMenu && (
-              <div className="absolute right-0 mt-3 w-64 bg-white rounded-3xl shadow-2xl border border-gray-100 p-2 z-[60] animate-in fade-in slide-in-from-top-2">
-                <div className="p-4 border-b border-gray-50 mb-2">
-                  <p className="font-black text-slate-800 truncate">{firstName} {lastName}</p>
-                  <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-                </div>
-                <button onClick={() => router.push('/reservations')} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 text-blue-600 font-bold transition text-left"><List size={18} /> Meine Reservierungen</button>
-                {isAdmin && <button onClick={() => router.push('/admin')} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 text-blue-600 font-bold transition text-left"><ShieldCheck size={18} /> Admin Konsole</button>}
-                <button onClick={() => { setShowSettingsModal(true); setShowUserMenu(false); }} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-slate-600 font-bold transition text-left"><Settings size={18} /> Einstellungen</button>
-                <hr className="my-2 border-gray-50" />
-                <button onClick={() => { supabase.auth.signOut(); router.push('/login'); }} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 text-red-500 font-bold transition text-left"><LogOut size={18} /> Ausloggen</button>
-              </div>
-            )}
-          </div>
+            <div className="relative">
+                <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-3 hover:opacity-80 transition group">
+                    <div className="bg-gray-100 w-11 h-11 rounded-full flex items-center justify-center text-[#004a87] border border-gray-200"><UserIcon size={22}/></div>
+                    <span className="font-bold text-slate-700">{firstName}</span>
+                    <ChevronDown size={14} className="text-gray-400" />
+                </button>
+
+                {showUserMenu && (
+                    <div className="absolute right-0 mt-4 w-64 bg-white rounded-3xl shadow-2xl border border-gray-100 p-2 z-[60] animate-in fade-in slide-in-from-top-2">
+                        <button onClick={() => { setShowSettingsModal(true); setShowUserMenu(false); }} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-gray-50 text-slate-700 font-bold transition text-sm">
+                            <Settings size={18} className="text-gray-300"/> {t('nav_profile')}
+                        </button>
+                        {isAdmin && <button onClick={() => router.push('/admin')} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-blue-50 text-[#004a87] font-bold transition text-sm"><ShieldCheck size={18} /> {t('nav_admin')}</button>}
+                        <hr className="my-2 border-gray-50" />
+                        <button onClick={() => { supabase.auth.signOut(); router.push('/login'); }} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-red-50 text-red-500 font-bold transition text-sm"><LogOut size={18} /> {t('nav_logout')}</button>
+                    </div>
+                )}
+            </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-12 space-y-16">
-        {/* RÄUME-GRID */}
-        <section>
-          <h2 className="text-3xl font-black mb-10 text-slate-900 tracking-tight">Räume buchen</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {rooms.map(room => (
-              <div key={room.id} className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden hover:shadow-xl transition-all group">
-                <div className="bg-blue-600 h-40 flex items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-500">{room.image}</div>
-                <div className="p-8 text-center">
-                  <h3 className="font-bold text-xl mb-6 text-slate-800">{room.name}</h3>
-                  <button onClick={() => { setSelectedRoom(room); setShowModal(true); setDuration(1); }} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">Reservieren</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+      <main className="max-w-[1500px] mx-auto p-12 flex gap-16">
+        <div className="flex-1 space-y-16 text-left">
+          <section>
+            <h1 className="text-3xl font-bold text-[#004a87] mb-2 tracking-tight uppercase italic">{t('title')}</h1>
+            <p className="text-gray-400 font-medium text-xl">{t('subtitle')}</p>
+          </section>
 
-        {/* DASHBOARD: NÄCHSTE TERMINE (Jetzt unter den Buttons) */}
-        <section className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm">
-          <h2 className="text-2xl font-black mb-8 flex items-center gap-3 text-slate-800"><Clock className="text-blue-600" /> Deine nächsten 5 Reservierungen</h2>
-          <div className="grid gap-4">
-            {getUpcomingBookings().map(b => (
-              <div key={b.id} className="bg-gray-50 p-6 rounded-[2rem] flex justify-between items-center border border-gray-100 transition hover:bg-white hover:shadow-md">
-                <div className="flex items-center gap-6">
-                  <div className="text-4xl">{rooms.find(r => r.id === b.room_id)?.image || '🏢'}</div>
-                  <div>
-                    <div className="font-bold text-lg text-slate-900">{rooms.find(r => r.id === b.room_id)?.name}</div>
-                    <div className="text-gray-500 font-medium">{b.booking_date} • {b.start_time} Uhr ({b.duration}h)</div>
-                  </div>
+          {/* DATUM-KARTE */}
+          <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-sm max-w-lg text-center">
+            <div className="flex items-center justify-between mb-10">
+              <button onClick={() => { let d = new Date(selectedDate); d.setDate(d.getDate()-1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-3 hover:bg-gray-100 rounded-full transition"><ChevronLeft size={28} className="text-gray-300"/></button>
+              <div><div className="text-[#549BB7] flex justify-center mb-4"><Calendar size={40}/></div><p className="font-bold text-2xl text-slate-800 italic">{new Date(selectedDate).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p></div>
+              <button onClick={() => { let d = new Date(selectedDate); d.setDate(d.getDate()+1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-3 hover:bg-gray-100 rounded-full transition"><ChevronRight size={28} className="text-gray-300"/></button>
+            </div>
+            <button onClick={() => setShowPickerModal(true)} className="w-full border-2 border-dashed border-gray-200 py-5 rounded-[2rem] font-bold text-gray-400 flex items-center justify-center gap-3 hover:border-[#549BB7] hover:text-[#549BB7] transition">
+              <Clock size={20}/> {selectedTime} Uhr - {t('btn_date')}
+            </button>
+          </div>
+
+          {/* RAUM-GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            {filteredRooms.map(room => (
+              <div key={room.id} className="bg-white rounded-[3.5rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-2xl transition-all duration-500 text-left">
+                <div className="relative h-80 bg-gray-100">
+                    <img src={room.image_url || "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                    <div className="absolute top-8 right-8 bg-[#4ade80] text-white px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-xl">{t('status_free')}</div>
+                    
+                    {/* Equipment Overlay Badges */}
+                    <div className="absolute bottom-6 left-8 flex flex-wrap gap-2">
+                        {room.equipment?.map((eqId: string) => {
+                            const eq = equipmentList.find(e => e.id === eqId);
+                            return eq ? (
+                                <div key={eqId} className="bg-white/90 px-3 py-1.5 rounded-xl shadow-sm text-[#004a87] text-[9px] font-bold uppercase tracking-wider border border-white/50">
+                                    {lang === 'de' ? eq.name_de : eq.name_en}
+                                </div>
+                            ) : null;
+                        })}
+                    </div>
                 </div>
-                <div className="bg-blue-100 text-blue-700 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest">Aktiv / Kommend</div>
+                <div className="p-12">
+                  <h3 className="font-bold text-3xl mb-3 tracking-tight">{room.name}</h3>
+                  <div className="flex gap-6 mb-10 text-gray-400 font-bold text-[10px] uppercase tracking-widest">
+                    <span className="flex items-center gap-1.5"><Users size={16}/> {room.capacity} {t('capacity_label')}</span>
+                    <span className="flex items-center gap-1.5"><MapPin size={16}/> {room.floor}. {t('distance_label')}</span>
+                  </div>
+                  <button onClick={() => { setSelectedRoom(room); setShowBookingModal(true); }} className="w-full bg-[#004a87] text-white py-6 rounded-[2rem] font-bold shadow-xl hover:bg-[#549BB7] transition-all transform active:scale-95">
+                    {t('btn_reserve')}
+                  </button>
+                </div>
               </div>
             ))}
-            {getUpcomingBookings().length === 0 && <p className="text-center py-10 text-gray-400 italic text-sm">Aktuell keine anstehenden Termine für dich gefunden.</p>}
           </div>
-        </section>
+
+          {/* DASHBOARD: NÄCHSTE TERMINE */}
+          <section className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-sm text-left">
+            <h2 className="text-2xl font-bold mb-10 flex items-center gap-4 text-slate-800 tracking-tight italic uppercase">
+                <Clock className="text-[#549BB7]" size={32} /> {t('dashboard_title')}
+            </h2>
+            <div className="grid gap-6">
+              {getUpcomingBookings().map(b => {
+                const room = rooms.find(r => r.id === b.room_id);
+                const canCheckIn = isCheckInWindowOpen(b);
+                
+                return (
+                  <div key={b.id} className="bg-gray-50 p-8 rounded-[2.5rem] flex justify-between items-center border border-gray-100 transition hover:bg-white hover:shadow-md">
+                    <div className="flex items-center gap-8">
+                      <div className="text-5xl">{room?.image || '🏢'}</div>
+                      <div>
+                        <div className="font-bold text-2xl text-slate-900 leading-tight tracking-tight">{room?.name}</div>
+                        <div className="text-gray-400 font-bold text-sm mt-1 uppercase tracking-widest">{b.booking_date} • {b.start_time} Uhr</div>
+                        <div className="mt-3 flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">{t('code_label')}:</span>
+                            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg font-mono font-bold text-sm tracking-widest">{b.booking_code}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      {!b.is_checked_in && (
+                        <button onClick={() => handleCancel(b.id)} className="p-3 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition">
+                          <XCircle size={26}/>
+                        </button>
+                      )}
+                      {b.is_checked_in ? (
+                        <div className="bg-green-100 text-green-700 px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                           <CheckCircle2 size={16}/> {t('checkin_ok')}
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => handleCheckIn(b)}
+                          className={`px-10 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${canCheckIn ? 'bg-[#549BB7] text-white shadow-xl hover:bg-[#438299]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >
+                          {t('checkin_btn')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {getUpcomingBookings().length === 0 && <p className="text-center py-10 text-gray-300 italic">Keine anstehenden Termine.</p>}
+            </div>
+          </section>
+        </div>
+
+        {/* SIDEBAR FILTER (KORREKTUR: Checkbox Logik) */}
+        <aside className="w-[400px] text-left">
+          <div className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-sm sticky top-36">
+            <div className="flex items-center gap-4 text-slate-900 font-bold text-2xl mb-12 pb-8 border-b border-gray-50 uppercase tracking-tighter italic">
+                <SlidersHorizontal size={24} className="text-[#f7941d]"/> {t('filter_title')}
+            </div>
+            <div className="space-y-12">
+                <div className="space-y-4">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-3">{t('filter_cap')}</label>
+                    <input type="number" placeholder="z.B. 6" value={minCapacity} onChange={e => setMinCapacity(e.target.value)} className="w-full bg-gray-50 border-none ring-1 ring-gray-100 p-5 rounded-[1.5rem] focus:ring-2 focus:ring-[#f7941d] outline-none transition" />
+                </div>
+                <div className="space-y-6">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-3">{t('filter_equip')}</label>
+                    {equipmentList.map(eq => (
+                        <label key={eq.id} className="flex items-center gap-5 cursor-pointer group">
+                            {/* KORREKTUR: Checkbox State & Toggle */}
+                            <input 
+                              type="checkbox" 
+                              checked={selectedEquipment.includes(eq.id)}
+                              onChange={() => {
+                                setSelectedEquipment(prev => 
+                                  prev.includes(eq.id) ? prev.filter(id => id !== eq.id) : [...prev, eq.id]
+                                );
+                              }}
+                              className="w-7 h-7 rounded-xl border-gray-200 text-[#004a87] focus:ring-[#004a87] transition cursor-pointer" 
+                            />
+                            <span className={`text-sm font-bold transition-all ${selectedEquipment.includes(eq.id) ? 'text-[#004a87]' : 'text-gray-500'}`}>
+                              {lang === 'de' ? eq.name_de : eq.name_en}
+                            </span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+          </div>
+        </aside>
       </main>
 
-      {/* BUCHUNGS MODAL MIT SLOT-CHECK & ADD-ONS */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-          <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl">
-            <div className="bg-blue-600 p-10 text-white flex justify-between items-center">
-              <div><h3 className="text-3xl font-black">{selectedRoom?.name}</h3><p className="text-blue-100 opacity-80 text-sm mt-1 uppercase font-bold tracking-widest italic">Konfiguration</p></div>
-              <button onClick={() => setShowModal(false)} className="bg-white/10 p-3 rounded-full hover:bg-white/20 transition"><X/></button>
+      {/* MODALS */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-6 z-[100] backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-[4rem] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-left">
+            <div className="bg-[#004a87] p-12 text-white flex justify-between items-center">
+              <h3 className="text-4xl font-bold tracking-tight italic uppercase">{selectedRoom?.name}</h3>
+              <button onClick={() => setShowBookingModal(false)} className="bg-white/10 p-4 rounded-full hover:bg-white/20 transition"><X size={24}/></button>
             </div>
-            <div className="p-10 space-y-8">
-              <div className="space-y-3">
-                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Beginn</label>
-                <select value={selectedTime} onChange={e => { setSelectedTime(e.target.value); setDuration(1); }} className="w-full bg-gray-50 border-none ring-1 ring-gray-200 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                  {timeSlots.map(t => {
-                    const occupied = isSlotOccupied(selectedRoom?.id, t);
-                    return <option key={t} value={t} disabled={occupied} className={occupied ? "text-gray-300" : "text-black"}>{t} Uhr {occupied ? "(Belegt)" : ""}</option>
-                  })}
-                </select>
-              </div>
-              <div className="space-y-3">
-                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Dauer</label>
-                <select value={duration} onChange={e => setDuration(parseInt(e.target.value))} className="w-full bg-gray-50 border-none ring-1 ring-gray-200 p-4 rounded-2xl outline-none">
-                  {Array.from({ length: getMaxDuration() }, (_, i) => i + 1).map(d => (<option key={d} value={d}>{d} Stunde{d > 1 ? 'n' : ''}</option>))}
-                </select>
-              </div>
-              {/* ZUSATZ EQUIPMENT */}
-              <div className="space-y-3">
-                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Add-ons</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {equipmentTypes.map(eq => (
-                    <button key={eq.id} onClick={() => setSelectedEquipment(prev => prev.includes(eq.id) ? prev.filter(x => x !== eq.id) : [...prev, eq.id])} className={`p-4 border-2 rounded-2xl flex items-center gap-3 transition-all ${selectedEquipment.includes(eq.id) ? 'bg-blue-50 border-blue-600 text-blue-700 font-bold' : 'bg-white border-gray-100 text-gray-400'}`}>
-                      <eq.icon size={18}/> <span className="text-sm">{eq.name}</span>
-                    </button>
-                  ))}
+            <div className="p-12 space-y-10">
+              <div className="space-y-4 font-bold">
+                <label className="text-[10px] text-gray-400 uppercase tracking-widest">{t('modal_time')}</label>
+                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex items-center gap-4 text-xl">
+                    <Calendar className="text-blue-500" /> {selectedDate} • {selectedTime} Uhr
                 </div>
               </div>
-              <button onClick={handleBooking} disabled={getMaxDuration() === 0} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-blue-700 transition active:scale-95 disabled:opacity-30">Buchung abschließen</button>
+              <div className="space-y-4 font-bold">
+                <label className="text-[10px] text-gray-400 uppercase tracking-widest">{t('modal_duration')}</label>
+                <select value={duration} onChange={e => setDuration(parseInt(e.target.value))} className="w-full bg-gray-50 p-6 rounded-[1.5rem] ring-1 ring-gray-100 outline-none focus:ring-2 focus:ring-[#004a87] text-lg">
+                  {Array.from({ length: getMaxDuration() }, (_, i) => i + 1).map(d => (<option key={d} value={d}>{d} h</option>))}
+                </select>
+              </div>
+              <button 
+                onClick={async () => {
+                  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+                  const { error } = await supabase.from('bookings').insert([{ room_id: selectedRoom.id, user_id: user.id, booking_date: selectedDate, start_time: selectedTime, duration: duration, user_email: user.email, booking_code: code }]);
+                  if (!error) { setShowBookingModal(false); alert(t('success_booking')); initApp(); }
+                }} 
+                className="w-full bg-[#004a87] text-white py-6 rounded-[2rem] font-bold text-xl shadow-2xl hover:bg-[#549BB7] transition active:scale-95"
+              >
+                {t('modal_btn_confirm')}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* SETTINGS MODAL */}
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-[3rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="bg-slate-900 p-8 text-white flex justify-between items-center"><h3 className="text-2xl font-black italic">Mein Account</h3><button onClick={() => setShowSettingsModal(false)}><X /></button></div>
-            <div className="p-10 space-y-10 max-h-[80vh] overflow-y-auto">
-              <section className="space-y-6">
-                <h4 className="flex items-center gap-2 font-black text-gray-400 uppercase text-xs tracking-widest"><User size={14} /> Profil</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="text" placeholder="Vorname" value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-200 outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="text" placeholder="Nachname" value={lastName} onChange={e => setLastName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-200 outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <button onClick={handleUpdateProfile} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black hover:bg-black transition shadow-lg">Daten speichern</button>
-              </section>
-              <hr className="border-gray-100" />
-              <section className="space-y-6">
-                <h4 className="flex items-center gap-2 font-black text-gray-400 uppercase text-xs tracking-widest"><Lock size={14} /> Sicherheit</h4>
-                <div className="space-y-4">
-                  <input type="password" placeholder="Neues Passwort" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-200 outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="password" placeholder="Bestätigen" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-200 outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <button onClick={handleUpdatePassword} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-blue-100 hover:bg-blue-700 transition">Update Passwort</button>
-              </section>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-6">
+          <div className="bg-white rounded-[3.5rem] w-full max-w-lg shadow-2xl overflow-hidden text-left">
+            <div className="bg-[#004a87] p-12 text-white flex justify-between items-center italic uppercase font-bold text-2xl">{t('profile_title')}<button onClick={() => setShowSettingsModal(false)}><X/></button></div>
+            <div className="p-12 space-y-8">
+              <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-100 font-bold" placeholder="Vorname" />
+              <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-100 font-bold" placeholder="Nachname" />
+              <button onClick={handleUpdateProfile} className="w-full bg-[#004a87] text-white py-6 rounded-[2rem] font-bold shadow-xl">{t('save_btn')}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* TOAST NOTIFICATION */}
-      {notification && (
-        <div className={`fixed bottom-10 right-10 p-5 rounded-3xl shadow-2xl text-white font-bold z-[110] ${notification.type === 'error' ? 'bg-red-500' : 'bg-gray-900'}`}>
-          {notification.msg}
+      {showPickerModal && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-center justify-center z-[100] p-6 animate-in zoom-in-95">
+          <div className="bg-white rounded-[4rem] w-full max-w-lg overflow-hidden shadow-2xl">
+            <div className="bg-slate-900 p-8 text-white flex justify-between items-center italic uppercase font-bold text-2xl">Zeitraum wählen<button onClick={() => setShowPickerModal(false)}><X/></button></div>
+            <div className="p-10 space-y-10 text-center">
+              <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full p-5 bg-gray-50 rounded-[1.5rem] ring-1 ring-gray-100 font-bold text-xl" />
+              <div className="grid grid-cols-3 gap-3 max-h-56 overflow-y-auto pr-3 custom-scrollbar">
+                  {timeSlots.map(t => (<button key={t} onClick={() => { setSelectedTime(t); setShowPickerModal(false); }} className={`p-4 rounded-2xl font-bold text-sm transition-all ${selectedTime === t ? 'bg-[#004a87] text-white shadow-xl scale-95' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>{t}</button>))}
+              </div>
+              <button onClick={() => setShowPickerModal(false)} className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-bold text-lg">Fertig</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
