@@ -20,7 +20,23 @@ jobs:
           name: Build
           command: npm run build
 
+  build-docker-image:
+    docker:
+      - image: cimg/azure:2025.01
+    steps:
+      - checkout
+      - docker/install-docker-tools
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build and push Docker image
+          command: |
+            docker build -t nextjsdockerreg.azurecr.io/nextjsdockerreg:latest .
+            echo $DOCKER_PASS | docker login nextjsdockerreg.azurecr.io -u $DOCKER_USER --password-stdin
+            docker push nextjsdockerreg.azurecr.io/nextjsdockerreg:latest
+
 workflows:
   build_and_test:
     jobs:
       - build
+      - build-docker-image
