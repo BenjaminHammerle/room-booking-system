@@ -1,9 +1,7 @@
 # 1. Build Stage
 FROM node:20-alpine AS builder
-
 WORKDIR /app
 
-# Build-Args
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -16,19 +14,21 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# 2. Production Stage
+# 2. Runtime Stage
 FROM node:20-alpine
-
 WORKDIR /app
+
 ENV NODE_ENV=production
+ENV PORT=3000
 
-COPY --from=builder /app/package*.json ./
-RUN npm ci --omit=dev
+# 🔥 WICHTIG: node_modules mitkopieren
+COPY --from=builder /app/node_modules ./node_modules
 
+COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.* ./
-COPY --from=builder /app/package.json ./
 
 EXPOSE 3000
-CMD ["sh", "-c", "npm start -- -p ${PORT:-3000}"]
+
+CMD ["sh", "-c", "npm start -- -p ${PORT}"]
