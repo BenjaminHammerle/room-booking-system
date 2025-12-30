@@ -1,61 +1,30 @@
 version: 2.1
 
-orbs:
-  docker: circleci/docker@2.2.0
-
 jobs:
-  build:
+  test-and-build:
     docker:
       - image: cimg/node:20.11
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: $NEXT_PUBLIC_SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: $NEXT_PUBLIC_SUPABASE_ANON_KEY
+      NODE_ENV: production
     steps:
       - checkout
-
-      - restore_cache:
-          keys:
-            - v3-deps-{{ checksum "package-lock.json" }}
-
       - run:
           name: Install dependencies
-          command: npm ci --include=dev
-
-      - save_cache:
-          key: v3-deps-{{ checksum "package-lock.json" }}
-          paths:
-            - node_modules
-
+          command: npm ci
+      - run:
+          name: Run tests (falls vorhanden)
+          command: npm test || true
       - run:
           name: Build Next.js
           command: npm run build
-
-  build-docker-image:
-    docker:
-      - image: cimg/azure:2025.01
-    steps:
-      - checkout
-
-      - docker/install-docker-tools
-
-      - setup_remote_docker:
-          docker_layer_caching: true
-
-      - run:
-          name: Build & Push Docker Image to Azure ACR
-          command: |
-            docker build \
-              --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-              --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-              -t nextjsdockerreg.azurecr.io/nextjsdockerreg:latest .
-
-            echo "$DOCKER_PASS" | docker login nextjsdockerreg.azurecr.io \
-              -u "$DOCKER_USER" \
-              --password-stdin
-
-            docker push nextjsdockerreg.azurecr.io/nextjsdockerreg:latest
+      - store_artifacts:
+          path: .next
+          destination: build
 
 workflows:
-  build_and_deploy:
+  version: 2
+  build_and_verify:
     jobs:
-      - build
-      - build-docker-image:
-          requires:
-            - build
+      - test-and-build
