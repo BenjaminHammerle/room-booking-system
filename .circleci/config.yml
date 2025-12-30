@@ -1,0 +1,35 @@
+
+version: 2.1
+
+jobs:
+  build-docker:
+    docker:
+      - image: cimg/base:2024.01
+    steps:
+      - checkout
+
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+      - run:
+          name: Build Docker Image
+          command: |
+            docker build \
+              --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+              --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+              -t room-booking-system:latest .
+
+      - run:
+          name: Save Docker Image
+          command: |
+            docker save room-booking-system:latest -o room-booking-system.tar
+
+      - store_artifacts:
+          path: room-booking-system.tar
+          destination: docker-image
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build-docker
