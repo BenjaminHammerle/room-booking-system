@@ -1,22 +1,14 @@
-
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Kopiere package files
+# Installiere dependencies INKLUSIVE TypeScript
 COPY package*.json ./
+RUN npm ci
 
-# Installiere dependencies
-RUN npm ci --only=production
-
-# Kopiere den Rest
+# Baue die App (TypeScript ist jetzt da)
 COPY . .
-
-# Baue die App
 RUN npm run build
 
-# Expose Port
 EXPOSE 3000
-
-# Starte die App
 CMD ["npm", "start"]

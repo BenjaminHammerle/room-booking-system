@@ -1,4 +1,4 @@
-
+# .circleci/config.yml
 version: 2.1
 
 jobs:
@@ -8,9 +8,11 @@ jobs:
     steps:
       - checkout
 
+      # Docker einrichten
       - setup_remote_docker:
           docker_layer_caching: true
 
+      # Docker Image bauen
       - run:
           name: Build Docker Image
           command: |
@@ -19,11 +21,12 @@ jobs:
               --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
               -t room-booking-system:latest .
 
+      # Image als Datei speichern (für Deployment)
       - run:
           name: Save Docker Image
-          command: |
-            docker save room-booking-system:latest -o room-booking-system.tar
+          command: docker save room-booking-system:latest -o room-booking-system.tar
 
+      # Speichere als Artifact (kannst du herunterladen)
       - store_artifacts:
           path: room-booking-system.tar
           destination: docker-image
