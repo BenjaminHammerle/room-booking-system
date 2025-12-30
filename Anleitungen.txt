@@ -4,3 +4,8 @@ Server:
 - BEENDEN in Terminal --> Ctrl + C
 
 - läuft auf --> http://localhost:3000/
+
+
+Docker:
+- DOCKER App starten
+- STARTEN in Terminal --> docker run -p 3000:3000 room-booking-system
