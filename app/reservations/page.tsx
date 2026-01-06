@@ -207,9 +207,8 @@ export default function ReservationsPage() {
                         isReleased ? 'bg-orange-100 text-orange-700 border-orange-200' :
                         'bg-blue-100 text-blue-700 border-blue-200 shadow-sm'
                       }`}>
-                        {isCancelled ? t('archiv_status_storno') : 
-                         isReleased ? 'Released' :
-                         t('archiv_status_reserved')}
+                        {isCancelled ? t('archiv_status_storno') :
+                            isReleased ? t('archiv_status_released') : t('archiv_status_reserved')}
                       </span>
                     )}
                  </div>
