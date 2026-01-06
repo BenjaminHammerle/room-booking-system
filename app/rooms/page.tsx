@@ -620,13 +620,33 @@ export default function RoomBookingPage() {
                                 <SlidersHorizontal size={24} className="text-[#f7941d]"/> {t('filter_title')}
                             </div>
                             <div className="space-y-4">
+                                
                                 {/* FILTER Kapazität */}
                                 <div className="space-y-4">
                                     <label
                                         className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-3">{t('filter_cap')}</label>
-                                    <input type="number" placeholder="z.B. 6" value={minCapacity}
-                                           onChange={e => setMinCapacity(e.target.value)}
-                                           className="w-full bg-gray-50 border-none ring-1 ring-gray-100 p-5 rounded-[1.5rem] focus:ring-2 focus:ring-[#f7941d] outline-none transition"/>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        min={0}
+                                        step={1}
+                                        placeholder="z.B. 6"
+                                        value={minCapacity}
+                                        onChange={(e) => {
+                                            const raw = e.target.value;
+
+                                            // erlaubt "leer" (Filter aus)
+                                            if (raw === "") {
+                                                setMinCapacity("");
+                                                return;
+                                            }
+                                            const n = Number(raw);
+                                            if (Number.isNaN(n)) return;
+
+                                            setMinCapacity(String(Math.max(0, Math.floor(n))));
+                                        }}
+                                        className="w-full bg-gray-50 border-none ring-1 ring-gray-100 p-5 rounded-[1.5rem] focus:ring-2 focus:ring-[#f7941d] outline-none transition"
+                                    />
                                 </div>
 
                                 {/* FILTER Standort */}
