@@ -42,7 +42,12 @@ export default function ReservationsPage() {
     const [transRes, profileRes, roomsRes, profilesRes, bookingsRes] = await Promise.all([
       supabase.from('translations').select('*'),
       supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-      supabase.from('rooms').select('*'),
+      supabase.from('rooms').select(`
+        *,
+        room_combi:rooms_combi!rooms_room_combi_id_fkey (
+          id, name, room_id_0, room_id_1, room_id_2, room_id_3
+        )
+      `),
       supabase.from('profiles').select('*').order('last_name'),
       supabase.from('bookings').select('*').order('booking_date', { ascending: false })
     ]);

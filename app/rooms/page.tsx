@@ -7,7 +7,7 @@ import {
   Calendar, Users, Monitor, BookOpen, Wifi, X, 
   Clock, LogOut, ShieldCheck, List, SlidersHorizontal, 
   ChevronLeft, ChevronRight, CheckCircle2, User as UserIcon,
-  Globe, ChevronDown, Settings, MapPin, AlertCircle, XCircle
+  Globe, ChevronDown, Settings, MapPin, AlertCircle, XCircle, Layers
 } from 'lucide-react';
 
 export default function RoomBookingPage() {
@@ -42,6 +42,7 @@ export default function RoomBookingPage() {
   const [minCapacity, setMinCapacity] = useState("");
   const [maxDist, setMaxDist] = useState("");
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]); // KORREKTUR: State für Equipment-Filter
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('all');
 
   // Dynamischer Text-Helper
   const t = (key: string) => dbTrans[key]?.[lang] || key;
@@ -61,7 +62,23 @@ export default function RoomBookingPage() {
       supabase.from('translations').select('*'),
       supabase.from('equipment').select('*'),
       supabase.from('timeslots').select('*').order('id'),
-      supabase.from('rooms').select('*'),
+      supabase.from('rooms').select(`
+        *,
+        building:buildings!rooms_building_id_fkey (
+          id,
+          name,
+          latitude,
+          longitude
+        ),
+        room_combi:rooms_combi!rooms_room_combi_id_fkey (
+          id,
+          name,
+          room_id_0,
+          room_id_1,
+          room_id_2,
+          room_id_3
+        )
+      `),
       supabase.from('bookings').select('*'),
       supabase.from('profiles').select('*').eq('id', session.user.id).single()
     ]);
@@ -125,10 +142,20 @@ export default function RoomBookingPage() {
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const room = rooms.find(r => r.id === booking.room_id);
       const R = 6371e3;
-      const dLat = (pos.coords.latitude - (room?.latitude || 47.2692)) * Math.PI / 180;
-      const dLon = (pos.coords.longitude - (room?.longitude || 11.3933)) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(pos.coords.latitude * Math.PI / 180) * Math.cos((room?.latitude || 47.2692) * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      const dist = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+
+      const bLat = room?.building?.latitude ?? 47.2692;
+      const bLon = room?.building?.longitude ?? 11.3933;
+
+      const dLat = (pos.coords.latitude - bLat) * Math.PI / 180;
+      const dLon = (pos.coords.longitude - bLon) * Math.PI / 180;
+
+      const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(pos.coords.latitude * Math.PI / 180) *
+          Math.cos(bLat * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+      const dist = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 
       if (dist <= 150) {
         await verifyCode();
@@ -157,6 +184,60 @@ export default function RoomBookingPage() {
     if (!error) { setShowSettingsModal(false); initApp(); }
   };
 
+  // --- LOGIK: ROOM_COMBI (Konflikt-Regeln) ---
+  const getConflictRoomIds = (room: any): string[] => {
+    const c = room?.room_combi;
+    if (!c) return [room.id];
+
+    const combiId = c.room_id_0; // gemeinsamer / Kombi-Raum
+    const singles = [c.room_id_1, c.room_id_2, c.room_id_3].filter(Boolean);
+
+    // Wenn Kombi-Raum gebucht wird -> blockiert alles
+    if (room.id === combiId) {
+      return Array.from(new Set([combiId, ...singles]));
+    }
+
+    // Wenn Einzelraum gebucht wird -> blockiert nur sich selbst + Kombi-Raum
+    if (singles.includes(room.id)) {
+      return Array.from(new Set([room.id, combiId]));
+    }
+
+    return [room.id];
+  };
+
+  const overlaps = (startA: Date, endA: Date, startB: Date, endB: Date) =>
+      startA < endB && startB < endA;
+
+  const isAnyRoomOccupied = (
+      roomIds: string[],
+      date: string,
+      startTime: string,
+      durationHours: number
+  ) => {
+    const [h, m] = startTime.split(':').map(Number);
+
+    const reqStart = new Date(`${date}T00:00:00`);
+    reqStart.setHours(h, m, 0, 0);
+
+    const reqEnd = new Date(reqStart);
+    reqEnd.setHours(reqEnd.getHours() + durationHours);
+
+    return bookings.some(b => {
+      if (b.status !== 'active') return false;
+      if (b.booking_date !== date) return false;
+      if (!roomIds.includes(b.room_id)) return false;
+
+      const [bh, bm] = b.start_time.split(':').map(Number);
+      const bStart = new Date(`${b.booking_date}T00:00:00`);
+      bStart.setHours(bh, bm, 0, 0);
+
+      const bEnd = new Date(bStart);
+      bEnd.setHours(bEnd.getHours() + (b.duration || 1));
+
+      return overlaps(reqStart, reqEnd, bStart, bEnd);
+    });
+  };
+
   // --- LOGIK: VERFÜGBARKEIT ---
   const isSlotOccupied = (roomId: string, date: string, time: string) => {
     const checkHour = parseInt(time.split(':')[0]);
@@ -179,20 +260,44 @@ export default function RoomBookingPage() {
     return Math.min(max, 8);
   };
 
-  // KORREKTUR: Filter-Logik für Ausstattung
-  const filteredRooms = rooms.filter(room => {
-    if (!room.is_active || isSlotOccupied(room.id, selectedDate, selectedTime)) return false;
-    if (minCapacity && room.capacity < parseInt(minCapacity)) return false;
-    if (maxDist && (room.floor || 0) > parseInt(maxDist)) return false;
-    
-    // Prüfen, ob der Raum ALLE gewählten Ausstattungs-IDs besitzt
-    if (selectedEquipment.length > 0) {
-        const hasAll = selectedEquipment.every(id => room.equipment && room.equipment.includes(id));
-        if (!hasAll) return false;
-    }
+  const buildingOptions = Array.from(
+      new Map(
+          rooms
+              .filter(r => r?.building?.id) // nur wenn join da ist
+              .map(r => [r.building.id, r.building]) // de-dupe by id
+      ).values()
+  ).sort((a: any, b: any) => (a?.name || '').localeCompare(b?.name || ''));
 
-    return true;
-  });
+  // KORREKTUR: Filter-Logik für Ausstattung
+  const filteredRooms = rooms
+      .filter(room => {
+        if (!room.is_active || isSlotOccupied(room.id, selectedDate, selectedTime)) return false;
+        if (minCapacity && room.capacity < parseInt(minCapacity)) return false;
+        if (maxDist && (room.floor || 0) > parseInt(maxDist)) return false;
+        if (selectedBuildingId !== 'all' && room?.building?.id !== selectedBuildingId) return false;
+
+        if (selectedEquipment.length > 0) {
+          const hasAll = selectedEquipment.every(id => room.equipment && room.equipment.includes(id));
+          if (!hasAll) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        // Wenn keine Suche nach Kapazität aktiv ist, optional nur nach capacity sortieren
+        if (!minCapacity) return (a.capacity || 0) - (b.capacity || 0);
+
+        const target = parseInt(minCapacity);
+
+        // Relevanz: Abstand zur Zielkapazität (exakt zuerst, dann 1,2,3...)
+        const da = Math.abs((a.capacity || 0) - target);
+        const db = Math.abs((b.capacity || 0) - target);
+
+        if (da !== db) return da - db;
+
+        // Bei gleichem Abstand: kleinere Kapazität zuerst (ist bei deinem Filter >= target meist egal)
+        return (a.capacity || 0) - (b.capacity || 0);
+      });
 
   const getUpcomingBookings = () => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -249,18 +354,6 @@ export default function RoomBookingPage() {
             <p className="text-gray-400 font-medium text-xl">{t('subtitle')}</p>
           </section>
 
-          {/* DATUM-KARTE */}
-          <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-sm max-w-lg text-center">
-            <div className="flex items-center justify-between mb-10">
-              <button onClick={() => { let d = new Date(selectedDate); d.setDate(d.getDate()-1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-3 hover:bg-gray-100 rounded-full transition"><ChevronLeft size={28} className="text-gray-300"/></button>
-              <div><div className="text-[#549BB7] flex justify-center mb-4"><Calendar size={40}/></div><p className="font-bold text-2xl text-slate-800 italic">{new Date(selectedDate).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p></div>
-              <button onClick={() => { let d = new Date(selectedDate); d.setDate(d.getDate()+1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-3 hover:bg-gray-100 rounded-full transition"><ChevronRight size={28} className="text-gray-300"/></button>
-            </div>
-            <button onClick={() => setShowPickerModal(true)} className="w-full border-2 border-dashed border-gray-200 py-5 rounded-[2rem] font-bold text-gray-400 flex items-center justify-center gap-3 hover:border-[#549BB7] hover:text-[#549BB7] transition">
-              <Clock size={20}/> {selectedTime} Uhr - {t('btn_date')}
-            </button>
-          </div>
-
           {/* RAUM-GRID */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             {filteredRooms.map(room => (
@@ -285,7 +378,8 @@ export default function RoomBookingPage() {
                   <h3 className="font-bold text-3xl mb-3 tracking-tight">{room.name}</h3>
                   <div className="flex gap-6 mb-10 text-gray-400 font-bold text-[10px] uppercase tracking-widest">
                     <span className="flex items-center gap-1.5"><Users size={16}/> {room.capacity} {t('capacity_label')}</span>
-                    <span className="flex items-center gap-1.5"><MapPin size={16}/> {room.floor}. {t('distance_label')}</span>
+                    <span className="flex items-center gap-1.5"><MapPin size={16}/> {room?.building?.name} </span>
+                    <span className="flex items-center gap-1.5"><Layers size={16}/> {room.floor}. {t('distance_label')}</span>
                   </div>
                   <button onClick={() => { setSelectedRoom(room); setShowBookingModal(true); }} className="w-full bg-[#004a87] text-white py-6 rounded-[2rem] font-bold shadow-xl hover:bg-[#549BB7] transition-all transform active:scale-95">
                     {t('btn_reserve')}
@@ -346,12 +440,77 @@ export default function RoomBookingPage() {
           </section>
         </div>
 
-        {/* SIDEBAR FILTER (KORREKTUR: Checkbox Logik) */}
+        {/* SIDEBAR */}
         <aside className="w-[400px] text-left">
-          <div className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-sm sticky top-36">
-            <div className="flex items-center gap-4 text-slate-900 font-bold text-2xl mb-12 pb-8 border-b border-gray-50 uppercase tracking-tighter italic">
-                <SlidersHorizontal size={24} className="text-[#f7941d]"/> {t('filter_title')}
+          <div className="sticky top-36 space-y-10 max-h-[calc(100vh-9rem)] overflow-y-auto pr-2">
+
+            {/* DATUM-KARTE */}
+            <div className="bg-white rounded-[3.5rem] p-10 border border-gray-100 shadow-sm text-center">
+              <div className="flex items-center justify-between mb-8">
+                <button
+                    onClick={() => {
+                      let d = new Date(selectedDate);
+                      d.setDate(d.getDate() - 1);
+                      setSelectedDate(d.toISOString().split('T')[0]);
+                    }}
+                    className="p-3 hover:bg-gray-100 rounded-full transition"
+                >
+                  <ChevronLeft size={28} className="text-gray-300" />
+                </button>
+
+                <div>
+                  <div className="text-[#549BB7] flex justify-center mb-3">
+                    <Calendar size={34} />
+                  </div>
+                  <p className="font-bold text-xl text-slate-800 italic">
+                    {new Date(selectedDate).toLocaleDateString(
+                        lang === 'de' ? 'de-DE' : 'en-US',
+                        { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }
+                    )}
+                  </p>
+                </div>
+
+                <button
+                    onClick={() => {
+                      let d = new Date(selectedDate);
+                      d.setDate(d.getDate() + 1);
+                      setSelectedDate(d.toISOString().split('T')[0]);
+                    }}
+                    className="p-3 hover:bg-gray-100 rounded-full transition"
+                >
+                  <ChevronRight size={28} className="text-gray-300" />
+                </button>
+              </div>
+
+              <button
+                  onClick={() => setShowPickerModal(true)}
+                  className="
+    w-full h-16
+    border-2 border-dashed border-gray-200
+    rounded-[2rem]
+    font-bold text-gray-400
+    hover:border-[#549BB7] hover:text-[#549BB7]
+    transition
+    relative
+  "
+              >
+                {/* Icon links, vertikal korrekt zentriert */}
+                <div className="absolute left-6 inset-y-0 flex items-center">
+                  <Clock size={20} />
+                </div>
+
+                {/* Text wirklich zentriert */}
+                <div className="flex items-center justify-center h-full pl-15">
+                  {selectedTime} Uhr – {t('btn_date')}
+                </div>
+              </button>
             </div>
+
+            {/* FILTER KARTE */}
+            <div className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-4 text-slate-900 font-bold text-2xl mb-12 pb-8 border-b border-gray-50 uppercase tracking-tighter italic">
+                <SlidersHorizontal size={24} className="text-[#f7941d]" /> {t('filter_title')}
+              </div>
             <div className="space-y-12">
                 <div className="space-y-4">
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-3">{t('filter_cap')}</label>
@@ -362,15 +521,15 @@ export default function RoomBookingPage() {
                     {equipmentList.map(eq => (
                         <label key={eq.id} className="flex items-center gap-5 cursor-pointer group">
                             {/* KORREKTUR: Checkbox State & Toggle */}
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               checked={selectedEquipment.includes(eq.id)}
                               onChange={() => {
-                                setSelectedEquipment(prev => 
+                                setSelectedEquipment(prev =>
                                   prev.includes(eq.id) ? prev.filter(id => id !== eq.id) : [...prev, eq.id]
                                 );
                               }}
-                              className="w-7 h-7 rounded-xl border-gray-200 text-[#004a87] focus:ring-[#004a87] transition cursor-pointer" 
+                              className="w-7 h-7 rounded-xl border-gray-200 text-[#004a87] focus:ring-[#004a87] transition cursor-pointer"
                             />
                             <span className={`text-sm font-bold transition-all ${selectedEquipment.includes(eq.id) ? 'text-[#004a87]' : 'text-gray-500'}`}>
                               {lang === 'de' ? eq.name_de : eq.name_en}
@@ -378,7 +537,26 @@ export default function RoomBookingPage() {
                         </label>
                     ))}
                 </div>
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-3">
+                  Standort
+                </label>
+
+                <select
+                    value={selectedBuildingId}
+                    onChange={(e) => setSelectedBuildingId(e.target.value)}
+                    className="w-full bg-gray-50 border-none ring-1 ring-gray-100 p-5 rounded-[1.5rem] focus:ring-2 focus:ring-[#f7941d] outline-none transition font-bold text-sm"
+                >
+                  <option value="all">Alle Standorte</option>
+                  {buildingOptions.map((b: any) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                  ))}
+                </select>
+              </div>
             </div>
+          </div>
           </div>
         </aside>
       </main>
@@ -404,12 +582,43 @@ export default function RoomBookingPage() {
                   {Array.from({ length: getMaxDuration() }, (_, i) => i + 1).map(d => (<option key={d} value={d}>{d} h</option>))}
                 </select>
               </div>
-              <button 
-                onClick={async () => {
-                  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-                  const { error } = await supabase.from('bookings').insert([{ room_id: selectedRoom.id, user_id: user.id, booking_date: selectedDate, start_time: selectedTime, duration: duration, user_email: user.email, booking_code: code }]);
-                  if (!error) { setShowBookingModal(false); alert(t('success_booking')); initApp(); }
-                }} 
+              <button
+                  onClick={async () => {
+                    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+                    // 1) Konflikt-IDs bestimmen (asymmetrische Logik)
+                    const conflictIds = getConflictRoomIds(selectedRoom);
+
+                    // 2) Prüfen ob irgendein Konflikt-Raum im Zeitraum belegt ist
+                    const occupied = isAnyRoomOccupied(
+                        conflictIds,
+                        selectedDate,
+                        selectedTime,
+                        duration
+                    );
+
+                    if (occupied) {
+                      alert("Nicht verfügbar: Der Kombi-Raum oder der gewählte Raum ist im Zeitraum bereits gebucht.");
+                      return;
+                    }
+
+                    // 3) Erst dann buchen
+                    const { error } = await supabase.from('bookings').insert([{
+                      room_id: selectedRoom.id,
+                      user_id: user.id,
+                      booking_date: selectedDate,
+                      start_time: selectedTime,
+                      duration,
+                      user_email: user.email,
+                      booking_code: code
+                    }]);
+
+                    if (!error) {
+                      setShowBookingModal(false);
+                      alert(t('success_booking'));
+                      initApp();
+                    }
+                  }}
                 className="w-full bg-[#004a87] text-white py-6 rounded-[2rem] font-bold text-xl shadow-2xl hover:bg-[#549BB7] transition active:scale-95"
               >
                 {t('modal_btn_confirm')}
