@@ -31,3 +31,40 @@ export async function updateUserAdmin(id: string, data: { email?: string, first_
   revalidatePath('/admin');
   return { success: true };
 }
+
+export async function createNewUserAdmin(data: any) {
+  // 1. User in Auth anlegen
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email: data.email,
+    password: data.password,
+    email_confirm: true,
+    user_metadata: { 
+      first_name: data.first_name, 
+      last_name: data.last_name,
+      is_admin: data.is_admin 
+    }
+  });
+
+  // Falls der Auth-User schon existiert, fangen wir das hier ab
+  if (authError) throw authError;
+
+  // 2. Profil in der Datenbank anlegen (mit UPSERT statt INSERT)
+  if (authData.user) {
+    const { error: profError } = await supabaseAdmin
+      .from('profiles')
+      .upsert([ // <--- KORREKTUR: upsert statt insert
+        {
+          id: authData.user.id,
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          is_admin: data.is_admin
+        }
+      ], { onConflict: 'id' }); // Sagt der DB: Bei ID-Konflikt einfach überschreiben
+
+    if (profError) throw profError;
+  }
+
+  revalidatePath('/admin');
+  return { success: true };
+}
