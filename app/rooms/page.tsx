@@ -206,12 +206,12 @@ export default function RoomBookingPage() {
       if (selectedEquipment.length > 0 && !selectedEquipment.every((id) => room.equipment?.includes(id))) return false;
       return true;
     })
+    // Sortierung und BestMatch
     .sort((a, b) => {
       const req = parseInt(minCapacity) || 0;
       const excessA = a.capacity - req;
       const excessB = b.capacity - req;
 
-      // Richtlinie: Bis zu 2 Personen mehr rechtfertigt weniger Equipment
       const isInPufferA = excessA >= 0 && excessA <= 2;
       const isInPufferB = excessB >= 0 && excessB <= 2;
 
@@ -219,13 +219,19 @@ export default function RoomBookingPage() {
       if (isInPufferA && !isInPufferB) return -1;
       if (!isInPufferA && isInPufferB) return 1;
 
-      // 2. Priorität: Wer hat weniger RoomEquipment hat (Ressourcen-Schonung)
-      const equipCountA = a.equipment?.length || 0;
-      const equipCountB = b.equipment?.length || 0;
-      if (equipCountA !== equipCountB) return equipCountA - equipCountB;
+      // 2. Priorität: Wenn BEIDE im Puffer sind 
+      if (isInPufferA && isInPufferB) {
+        const equipCountA = a.equipment?.length || 0;
+        const equipCountB = b.equipment?.length || 0;
+        if (equipCountA !== equipCountB) return equipCountA - equipCountB; // Weniger Equipment spart Ressourcen
+        return excessA - excessB; // Bei gleichem Equipment: näher an Kapazität
+      }
 
-      // 3. Priorität: Wer näher an der Kapazität ist
-      return excessA - excessB;
+      // 3. Priorität: Wenn BEIDE AUSSERHALB des Puffers sind gewinnt der kleinste Raum
+      if (excessA !== excessB) return excessA - excessB;
+      
+      // Tie-Breaker: Equipment
+      return (a.equipment?.length || 0) - (b.equipment?.length || 0);
     });
 
   const getUpcomingBookings = () => {
@@ -354,7 +360,7 @@ export default function RoomBookingPage() {
 
             <div className="space-y-4 text-left">
               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{t("filter_time_label")}</label>
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(new Date(e.target.value).toISOString().split('T')[0])} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-[#004a87] text-sm shadow-inner mb-4" />
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-[#004a87] text-sm shadow-inner mb-4" />
               
               <div className="flex items-center gap-2">
                   <select
