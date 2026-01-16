@@ -4,7 +4,7 @@
 #   Room Booking System - Deinstallation (Linux)
 # ============================================
 
-cd../..
+cd ../..
 echo ""
 echo "============================================"
 echo "   Room Booking System - Deinstallation"

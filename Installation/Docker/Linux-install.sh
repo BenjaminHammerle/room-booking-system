@@ -4,7 +4,7 @@
 #   Room Booking System - Installation (Linux)
 # ============================================
 
-cd../..
+cd ../..
 echo ""
 echo "============================================"
 echo "   Room Booking System - Installation"
