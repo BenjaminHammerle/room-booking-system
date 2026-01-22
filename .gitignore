@@ -42,3 +42,6 @@ next-env.d.ts
 
 # anleitungen
 Anleitungen.txt
+
+# setup
+*.exe

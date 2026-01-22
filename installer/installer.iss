@@ -12,21 +12,30 @@ OutputBaseFilename=RoomBookingSystem-Setup
 Compression=lzma
 SolidCompression=yes
 DisableProgramGroupPage=no
-UninstallDisplayIcon={app}\scripts\start.bat
+
+; Icon für Installer-Fenster
+SetupIconFile=..\scripts\icon.ico
+
+; Icon in "Programme & Features"
+UninstallDisplayIcon={app}\scripts\icon.ico
 
 [Files]
 ; Alles aus dem Projekt kopieren
 Source: "..\*"; DestDir: "{app}"; Flags: recursesubdirs
 
-[Icons]
-; Startmenü
-Name: "{group}\Room Booking System"; Filename: "{app}\scripts\start.bat"
-Name: "{group}\Uninstall Room Booking System"; Filename: "{uninstallexe}"
-; Desktop
-Name: "{commondesktop}\Room Booking System"; Filename: "{app}\scripts\start.bat"; Tasks: desktopicon
+; Icon explizit mitinstallieren (Sicherheit)
+Source: "..\scripts\icon.ico"; DestDir: "{app}\scripts"
 
 [Tasks]
 Name: "desktopicon"; Description: "Desktop-Verknuepfung erstellen"; GroupDescription: "Zusaetzliche Optionen:"; Flags: unchecked
+
+[Icons]
+; Startmenü
+Name: "{group}\Room Booking System"; Filename: "{app}\scripts\start.bat"; IconFilename: "{app}\scripts\icon.ico"
+Name: "{group}\Uninstall Room Booking System"; Filename: "{uninstallexe}"
+
+; Desktop (optional über Task)
+Name: "{commondesktop}\Room Booking System"; Filename: "{app}\scripts\start.bat"; IconFilename: "{app}\scripts\icon.ico"; Tasks: desktopicon
 
 [Run]
 ; Node.js Check
