@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { LogIn, ShieldAlert } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
+import './login.css';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,7 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dbTrans, setDbTrans] = useState<any>({});
-  const [lang, setLang] = useState<'de' | 'en'>('de'); // Standardmäßig Deutsch
+  const [lang, setLang] = useState<'de' | 'en'>('de');
   const router = useRouter();
 
   // Texte aus DB laden
@@ -29,7 +30,6 @@ export default function LoginPage() {
     fetchTranslations();
   }, []);
 
-  // Hilfsfunktion für Texte
   const t = (key: string) => dbTrans[key]?.[lang] || key;
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -54,73 +54,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] p-4 font-sans">
-      <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-gray-100 animate-in fade-in zoom-in-95 duration-500">
+    <div className="mci-login-container">
+      <div className="mci-login-card">
         
-        {/* Logo & Header */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="mb-6">
-            <img src="/MCI.png" alt="MCI Logo" className="h-16 w-auto object-contain" />
-          </div>
-          {/* font-bold statt font-black für zierlicheren Look */}
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight italic uppercase">
-            {t('login_title')}
-          </h1>
-          <p className="text-gray-400 text-sm mt-2">
-            {t('login_subtitle')}
-          </p>
+        {/* Header Bereich */}
+        <div className="mci-login-header">
+          <img src="/MCI.png" alt="MCI Logo" className="mci-login-logo" />
+          <h1 className="mci-login-title">{t('login_title')}</h1>
+          <p className="mci-login-subtitle">{t('login_subtitle')}</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          {/* E-Mail Feld */}
+        {/* Formular Bereich */}
+        <form onSubmit={handleLogin} className="mci-login-form">
           <div>
-            <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-2 ml-2">
-              {t('login_email_label')}
-            </label>
+            <label className="mci-login-label">{t('login_email_label')}</label>
             <input 
               type="email" 
+              className="mci-login-input"
               required 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 bg-gray-50 border-none ring-1 ring-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#004a87] transition-all font-medium"
               placeholder={t('login_email_placeholder')}
             />
           </div>
 
-          {/* Passwort Feld */}
           <div>
-            <label className="block text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-2 ml-2">
-              {t('login_password_label')}
-            </label>
+            <label className="mci-login-label">{t('login_password_label')}</label>
             <input 
               type="password" 
+              className="mci-login-input"
               required 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 bg-gray-50 border-none ring-1 ring-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#004a87] transition-all font-medium"
               placeholder={t('login_password_placeholder')}
             />
           </div>
 
-          {/* Fehlermeldung */}
           {error && (
-            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-4 rounded-2xl border border-red-100 animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-4 rounded-2xl border border-red-100">
               <ShieldAlert size={16} /> {error}
             </div>
           )}
 
-          {/* Login Button */}
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#004a87] text-white py-5 rounded-[1.5rem] font-bold hover:bg-[#549BB7] shadow-xl shadow-blue-100 transition transform active:scale-95 disabled:opacity-50 mt-4"
-          >
+          <button type="submit" disabled={loading} className="mci-login-button">
             {loading ? t('login_loading') : t('login_button')}
           </button>
         </form>
 
-        {/* Optionaler Language Switcher am Fuß der Karte */}
-        <div className="mt-8 pt-6 border-t border-gray-50 flex justify-center gap-4">
+        {/* Sprachen Footer */}
+        <div className="mci-login-footer">
           <button 
             onClick={() => setLang('de')} 
             className={`text-[10px] font-bold uppercase tracking-widest ${lang === 'de' ? 'text-[#004a87]' : 'text-gray-300'}`}

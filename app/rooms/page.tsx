@@ -439,7 +439,6 @@ export default function RoomBookingPage() {
               <div key={room.id} className="bg-white rounded-[4rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-2xl transition-all duration-700 text-left relative">
                 <div className="relative h-72 bg-gray-200">
                   <img src={room.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt={room.name} />
-                  <div className="absolute top-8 right-8 bg-[#4ade80] text-white px-6 py-2.5 rounded-full text-[10px] font-bold uppercase shadow-xl tracking-widest">{t("status_free")}</div>
                   
                   {/* EQUIPMENT BADGES AUF BILD (WIEDER DA) */}
                   <div className="absolute bottom-6 left-8 flex flex-wrap gap-2 pr-6">
