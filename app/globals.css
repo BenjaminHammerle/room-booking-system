@@ -82,7 +82,7 @@
 
 /* Du kannst die Utility-Klasse hier lassen für JSX-Files */
 .mci-animate-fade { 
-  animation: mciFade 0.4s ease-out; 
+  animation: mciFade 0.4s ease-out forwards;
 }
 
 /* --- 5. SERIEN-TABELLEN (GRID SYSTEM) --- */
