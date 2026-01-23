@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+.room-page-wrapper {
+  background-color: var(--mci-bg);
+  @apply min-h-screen text-slate-900 font-sans;
+}
+
+.room-navbar {
+  @apply bg-white border-b sticky top-0 z-50 px-12 h-24 flex flex-row items-center justify-between shadow-sm;
+}
+
+.nav-link {
+  @apply flex flex-row items-center gap-2 text-slate-600 font-bold hover:text-[var(--mci-blue)] transition;
+}
+
+.room-main-layout {
+  @apply max-w-[1750px] mx-auto p-12 flex flex-col lg:flex-row gap-16 relative;
+}
+
+/* Sidebar & Filter-Card (Spezifisch für Rooms) */
+.filter-card {
+  @apply bg-white rounded-[2rem] p-10 border border-gray-100 shadow-sm sticky top-32 space-y-6;
+}
+
+.filter-title-row {
+  @apply flex flex-row items-center gap-2 text-slate-900 font-bold text-lg mb-2 pb-4 border-b border-gray-50 uppercase tracking-tighter italic;
+}
+
+/* Room Grid & Cards */
+.room-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-12;
+}
+
+.room-card {
+  @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden text-left relative flex flex-col transition-all duration-700 hover:shadow-2xl;
+}
+
+.room-card-image-wrapper {
+  @apply relative h-80 w-full bg-gray-200 overflow-hidden shrink-0;
+}
+
+.room-card-image {
+  @apply w-full h-full object-cover block transition-transform duration-1000;
+}
+
+/* Status-Anzeigen auf Karten */
+.room-occupied-until {
+  @apply absolute top-8 right-8 bg-red-500 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase flex flex-row items-center gap-2 shadow-2xl animate-pulse;
+}
+
+.room-inactive {
+  @apply absolute top-8 right-8 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase flex flex-row items-center gap-2 shadow-2xl;
+}
+
+.room-badge-container {
+  @apply absolute bottom-6 left-8 flex flex-wrap gap-2 pr-6 items-center;
+}
+
+.mci-badge {
+  @apply bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl shadow-sm text-[#004a87] text-[11px] font-extrabold uppercase tracking-wider border border-white/50;
+}
+
+.accessible-badge {
+  @apply bg-green-200 text-green-700 px-4 py-2.5 rounded-xl shadow-lg text-[11px] font-black uppercase flex flex-row items-center gap-2;
+}
+
+/* Card Content */
+.room-card-content {
+  @apply p-12 flex flex-col flex-1;
+}
+
+.room-info-container {
+  @apply grid grid-cols-2 gap-x-6 gap-y-4 mb-10 text-gray-500 font-bold text-xs uppercase tracking-widest;
+}
+
+.mci-info-tag {
+  @apply flex flex-row items-center gap-3 bg-gray-50 px-5 py-3 rounded-2xl w-full shadow-sm border border-gray-100/50;
+}
+
+.best-match {
+  @apply bg-blue-50 text-[#549BB7] p-2.5 rounded-2xl border border-blue-100 flex flex-row items-center gap-2 font-black uppercase text-[10px] italic;
+}
+
+/* Filter-Spezifika */
+.mci-filter-list {
+  @apply flex flex-col pt-2 ml-4;
+}
+
+.mci-filter-item {
+  @apply flex flex-row items-center gap-3 cursor-pointer py-1.5 transition-all text-sm font-bold text-gray-500 hover:text-[var(--mci-blue)];
+}
+
+.mci-filter-text-active { @apply text-[var(--mci-blue)]; }
+.mci-filter-text-accessible-active { @apply text-green-700; }
+
+.filter-capacity-number {
+  @apply w-20 p-3 bg-gray-50 rounded-xl font-bold text-center text-sm shadow-inner;
+}
+
+.filter-capacity-bar {
+  @apply flex-1 accent-[#f7941d];
+}

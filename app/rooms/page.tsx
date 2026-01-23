@@ -3,13 +3,70 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import "./room.css";
+import BookingModal from "@/app/components/BookingModal";
 import {
-  Calendar, Users, Monitor, BookOpen, Wifi, X,
-  Clock, LogOut, ShieldCheck, List, SlidersHorizontal,
-  ChevronLeft, ChevronRight, CheckCircle2, User as UserIcon,
-  Globe, ChevronDown, Settings, MapPin, AlertCircle, XCircle, Search,
-  Layers, Filter, Printer, Info,
+  Calendar,
+  Users,
+  Clock,
+  LogOut,
+  ShieldCheck,
+  List,
+  CheckCircle2,
+  User as UserIcon,
+  Globe,
+  ChevronDown,
+  Settings,
+  MapPin,
+  AlertCircle,
+  XCircle,
+  Search,
+  Layers,
+  Filter,
+  Info,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Accessibility,
+  Ban,
+  Printer,
+  Save,
 } from "lucide-react";
+
+// --- TYPES ---
+interface Room {
+  id: string;
+  name: string;
+  capacity: number;
+  floor: number;
+  building_id: string;
+  is_active: boolean;
+  accessible: boolean;
+  image_url: string;
+  image?: string;
+  seating_arrangement?: string;
+  equipment?: string[];
+  building?: { id: string; name: string; latitude: number; longitude: number };
+  room_combi?: {
+    id: string;
+    room_id_0: string;
+    room_id_1: string;
+    room_id_2: string;
+    room_id_3: string;
+  };
+}
+
+interface Booking {
+  id: string;
+  room_id: string;
+  user_id: string;
+  booking_date: string;
+  start_time: string;
+  duration: number;
+  status: string;
+  is_checked_in: boolean;
+  booking_code: string;
+}
 
 export default function RoomBookingPage() {
   const router = useRouter();
@@ -18,32 +75,24 @@ export default function RoomBookingPage() {
   // --- DATA STATES ---
   const [dbTrans, setDbTrans] = useState<any>({});
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
-  // --- HELPERS ---
-  const timeToMinutes = (timeStr: string) => {
-    if (!timeStr) return 0;
-    const [h, m] = timeStr.split(":").map(Number);
-    return h * 60 + m;
-  };
-
-  const minutesToTime = (totalMinutes: number) => {
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-  };
-
-  // --- SMART INITIALIZATION ---
+  // --- UI & FILTER STATES (SMART TIME INIT) ---
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
-    if (now.getHours() > 23 || (now.getHours() === 23 && now.getMinutes() > 15)) {
+    // Wenn es 23:00 Uhr oder später ist, schlage direkt morgen vor
+    if (now.getHours() >= 23) {
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
       return tomorrow.toISOString().split("T")[0];
@@ -53,556 +102,914 @@ export default function RoomBookingPage() {
 
   const [selectedTime, setSelectedTime] = useState(() => {
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMin = now.getMinutes();
-    if ((currentHour >= 23 && currentMin > 15) || currentHour < 7) return "07:00";
-    let h = currentHour;
-    let m = Math.ceil(currentMin / 15) * 15;
-    if (m === 60) { h++; m = 0; }
-    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+    const h = now.getHours();
+    const m = now.getMinutes();
+    if ((h >= 23 && m > 15) || h < 7) return "07:00";
+    let nextM = Math.ceil(m / 15) * 15;
+    let nextH = h;
+    if (nextM === 60) {
+      nextH++;
+      nextM = 0;
+    }
+    return `${nextH.toString().padStart(2, "0")}:${nextM.toString().padStart(2, "0")}`;
   });
 
-  // --- FILTER STATES ---
   const [searchQuery, setSearchQuery] = useState("");
   const [minCapacity, setMinCapacity] = useState("0");
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-  const [selectedBuildingId, setSelectedBuildingId] = useState<string>("all");
-  const [selectedSeating, setSelectedSeating] = useState<string>("all");
-
-  // --- UI STATES ---
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<any>(null);
-  const [duration, setDuration] = useState(1); 
+  const [onlyAccessible, setOnlyAccessible] = useState(false);
+  const [selectedBuildingId, setSelectedBuildingId] = useState("all");
+  const [selectedSeating, setSelectedSeating] = useState("all");
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [duration, setDuration] = useState(1);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringWeeks, setRecurringWeeks] = useState(1);
-
-  // t-Funktion mit Normalisierung auf Kleinschreibung
-  const t = (key: string) => {
-    if (!key) return "";
-    const searchKey = key.toLowerCase();
-    return dbTrans[searchKey]?.[lang] || key;
+  const getEndTimeParts = (startTime: string, duration: number) => {
+    const totalMinutes = timeToMinutes(startTime) + duration * 60;
+    return {
+      hh: Math.floor(totalMinutes / 60)
+        .toString()
+        .padStart(2, "0"),
+      mm: (totalMinutes % 60).toString().padStart(2, "0"),
+    };
   };
 
-  const maxRoomCapacity = useMemo(() => {
-    if (rooms.length === 0) return 100;
-    return Math.max(...rooms.map((r) => r.capacity));
-  }, [rooms]);
+  // --- NOW-ZEIT HELFER ---
+  const nowForValidation = new Date();
+  const currentHH = nowForValidation.getHours();
+  const currentMM = nowForValidation.getMinutes();
+  const isToday = selectedDate === new Date().toISOString().split("T")[0];
 
-  const translateSeating = (value: string) => t(value);
+  // --- HELPERS ---
+  const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const minutesToTime = (totalMinutes: number) => {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  };
 
+  const getOccupancyInfo = (
+    roomId: string,
+    date: string,
+    time: string,
+    currentBookings: Booking[] = [],
+  ) => {
+    const checkMin = timeToMinutes(time);
+    const activeBookings = currentBookings || [];
+    const conflict = activeBookings.find(
+      (b) =>
+        b.room_id === roomId &&
+        b.booking_date === date &&
+        b.status === "active" &&
+        checkMin >= timeToMinutes(b.start_time) &&
+        checkMin < timeToMinutes(b.start_time) + b.duration * 60,
+    );
+    return conflict
+      ? {
+          isOccupied: true,
+          until: minutesToTime(
+            timeToMinutes(conflict.start_time) + conflict.duration * 60,
+          ),
+        }
+      : { isOccupied: false, until: null };
+  };
+
+  const isCheckInWindowOpen = (booking: Booking) => {
+    const nowLocal = new Date();
+    const start = new Date(`${booking.booking_date}T${booking.start_time}`);
+    return (
+      nowLocal >= new Date(start.getTime() - 15 * 60000) &&
+      nowLocal <=
+        new Date(start.getTime() + (booking.duration || 1) * 3600000) &&
+      booking.status === "active"
+    );
+  };
+
+  const getConflictRoomIds = (room: Room): string[] => {
+    if (!room?.room_combi) return [room.id];
+    const c = room.room_combi;
+    const singles = [c.room_id_1, c.room_id_2, c.room_id_3].filter(Boolean);
+    return room.id === c.room_id_0
+      ? Array.from(new Set([c.room_id_0, ...singles]))
+      : Array.from(new Set([room.id, c.room_id_0]));
+  };
+
+  const isAnyRoomOccupied = (
+    roomIds: string[],
+    date: string,
+    startTime: string,
+    durationHours: number,
+    currentBookings: Booking[],
+  ) => {
+    const reqStartMin = timeToMinutes(startTime);
+    const reqEndMin = reqStartMin + durationHours * 60;
+    return currentBookings.some((b) => {
+      if (
+        b.status !== "active" ||
+        b.booking_date !== date ||
+        !roomIds.includes(b.room_id)
+      )
+        return false;
+      const bStartMin = timeToMinutes(b.start_time);
+      return (
+        reqStartMin < bStartMin + (b.duration || 1) * 60 &&
+        bStartMin < reqEndMin
+      );
+    });
+  };
+
+  const getSeriesPlan = (
+    room: Room,
+    startDate: string,
+    startTime: string,
+    durationHours: number,
+    weeks: number,
+    currentBookings: Booking[],
+  ) => {
+    const plan = [];
+    const minCapNum = parseInt(minCapacity) || 0;
+
+    for (let i = 0; i < weeks; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i * 7);
+      const curDate = d.toISOString().split("T")[0];
+
+      const conflictIds = getConflictRoomIds(room);
+      const isOriginalOccupied = isAnyRoomOccupied(
+        conflictIds,
+        curDate,
+        startTime,
+        durationHours,
+        currentBookings,
+      );
+
+      if (!isOriginalOccupied) {
+        plan.push({ date: curDate, room: room, status: "ok" });
+      } else {
+        // BEST MATCH SUCHE
+        const alternatives = rooms
+          .filter(
+            (r) =>
+              r.building_id === room.building_id &&
+              r.id !== room.id &&
+              r.is_active &&
+              r.capacity >= minCapNum &&
+              !isAnyRoomOccupied(
+                getConflictRoomIds(r),
+                curDate,
+                startTime,
+                durationHours,
+                currentBookings,
+              ),
+          )
+          .sort((a, b) => a.capacity - b.capacity); // Nimm den kleinstmöglichen passenden Raum
+
+        const bestAlt = alternatives[0] || null;
+        plan.push({
+          date: curDate,
+          room: bestAlt,
+          status: bestAlt ? "alternative" : "conflict",
+        });
+      }
+    }
+    return plan;
+  };
+
+  // --- INITIAL LOAD ---
   useEffect(() => {
     initApp();
   }, [selectedDate]);
 
   async function initApp() {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { router.push("/login"); return; }
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      router.push("/login");
+      return;
+    }
     setUser(session.user);
+    const [transRes, equipRes, roomsRes, bookingsRes, profileRes] =
+      await Promise.all([
+        supabase.from("translations").select("*"),
+        supabase.from("equipment").select("*"),
+        supabase
+          .from("rooms")
+          .select(
+            `*, building:buildings!rooms_building_id_fkey (*), room_combi:rooms_combi!rooms_room_combi_id_fkey (*)`,
+          ),
+        supabase.from("bookings").select("*"),
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single(),
+      ]);
+    // --- Overdue Check (Räume freigeben) ---
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const currentTimeMin = now.getHours() * 60 + now.getMinutes();
 
-    const [transRes, equipRes, roomsRes, bookingsRes, profileRes] = await Promise.all([
-      supabase.from("translations").select("*"),
-      supabase.from("equipment").select("*"),
-      supabase.from("rooms").select(`
-                *,
-                building:buildings!rooms_building_id_fkey (id, name, latitude, longitude),
-                room_combi:rooms_combi!rooms_room_combi_id_fkey (id, name, room_id_0, room_id_1, room_id_2, room_id_3)
-            `),
-      supabase.from("bookings").select("*"),
-      supabase.from("profiles").select("*").eq("id", session.user.id).single(),
-    ]);
+    // Hole alle aktiven Buchungen von heute, die NICHT eingecheckt sind
+    const { data: todayBookings } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("booking_date", todayStr)
+      .eq("status", "active")
+      .eq("is_checked_in", false);
+
+    if (todayBookings) {
+      for (const b of todayBookings) {
+        const startMin = timeToMinutes(b.start_time);
+        // Wenn 15 Minuten vergangen sind -> Stornieren (Freigeben)
+        if (currentTimeMin > startMin + 15) {
+          await supabase
+            .from("bookings")
+            .update({ status: "cancelled" }) // oder 'released', je nach DB-Logik
+            .eq("id", b.id);
+        }
+      }
+    }
+    // --- Ende Overdue Check ---
 
     if (transRes.data) {
       const tMap: any = {};
-      transRes.data.forEach((i) => (tMap[i.key.toLowerCase()] = { de: i.de, en: i.en }));
+      transRes.data.forEach(
+        (i: any) => (tMap[i.key.toLowerCase()] = { de: i.de, en: i.en }),
+      );
       setDbTrans(tMap);
     }
-
     if (equipRes.data) setEquipmentList(equipRes.data);
-    if (roomsRes.data) setRooms(roomsRes.data);
-
     if (roomsRes.data) {
-      const uniqueBuildings = Array.from(
-        new Map(roomsRes.data.filter((r) => r.building).map((r) => [r.building.id, r.building])).values()
-      ) as any[];
-      setBuildings(uniqueBuildings);
+      setRooms(roomsRes.data);
+      setBuildings(
+        Array.from(
+          new Map(
+            roomsRes.data
+              .filter((r: any) => r.building)
+              .map((r: any) => [r.building.id, r.building]),
+          ).values(),
+        ) as any[],
+      );
     }
-
     if (profileRes.data) {
-      setIsAdmin(profileRes.data.is_admin || false);
+      setIsAdmin(profileRes.data.is_admin);
       setFirstName(profileRes.data.first_name || "MCI");
       setLastName(profileRes.data.last_name || "User");
     }
-    if (bookingsRes.data) {
-      setBookings(bookingsRes.data);
-      checkAutoRelease(bookingsRes.data);
-    }
+    if (bookingsRes.data) setBookings(bookingsRes.data);
     setLoading(false);
   }
 
-  // --- LOGIK: BELEGUNG ---
-  const isSlotOccupied = (roomId: string, date: string, time: string) => {
-    const checkMin = timeToMinutes(time);
-    return bookings.some((b) => {
-      if (b.room_id !== roomId || b.booking_date !== date || b.status !== "active") return false;
-      const startMin = timeToMinutes(b.start_time);
-      const endMin = startMin + (b.duration || 1) * 60;
-      return checkMin >= startMin && checkMin < endMin;
-    });
-  };
+  // --- FILTER & SORT LOGIK ---
+  const maxRoomCapacity = useMemo(
+    () =>
+      rooms.length === 0 ? 100 : Math.max(...rooms.map((r) => r.capacity)),
+    [rooms],
+  );
 
-  const isAnyRoomOccupied = (roomIds: string[], date: string, startTime: string, durationHours: number) => {
-    const reqStartMin = timeToMinutes(startTime);
-    const reqEndMin = reqStartMin + durationHours * 60;
-    return bookings.some((b) => {
-      if (b.status !== "active" || b.booking_date !== date || !roomIds.includes(b.room_id)) return false;
-      const bStartMin = timeToMinutes(b.start_time);
-      const bEndMin = bStartMin + (b.duration || 1) * 60;
-      return reqStartMin < bEndMin && bStartMin < reqEndMin;
-    });
-  };
-
-  const getConflictRoomIds = (room: any): string[] => {
-    const c = room?.room_combi;
-    if (!c) return [room.id];
-    const singles = [c.room_id_1, c.room_id_2, c.room_id_3].filter(Boolean);
-    if (room.id === c.room_id_0) return Array.from(new Set([c.room_id_0, ...singles]));
-    if (singles.includes(room.id)) return Array.from(new Set([room.id, c.room_id_0]));
-    return [room.id];
-  };
-
-  const checkSeriesAvailability = (room: any, startDate: string, startTime: string, durationHours: number, weeks: number) => {
-    const plan = [];
-    for (let i = 0; i < weeks; i++) {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + i * 7);
-      const currentDate = d.toISOString().split("T")[0];
-      const conflictIds = getConflictRoomIds(room);
-      if (!isAnyRoomOccupied(conflictIds, currentDate, startTime, durationHours)) {
-        plan.push({ date: currentDate, room: room, status: "ok" });
-      } else {
-        const alternative = rooms.find((r) =>
-            r.building_id === room.building_id && r.id !== room.id && r.is_active &&
-            r.capacity >= (parseInt(minCapacity) || 0) &&
-            !isAnyRoomOccupied(getConflictRoomIds(r), currentDate, startTime, durationHours)
+  const filteredRooms = useMemo(() => {
+    return rooms
+      .filter((r) => {
+        const occInfo = getOccupancyInfo(
+          r.id,
+          selectedDate,
+          selectedTime,
+          bookings,
         );
-        if (alternative) plan.push({ date: currentDate, room: alternative, status: "alternative" });
-        else plan.push({ date: currentDate, room: null, status: "conflict" });
-      }
-    }
-    return plan;
-  };
+        const matchesSearch =
+          searchQuery &&
+          r.name.toLowerCase().includes(searchQuery.toLowerCase());
+        if (!searchQuery && (!r.is_active || occInfo.isOccupied)) return false;
+        if (searchQuery && !matchesSearch) return false;
+        if (onlyAccessible && !r.accessible) return false;
+        if (minCapacity && r.capacity < parseInt(minCapacity)) return false;
+        if (
+          selectedBuildingId !== "all" &&
+          r.building_id !== selectedBuildingId
+        )
+          return false;
+        if (
+          selectedSeating !== "all" &&
+          r.seating_arrangement !== selectedSeating
+        )
+          return false;
+        if (
+          selectedEquipment.length > 0 &&
+          !selectedEquipment.every((id) => r.equipment?.includes(id))
+        )
+          return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+        const occA = getOccupancyInfo(
+          a.id,
+          selectedDate,
+          selectedTime,
+          bookings,
+        ).isOccupied;
+        const occB = getOccupancyInfo(
+          b.id,
+          selectedDate,
+          selectedTime,
+          bookings,
+        ).isOccupied;
+        if (occA !== occB) return occA ? 1 : -1;
+        const req = parseInt(minCapacity) || 0;
+        const deltaA = a.capacity - req;
+        const deltaB = b.capacity - req;
+        const inA = deltaA >= 0 && deltaA <= 2;
+        const inB = deltaB >= 0 && deltaB <= 2;
+        if (inA && !inB) return -1;
+        if (!inA && inB) return 1;
+        if (inA && inB) {
+          const eqCountA = a.equipment?.length || 0;
+          const eqCountB = b.equipment?.length || 0;
+          if (eqCountA !== eqCountB) return eqCountA - eqCountB;
+        }
+        return deltaA - deltaB;
+      });
+  }, [
+    rooms,
+    searchQuery,
+    minCapacity,
+    selectedBuildingId,
+    selectedSeating,
+    selectedEquipment,
+    onlyAccessible,
+    selectedDate,
+    selectedTime,
+    bookings,
+  ]);
 
-  // --- LOGIK: EFFIZIENZ-SORTIERUNG ---
-  const filteredRooms = rooms
-    .filter((room) => {
-      if (!room.is_active || isSlotOccupied(room.id, selectedDate, selectedTime)) return false;
-      if (searchQuery && !room.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      if (minCapacity && room.capacity < parseInt(minCapacity)) return false;
-      if (selectedBuildingId !== "all" && room.building_id !== selectedBuildingId) return false;
-      if (selectedSeating !== "all" && room.seating_arrangement !== selectedSeating) return false;
-      if (selectedEquipment.length > 0 && !selectedEquipment.every((id) => room.equipment?.includes(id))) return false;
-      return true;
-    })
-    // Sortierung und BestMatch
-    .sort((a, b) => {
-      const req = parseInt(minCapacity) || 0;
-      const excessA = a.capacity - req;
-      const excessB = b.capacity - req;
+  // Zählt nur AKTIVE UND FREIE Räume
+  const activeCount = useMemo(
+    () =>
+      filteredRooms.filter(
+        (r) =>
+          r.is_active &&
+          !getOccupancyInfo(r.id, selectedDate, selectedTime, bookings)
+            .isOccupied,
+      ).length,
+    [filteredRooms, selectedDate, selectedTime, bookings],
+  );
 
-      const isInPufferA = excessA >= 0 && excessA <= 2;
-      const isInPufferB = excessB >= 0 && excessB <= 2;
-
-      // 1. Priorität: Wer im Puffer liegt, gewinnt gegen "Overkill"-Kapazitäten
-      if (isInPufferA && !isInPufferB) return -1;
-      if (!isInPufferA && isInPufferB) return 1;
-
-      // 2. Priorität: Wenn BEIDE im Puffer sind 
-      if (isInPufferA && isInPufferB) {
-        const equipCountA = a.equipment?.length || 0;
-        const equipCountB = b.equipment?.length || 0;
-        if (equipCountA !== equipCountB) return equipCountA - equipCountB; // Weniger Equipment spart Ressourcen
-        return excessA - excessB; // Bei gleichem Equipment: näher an Kapazität
-      }
-
-      // 3. Priorität: Wenn BEIDE AUSSERHALB des Puffers sind gewinnt der kleinste Raum
-      if (excessA !== excessB) return excessA - excessB;
-      
-      // Tie-Breaker: Equipment
-      return (a.equipment?.length || 0) - (b.equipment?.length || 0);
-    });
-
-  const getUpcomingBookings = () => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    return bookings.filter((b) => b.user_id === user?.id && b.status === "active" && b.booking_date >= todayStr)
-      .sort((a, b) => (a.booking_date + a.start_time).localeCompare(b.booking_date + b.start_time)).slice(0, 5);
-  };
-
-  const checkAutoRelease = async (all: any[]) => {
-    const now = new Date();
-    const toRelease = all.filter((b) => b.status === "active" && !b.is_checked_in && (now.getTime() - new Date(`${b.booking_date}T${b.start_time}`).getTime()) / 60000 >= 10);
-    for (const b of toRelease) await supabase.from("bookings").update({ status: "released" }).eq("id", b.id);
+  // --- UI ACTIONS ---
+  const handleDatePagination = (days: number) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + days);
+    const newDateStr = d.toISOString().split("T")[0];
+    if (newDateStr < new Date().toISOString().split("T")[0]) return;
+    setSelectedDate(newDateStr);
   };
 
   const handleCancel = async (id: string) => {
     if (!confirm(t("confirm_cancel"))) return;
-    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", id);
+    await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", id);
     initApp();
   };
 
-  const getMaxDuration = () => {
-    if (!selectedRoom) return 0.25;
-    const startMin = timeToMinutes(selectedTime);
-    let currentMaxMin = 0;
-    for (let m = 15; m <= 600; m += 15) { 
-      const checkTimeMin = startMin + m;
-      if (checkTimeMin > 1410) break; // 23:30 Limit
-      if (isSlotOccupied(selectedRoom.id, selectedDate, minutesToTime(checkTimeMin))) break;
-      currentMaxMin = m;
+  const handleCheckIn = async (booking: Booking) => {
+    const input = prompt(t("checkin_prompt"));
+    if (input?.toUpperCase() === booking.booking_code) {
+      await supabase
+        .from("bookings")
+        .update({ is_checked_in: true, checked_in_at: new Date() })
+        .eq("id", booking.id);
+      initApp();
+      alert(t("checkin_ok"));
     }
-    return currentMaxMin / 60;
   };
 
-  const isCheckInWindowOpen = (booking: any) => {
-    const now = new Date();
-    const start = new Date(`${booking.booking_date}T${booking.start_time}`);
-    const thirtyMinsBefore = new Date(start.getTime() - 30 * 60000);
-    const end = new Date(start.getTime() + (booking.duration || 1) * 3600000);
-    return now >= thirtyMinsBefore && now <= end && booking.status === "active";
-  };
-
-  const handleUpdateProfile = async () => {
-    const { error } = await supabase.from("profiles").update({ first_name: firstName, last_name: lastName }).eq("id", user.id);
-    if (!error) { setShowSettingsModal(false); initApp(); }
-  };
-
-  const handleCheckIn = async (booking: any) => {
-    if (!isCheckInWindowOpen(booking)) { alert(t("checkin_early_error")); return; }
-    const isLocal = window.location.hostname === "localhost";
-    const verifyCode = async () => {
-      const input = prompt(t("checkin_prompt"));
-      if (input?.toUpperCase() === booking.booking_code) {
-        const { error } = await supabase.from("bookings").update({ is_checked_in: true, checked_in_at: new Date() }).eq("id", booking.id);
-        if (!error) { alert(t("checkin_ok")); initApp(); }
-      } else alert(t("checkin_wrong_code"));
-    };
-    if (isLocal) { await verifyCode(); return; }
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-        const room = rooms.find((r) => r.id === booking.room_id);
-        const bLat = room?.building?.latitude ?? 47.2692;
-        const bLon = room?.building?.longitude ?? 11.3933;
-        const R = 6371e3;
-        const dLat = ((pos.coords.latitude - bLat) * Math.PI) / 180;
-        const dLon = ((pos.coords.longitude - bLon) * Math.PI) / 180;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos((pos.coords.latitude * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const dist = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-        if (dist <= 150) await verifyCode();
-        else {
-            const ipCheck = await fetch('https://api.ipify.org?format=json').then(res => res.json());
-            if (ipCheck.ip.startsWith('138.22')) await verifyCode();
-            else alert(t("not_at_mci"));
-        }
-      }, () => alert(t("gps_required"))
+  if (loading)
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-[#004a87] font-black uppercase italic animate-pulse">
+        <ShieldCheck size={80} className="mb-6 text-[#549BB7]" />
+        <span className="text-2xl tracking-tighter">MCI System Check...</span>
+      </div>
     );
-  };
-
-  if (loading) return <div className="h-screen flex items-center justify-center bg-[#F8F9FB] text-[#004a87] font-bold italic uppercase tracking-widest animate-pulse"><ShieldCheck size={48} className="mr-4 text-[#549BB7]" />MCI System-Check...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB] font-sans text-slate-900">
-      <nav className="bg-white border-b sticky top-0 z-50 px-12 h-24 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-12">
-          <img src="/MCI.png" alt="MCI" className="h-16 w-auto cursor-pointer" onClick={() => router.push("/rooms")} />
-          <button onClick={() => router.push("/reservations")} className="flex items-center gap-2 text-slate-600 font-bold hover:text-[#004a87] transition">
-            <Calendar size={20} className="text-gray-300" /> {t("nav_bookings")}
+    <div className="room-page-wrapper">
+      <nav className="room-navbar">
+        <div className="flex flex-row items-center gap-12">
+          <img
+            src="/MCI.png"
+            alt="MCI"
+            className="h-16 cursor-pointer"
+            onClick={() => router.push("/rooms")}
+          />
+          <button
+            onClick={() => router.push("/reservations")}
+            className="nav-link"
+          >
+            <Calendar size={22} /> <span>{t("nav_bookings")}</span>
           </button>
         </div>
-        <div className="flex items-center gap-8">
-          <button onClick={() => setLang(lang === "de" ? "en" : "de")} className="flex items-center gap-2 text-xs font-bold uppercase text-gray-400 hover:text-[#004a87] transition">
-            <Globe size={16} /> {lang}
+        <div className="flex flex-row items-center gap-8">
+          <button
+            onClick={() => setLang(lang === "de" ? "en" : "de")}
+            className="nav-link text-xs uppercase"
+          >
+            <Globe size={18} /> {lang}
           </button>
           <div className="relative">
-            <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-3 group transition-all">
-              <div className="bg-gray-100 w-11 h-11 rounded-full flex items-center justify-center text-[#004a87] border border-gray-200 shadow-sm transition group-hover:border-[#549BB7]"><UserIcon size={22} /></div>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex flex-row items-center gap-3 group transition-all"
+            >
+              <div className="bg-gray-100 w-11 h-11 rounded-full flex items-center justify-center text-[#004a87] border group-hover:border-[#549BB7] transition-all">
+                <UserIcon size={22} />
+              </div>
               <span className="font-bold text-slate-700">{firstName}</span>
               <ChevronDown size={14} className="text-gray-400" />
             </button>
             {showUserMenu && (
               <div className="absolute right-0 mt-4 w-64 bg-white rounded-[2rem] shadow-2xl border p-2 z-[60] animate-in fade-in slide-in-from-top-2">
-                <button onClick={() => { setShowSettingsModal(true); setShowUserMenu(false); }} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-gray-50 text-slate-700 font-bold transition text-sm">
-                  <Settings size={18} className="text-gray-300" /> {t("nav_profile")}
+                <button
+                  onClick={() => {
+                    setShowSettingsModal(true);
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-gray-50 text-slate-700 font-bold transition text-sm"
+                >
+                  <Settings size={18} /> {t("nav_profile")}
                 </button>
-                {isAdmin && <button onClick={() => router.push("/admin")} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-blue-50 text-[#004a87] font-bold transition text-sm"><ShieldCheck size={18} /> {t("nav_admin")}</button>}
+                {isAdmin && (
+                  <button
+                    onClick={() => router.push("/admin")}
+                    className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-blue-50 text-[#004a87] font-bold transition text-sm"
+                  >
+                    <ShieldCheck size={18} /> {t("nav_admin")}
+                  </button>
+                )}
                 <hr className="my-2 border-gray-50" />
-                <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-red-50 text-red-500 font-bold transition text-sm"><LogOut size={18} /> {t("nav_logout")}</button>
+                <button
+                  onClick={() => {
+                    supabase.auth.signOut();
+                    router.push("/login");
+                  }}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-red-50 text-red-500 font-bold transition text-sm"
+                >
+                  <LogOut size={18} /> {t("nav_logout")}
+                </button>
               </div>
             )}
           </div>
         </div>
       </nav>
 
-      <main className="max-w-[1750px] mx-auto p-12 flex flex-col lg:flex-row gap-16 relative">
-        <aside className="w-full lg:w-[420px] shrink-0">
-          <div className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-sm sticky top-32 space-y-6">
-            <div className="flex items-center gap-2 text-slate-900 font-bold text-lg mb-2 pb-4 border-b border-gray-50 uppercase tracking-tighter italic">
-              <Filter size={18} className="text-[#f7941d]" /> {t("filter_title")}
+      <main className="room-main-layout">
+        <aside className="room-sidebar">
+          <div className="filter-card">
+            <div className="filter-title-row">
+              <Filter size={20} className="text-[#f7941d]" />{" "}
+              {t("filter_title")}
             </div>
 
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{t("filter_search_label")}</label>
-              <div className="relative">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                <input type="text" placeholder={t("filter_search_placeholder")} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-50 p-4 pl-12 rounded-[1.5rem] font-bold outline-none focus:ring-2 focus:ring-[#f7941d] transition-all shadow-inner" />
+            <div className="mci-field-group">
+              <label className="mci-label">{t("filter_search_label")}</label>
+              <input
+                type="text"
+                placeholder={t("filter_search_placeholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="mci-input"
+              />
+            </div>
+
+            <div className="mci-field-group">
+              <label className="mci-label">{t("filter_time_label")}</label>
+              <div className="flex flex-row items-center gap-2 mb-2">
+                <button
+                  onClick={() => handleDatePagination(-1)}
+                  className="p-3 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="mci-input text-center"
+                />
+                <button
+                  onClick={() => handleDatePagination(1)}
+                  className="p-3 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </div>
+
+              <div className="flex flex-row items-center gap-2 mt-2">
+                {/* HH SELECT MIT VALIDIERUNG */}
+                <select
+                  value={selectedTime.split(":")[0]}
+                  onChange={(e) =>
+                    setSelectedTime(
+                      `${e.target.value}:${selectedTime.split(":")[1]}`,
+                    )
+                  }
+                  className="mci-select text-center flex-1"
+                >
+                  {Array.from({ length: 17 }, (_, i) =>
+                    (i + 7).toString().padStart(2, "0"),
+                  ).map((h) => {
+                    const hNum = parseInt(h);
+                    const selectedMin = parseInt(selectedTime.split(":")[1]);
+                    // Sperren wenn Stunde vorbei ODER (Stunde ist jetzt UND gewählte Minute ist schon vorbei)
+                    const isDisabled =
+                      isToday &&
+                      (hNum < currentHH ||
+                        (hNum === currentHH && selectedMin <= currentMM));
+                    return (
+                      <option key={h} value={h} disabled={isDisabled}>
+                        {h}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span className="font-bold">:</span>
+                {/* MM SELECT MIT VALIDIERUNG */}
+                <select
+                  value={selectedTime.split(":")[1]}
+                  onChange={(e) =>
+                    setSelectedTime(
+                      `${selectedTime.split(":")[0]}:${e.target.value}`,
+                    )
+                  }
+                  className="mci-select text-center flex-1"
+                >
+                  {["00", "15", "30", "45"].map((m) => {
+                    const mNum = parseInt(m);
+                    const selectedHour = parseInt(selectedTime.split(":")[0]);
+                    // Sperren wenn heute UND gewählte Stunde ist die aktuelle Stunde UND Minute ist vorbei
+                    const isDisabled =
+                      isToday &&
+                      selectedHour === currentHH &&
+                      mNum <= currentMM;
+                    return (
+                      <option key={m} value={m} disabled={isDisabled}>
+                        {m}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
             </div>
 
-            <div className="space-y-4 text-left">
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{t("filter_time_label")}</label>
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-[#004a87] text-sm shadow-inner mb-4" />
-              
-              <div className="flex items-center gap-2">
-                  <select
-                    value={selectedTime.split(':')[0]}
-                    onChange={(e) => setSelectedTime(`${e.target.value}:${selectedTime.split(':')[1]}`)}
-                    className="flex-1 bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-[#004a87] appearance-none text-center cursor-pointer shadow-inner transition-all hover:bg-white"
-                  >
-                    {Array.from({ length: 17 }, (_, i) => (i + 7).toString().padStart(2, '0')).map(h => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                  <span className="font-bold text-[#004a87]">:</span>
-                  <select
-                    value={selectedTime.split(':')[1]}
-                    onChange={(e) => setSelectedTime(`${selectedTime.split(':')[0]}:${e.target.value}`)}
-                    className="flex-1 bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-[#f7941d] appearance-none text-center cursor-pointer shadow-inner transition-all hover:bg-white"
-                  >
-                    {['00', '15', '30', '45'].filter(m => {
-                        if (selectedTime.split(':')[0] === '23') return parseInt(m) <= 15;
-                        return true;
-                    }).map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
+            <div className="mci-field-group">
+              <label className="mci-label">{t("filter_cap")}</label>
+              <div className="flex flex-row items-center gap-4">
+                <input
+                  type="range"
+                  min="0"
+                  max={maxRoomCapacity}
+                  value={minCapacity}
+                  onChange={(e) => setMinCapacity(e.target.value)}
+                  className="filter-capacity-bar"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={minCapacity}
+                  onChange={(e) => setMinCapacity(e.target.value)}
+                  className="filter-capacity-number"
+                />
               </div>
             </div>
 
-            <div className="space-y-4 text-left">
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{t("filter_cap")}</label>
-              <div className="flex items-center gap-4">
-                <input type="range" min="0" max={maxRoomCapacity} value={minCapacity} onChange={(e) => setMinCapacity(e.target.value)} className="flex-1 h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#f7941d]" />
-                <input type="number" value={minCapacity} onChange={(e) => setMinCapacity(e.target.value)} className="w-16 bg-gray-50 p-2 rounded-xl font-bold text-center outline-none focus:ring-2 focus:ring-[#f7941d] text-xs shadow-inner" />
-              </div>
-              <p className="text-[10px] text-gray-400 font-bold italic text-center">{t('min_label')} {minCapacity} {t('capacity_label')}</p>
-            </div>
-
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{t("filter_location")}</label>
-              <select value={selectedBuildingId} onChange={(e) => setSelectedBuildingId(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none text-sm ring-1 ring-gray-100 focus:ring-2 focus:ring-[#004a87]">
+            <div className="mci-field-group">
+              <label className="mci-label">{t("filter_location")}</label>
+              <select
+                value={selectedBuildingId}
+                onChange={(e) => setSelectedBuildingId(e.target.value)}
+                className="mci-select"
+              >
                 <option value="all">{t("filter_all")}</option>
-                {buildings.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                {buildings.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mci-field-group">
+              <label className="mci-label">{t("filter_seating")}</label>
+              <select
+                value={selectedSeating}
+                onChange={(e) => setSelectedSeating(e.target.value)}
+                className="mci-select"
+              >
+                <option value="all">{t("filter_all")}</option>
+                {Array.from(
+                  new Set(
+                    rooms.map((r) => r.seating_arrangement).filter(Boolean),
+                  ),
+                ).map((s: any) => (
+                  <option key={s} value={s}>
+                    {t(s)}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{t("filter_seating")}</label>
-              <select value={selectedSeating} onChange={(e) => setSelectedSeating(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none text-sm ring-1 ring-gray-100 focus:ring-2 focus:ring-[#004a87]">
-                <option value="all">{t("filter_all")}</option>
-                {Array.from(new Set(rooms.map((r) => r.seating_arrangement).filter(Boolean))).map((s) => <option key={s} value={s}>{translateSeating(s)}</option>)}
-              </select>
-            </div>
-
-            <div className="space-y-6 text-left">
-              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3 block">{t("filter_equip")}</label>
-              <div className="grid gap-3 px-2 pt-2">
+            <div className="mci-field-group">
+              <label className="mci-label">{t("filter_equip")}</label>
+              <div className="mci-filter-list">
+                <label className="mci-filter-item">
+                  <input
+                    type="checkbox"
+                    checked={onlyAccessible}
+                    onChange={() => setOnlyAccessible(!onlyAccessible)}
+                    className="filter-checkbox"
+                  />
+                  <span
+                    className={`mci-filter-text ${onlyAccessible ? "mci-filter-text-accessible-active" : "mci-filter-text-inactive"}`}
+                  >
+                    <Accessibility size={16} /> {t("label_accessible")}
+                  </span>
+                </label>
                 {equipmentList.map((eq) => (
-                  <label key={eq.id} className="flex items-center gap-4 cursor-pointer group">
-                    <input type="checkbox" checked={selectedEquipment.includes(eq.id)} onChange={() => setSelectedEquipment((prev) => prev.includes(eq.id) ? prev.filter((id) => id !== eq.id) : [...prev, eq.id])} className="w-5 h-5 rounded-md border-gray-200 text-[#004a87] focus:ring-[#004a87] shadow-sm" />
-                    <span className={`text-xs font-bold transition ${selectedEquipment.includes(eq.id) ? "text-[#004a87]" : "text-gray-500 group-hover:text-gray-700"}`}>{lang === "de" ? eq.name_de : eq.name_en}</span>
+                  <label key={eq.id} className="mci-filter-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedEquipment.includes(eq.id)}
+                      onChange={() =>
+                        setSelectedEquipment((prev) =>
+                          prev.includes(eq.id)
+                            ? prev.filter((id) => id !== eq.id)
+                            : [...prev, eq.id],
+                        )
+                      }
+                      className="filter-checkbox"
+                    />
+                    <span
+                      className={`mci-filter-text ${selectedEquipment.includes(eq.id) ? "mci-filter-text-active" : "mci-filter-text-inactive"}`}
+                    >
+                      {lang === "de" ? eq.name_de : eq.name_en}
+                    </span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <button onClick={() => { setSearchQuery(""); setMinCapacity("0"); setSelectedEquipment([]); setSelectedBuildingId("all"); setSelectedSeating("all"); }} className="w-full py-4 text-[9px] font-black text-gray-300 uppercase tracking-widest hover:text-red-400 transition italic flex items-center justify-center gap-2 border-t border-dashed border-gray-100 mt-4"><XCircle size={14} /> {t("filter_reset_btn")}</button>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setMinCapacity("0");
+                setSelectedEquipment([]);
+                setOnlyAccessible(false);
+                setSelectedBuildingId("all");
+                setSelectedSeating("all");
+              }}
+              className="w-full py-4 text-[9px] font-black text-gray-300 uppercase hover:text-red-400 transition border-t border-dashed mt-4"
+            >
+              <XCircle size={14} className="inline mr-2" />{" "}
+              {t("filter_reset_btn")}
+            </button>
           </div>
         </aside>
 
         <div className="flex-1 space-y-16">
-          <section className="text-left flex justify-between items-end animate-in fade-in slide-in-from-top-4 duration-1000">
-            <div><h1 className="text-5xl font-bold text-[#004a87] mb-3 tracking-tighter uppercase italic">{t("title")}</h1><p className="text-gray-400 font-medium text-xl italic">{filteredRooms.length} {t("subtitle")}</p></div>
+          <section className="text-left animate-in fade-in duration-1000">
+            <h1 className="text-5xl font-bold text-[#004a87] mb-3 tracking-tighter uppercase italic">
+              {t("title")}
+            </h1>
+            <p className="text-gray-400 font-bold text-2xl italic">
+              {activeCount} {t("label_active_rooms")}
+            </p>
           </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {filteredRooms.map((room, idx) => (
-              <div key={room.id} className="bg-white rounded-[4rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-2xl transition-all duration-700 text-left relative">
-                <div className="relative h-72 bg-gray-200">
-                  <img src={room.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt={room.name} />
-                  
-                  {/* EQUIPMENT BADGES AUF BILD (WIEDER DA) */}
-                  <div className="absolute bottom-6 left-8 flex flex-wrap gap-2 pr-6">
-                    {room.equipment?.map((eqId: string) => {
-                      const eq = equipmentList.find((e) => e.id === eqId);
-                      return (eq && <div key={eqId} className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm text-[#004a87] text-[9px] font-bold uppercase tracking-wider border border-white/50">{lang === "de" ? eq.name_de : eq.name_en}</div>);
-                    })}
-                  </div>
-                </div>
-
-                <div className="p-12">
-                  <div className="flex justify-between items-start mb-4"><h3 className="font-bold text-4xl tracking-tighter leading-none">{room.name}</h3>{idx === 0 && (<div className="bg-blue-50 text-[#549BB7] p-2.5 rounded-2xl border border-blue-100 shadow-sm" title={t("efficiency_best_match")}><Info size={20} /></div>)}</div>
-                  
-                  <div className="grid grid-cols-2 gap-y-4 mb-10 text-gray-400 font-bold text-[11px] uppercase tracking-widest">
-                    <span className="flex items-center gap-2.5 bg-gray-50 px-4 py-2 rounded-2xl w-fit shadow-sm"><Users size={16} className="text-[#f7941d]" /> {room.capacity} {t("capacity_label")}</span>
-                    
-                    {/* RAUMTYP / BESTUHLUNG (WIEDER DA) */}
-                    {room.seating_arrangement && (
-                      <span className="flex items-center gap-2.5 bg-gray-50 px-4 py-2 rounded-2xl w-fit shadow-sm"><List size={16} className="text-[#f7941d]" /> {translateSeating(room.seating_arrangement)}</span>
-                    )}
-
-                    <span className="flex items-center gap-2.5 bg-gray-50 px-4 py-2 rounded-2xl w-fit shadow-sm"><MapPin size={16} className="text-[#f7941d]" /> {room?.building?.name}</span>
-                    <span className="flex items-center gap-2.5 bg-gray-50 px-4 py-2 rounded-2xl w-fit shadow-sm"><Layers size={16} className="text-[#f7941d]" /> {room.floor}. OG</span>
-                  </div>
-                  <button onClick={() => { setSelectedRoom(room); setDuration(1); setIsRecurring(false); setShowBookingModal(true); }} className="w-full bg-[#004a87] text-white py-7 rounded-[2.5rem] font-bold text-lg shadow-xl shadow-blue-900/10 hover:bg-[#549BB7] transition active:scale-95 transform">{t("btn_reserve")}</button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <section className="bg-white rounded-[4.5rem] p-14 border border-gray-100 shadow-sm text-left">
-            <div className="flex justify-between items-center mb-12 border-b border-gray-50 pb-6"><h2 className="text-3xl font-bold flex items-center gap-5 text-slate-800 tracking-tight italic uppercase"><Clock className="text-[#549BB7]" size={40} /> {t("dashboard_title")}</h2>{getUpcomingBookings().length > 0 && (<button onClick={() => window.print()} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:text-[#004a87] transition shadow-sm"><Printer size={24} /></button>)}</div>
-            <div className="grid gap-8">
-              {getUpcomingBookings().map((b) => {
-                const room = rooms.find((r) => r.id === b.room_id);
-                const canCheckIn = isCheckInWindowOpen(b);
-                return (
-                  <div key={b.id} className="bg-gray-50 p-12 rounded-[3.5rem] flex flex-col md:flex-row justify-between items-center border border-gray-100 transition hover:bg-white hover:shadow-2xl gap-8 group">
-                    <div className="flex items-center gap-10 w-full text-left">
-                      <div className="text-7xl p-8 bg-white rounded-[2.5rem] shadow-sm group-hover:scale-110 transition-transform duration-500">{room?.image || "🏢"}</div>
-                      <div>
-                        <div className="font-bold text-3xl text-slate-900 tracking-tighter mb-1">{room?.name}</div>
-                        <div className="text-[#f7941d] font-bold text-sm uppercase tracking-widest">{new Date(b.booking_date).toLocaleDateString()} • {b.start_time} Uhr</div>
-                        <div className="mt-4 flex items-center gap-4"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("code_label")}:</span><span className="bg-white px-6 py-2.5 rounded-2xl ring-2 ring-gray-100 font-mono font-bold text-2xl text-[#004a87] tracking-[0.3em] shadow-inner">{b.booking_code}</span></div>
+          <div className="room-grid">
+            {filteredRooms.map((room, idx) => {
+              const occ = getOccupancyInfo(
+                room.id,
+                selectedDate,
+                selectedTime,
+                bookings,
+              );
+              return (
+                <div
+                  key={room.id}
+                  className={`room-card group ${!room.is_active || occ.isOccupied ? "opacity-70" : ""}`}
+                >
+                  <div className="room-card-image-wrapper">
+                    <img
+                      src={room.image_url}
+                      className={`room-card-image group-hover:scale-105 transition-all duration-1000 ${occ.isOccupied ? "grayscale shadow-inner" : ""}`}
+                      alt={room.name}
+                    />
+                    <div className="room-badge-container">
+                      {room.accessible && (
+                        <div className="accessible-badge">
+                          <Accessibility size={16} /> {t("label_accessible")}
+                        </div>
+                      )}
+                      {room.equipment?.map((eqId: string) => {
+                        const eq = equipmentList.find((e) => e.id === eqId);
+                        return (
+                          <div key={eqId} className="mci-badge">
+                            {eq
+                              ? lang === "de"
+                                ? eq.name_de
+                                : eq.name_en
+                              : eqId}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {occ.isOccupied && room.is_active && (
+                      <div className="room-occupied-until">
+                        <XCircle size={18} /> {t("label_occupied_until")}{" "}
+                        {occ.until}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-6 shrink-0">
-                      {!b.is_checked_in && (<button onClick={() => handleCancel(b.id)} className="p-5 text-red-300 hover:text-red-500 rounded-3xl transition-all hover:scale-110"><XCircle size={36} /></button>)}
-                      {b.is_checked_in ? (<div className="bg-green-100 text-green-700 px-12 py-6 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-4 shadow-sm border border-green-200"><CheckCircle2 size={24} /> {t("checkin_ok")}</div>) : (<button onClick={() => handleCheckIn(b)} className={`px-14 py-6 rounded-full text-xs font-bold uppercase transition-all shadow-xl ${canCheckIn ? "bg-[#549BB7] text-white hover:bg-[#438299] scale-105 active:scale-95" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>{t("checkin_btn")}</button>)}
-                    </div>
+                    )}
+                    {!room.is_active && (
+                      <div className="room-inactive">
+                        <Ban size={18} /> {t("label_inactive")}
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-              {getUpcomingBookings().length === 0 && <p className="text-gray-300 italic uppercase font-bold text-center py-20 tracking-widest opacity-50">{t('dashboard_empty')}</p>}
-            </div>
-          </section>
+                  <div className="room-card-content">
+                    <div className="flex flex-row justify-between items-start mb-6">
+                      <h3 className="font-bold text-5xl tracking-tighter leading-none">
+                        {room.name}
+                      </h3>
+                      {idx === 0 && room.is_active && !occ.isOccupied && (
+                        <div className="best-match">
+                          <Info size={18} /> {t("label_best_match")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="room-info-container">
+                      <span className="mci-info-tag">
+                        <Users size={20} className="text-[#f7941d]" />{" "}
+                        {room.capacity} {t("admin_label_capacity")}
+                      </span>
+                      <span className="mci-info-tag">
+                        <MapPin size={20} className="text-[#f7941d]" />{" "}
+                        {room.building?.name}
+                      </span>
+                      <span className="mci-info-tag">
+                        <Layers size={20} className="text-[#f7941d]" />{" "}
+                        {room.floor}. OG
+                      </span>
+                      {room.seating_arrangement && (
+                        <span className="mci-info-tag">
+                          <List size={20} className="text-[#f7941d]" />{" "}
+                          {t(room.seating_arrangement)}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      disabled={occ.isOccupied || !room.is_active}
+                      onClick={() => {
+                        setSelectedRoom(room);
+                        setDuration(1);
+                        setIsRecurring(false);
+                        setShowBookingModal(true);
+                      }}
+                      className={`btn-mci-main ${occ.isOccupied || !room.is_active ? "bg-gray-300 shadow-none" : ""}`}
+                    >
+                      {!room.is_active
+                        ? t("label_inactive")
+                        : occ.isOccupied
+                          ? t("btn_occupied")
+                          : t("btn_reserve")}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </main>
 
-      {/* MODALS */}
-      {showBookingModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-xl flex items-center justify-center p-6 z-[100] animate-in fade-in duration-500 text-left text-sm font-bold">
-          <div className="bg-white rounded-[5rem] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="bg-[#004a87] p-12 text-white flex justify-between items-center shrink-0">
-              <div><p className="text-[10px] font-bold text-blue-300 uppercase tracking-[0.2em] mb-2 italic">MCI Room Booking</p><h3 className="text-5xl font-bold uppercase italic tracking-tighter">{selectedRoom?.name}</h3></div>
-              <button onClick={() => setShowBookingModal(false)} className="bg-white/10 p-5 rounded-full hover:bg-white/20 transition-all hover:rotate-90"><X size={28} /></button>
+      {/* --- ELEGANTES BUCHUNGS-MODAL (VERTIKAL GESTAPELT) --- */}
+
+      <BookingModal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        mode="create"
+        room={selectedRoom}
+        rooms={rooms}
+        bookings={bookings}
+        equipmentList={equipmentList}
+        lang={lang}
+        t={t}
+        onSuccess={initApp}
+        userId={user.id}
+        userEmail={user.email}
+        initialDate={selectedDate}
+        initialTime={selectedTime}
+        minCapacity={minCapacity}
+        selectedEquipment={selectedEquipment}
+        buildings={buildings} // <--- DAS STEUERT DIE DATEN INS MODAL
+      />
+
+      {/* --- PROFIL SETTINGS MODAL --- */}
+      {showSettingsModal && (
+        <div className="mci-modal-overlay animate-in fade-in">
+          <div className="mci-modal-card max-w-lg animate-in zoom-in-95">
+            <div className="mci-modal-header italic uppercase font-bold text-2xl">
+              <div className="flex items-center gap-3">
+                <Settings size={28} />
+                <span>{t("profile_title")}</span>
+              </div>
+              <button onClick={() => setShowSettingsModal(false)}>
+                <X size={28} />
+              </button>
             </div>
-            <div className="p-14 space-y-12 max-h-[75vh] overflow-y-auto">
-              <div className="space-y-4 font-bold">
-                <label className="text-[11px] text-gray-400 uppercase font-black ml-6 tracking-widest">{t("modal_time_selected")}</label>
-                <div className="bg-gray-50 p-10 rounded-[3rem] border border-gray-100 flex items-center gap-8 text-2xl font-bold text-slate-800 shadow-inner">
-                  <div className="bg-blue-500 p-4 rounded-2xl text-white shadow-lg"><Calendar size={32} /></div>
-                  {new Date(selectedDate).toLocaleDateString()} • {selectedTime} Uhr
+
+            <div className="p-14 space-y-10">
+              {/* E-MAIL (Nur Anzeige) */}
+              <div className="mci-field-group">
+                <label className="mci-label">Email (MCI ID)</label>
+                <div className="mci-input opacity-50 bg-gray-100 flex items-center gap-3 cursor-not-allowed">
+                  <UserIcon size={18} className="text-gray-400" />
+                  {user?.email}
                 </div>
               </div>
 
-              <div className="space-y-6">
-                  <label className="text-[11px] text-gray-400 uppercase font-black ml-6 tracking-widest">{t('modal_label_end')}</label>
-                  <div className="flex items-center gap-4">
-                      <select 
-                        value={Math.floor((timeToMinutes(selectedTime) + duration * 60)/60)}
-                        onChange={(e) => {
-                           const newHH = parseInt(e.target.value);
-                           const curMM = (timeToMinutes(selectedTime) + duration * 60) % 60;
-                           const newEnd = newHH * 60 + curMM;
-                           if (newEnd > timeToMinutes(selectedTime)) setDuration((newEnd - timeToMinutes(selectedTime))/60);
-                        }}
-                        className="flex-1 bg-gray-50 p-8 rounded-[2.5rem] font-bold text-2xl outline-none ring-2 ring-gray-100 focus:ring-8 focus:ring-[#004a87]/10 transition-all appearance-none text-center cursor-pointer shadow-sm"
-                      >
-                         {Array.from({length: 17}, (_, i) => i + 7).map(h => (
-                           <option key={h} value={h} disabled={h < Math.floor(timeToMinutes(selectedTime)/60)}>
-                             {h.toString().padStart(2, '0')}
-                           </option>
-                         ))}
-                      </select>
-                      <span className="text-3xl font-bold text-[#004a87]">:</span>
-                      <select 
-                        value={(timeToMinutes(selectedTime) + duration * 60) % 60}
-                        onChange={(e) => {
-                           const curHH = Math.floor((timeToMinutes(selectedTime) + duration * 60)/60);
-                           const newMM = parseInt(e.target.value);
-                           const newEnd = curHH * 60 + newMM;
-                           if (newEnd > timeToMinutes(selectedTime) && newEnd <= 1410) setDuration((newEnd - timeToMinutes(selectedTime))/60);
-                        }}
-                        className="flex-1 bg-gray-50 p-8 rounded-[2.5rem] font-bold text-2xl outline-none ring-2 ring-gray-100 focus:ring-8 focus:ring-[#f7941d]/10 transition-all appearance-none text-center cursor-pointer shadow-sm"
-                      >
-                         {[0, 15, 30, 45].map(m => (
-                           <option key={m} value={m} disabled={(Math.floor((timeToMinutes(selectedTime) + duration * 60)/60) * 60 + m) <= timeToMinutes(selectedTime)}>
-                             {m.toString().padStart(2, '0')}
-                           </option>
-                         ))}
-                      </select>
-                  </div>
-                  <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100 flex justify-between items-center px-10 shadow-inner">
-                      <span className="text-blue-900/40 text-[10px] uppercase font-black tracking-widest">{t('label_duration')}:</span>
-                      <span className="text-[#004a87] font-bold text-2xl italic tracking-tighter">{duration >= 1 ? `${duration}h` : `${duration * 60}min`}</span>
-                  </div>
+              {/* NAMEN */}
+              <div className="flex flex-row gap-6">
+                <div className="mci-field-group flex-1">
+                  <label className="mci-label">{t("admin_label_fname")}</label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="mci-input"
+                  />
+                </div>
+                <div className="mci-field-group flex-1">
+                  <label className="mci-label">{t("admin_label_lname")}</label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="mci-input"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-6 pt-6 border-t border-gray-100">
-                <label className="flex items-center gap-4 cursor-pointer group bg-gray-50 p-6 rounded-3xl transition-all hover:bg-blue-50">
-                  <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} className="w-6 h-6 rounded-md border-gray-300 text-[#004a87] focus:ring-[#004a87]" />
-                  <span className="text-sm font-black uppercase tracking-tighter italic text-slate-700">{t('label_recurring')}</span>
-                </label>
-                {isRecurring && (
-                  <div className="animate-in slide-in-from-top-4 duration-500 space-y-6">
-                    <input type="number" min="2" max="12" value={recurringWeeks} onChange={(e) => setRecurringWeeks(parseInt(e.target.value))} className="w-full bg-white p-6 rounded-[2rem] border-2 border-gray-100 font-bold text-xl" />
-                    <div className="bg-blue-50/50 rounded-[2.5rem] p-8 border border-blue-100">
-                      <h4 className="text-[10px] uppercase font-black text-[#549BB7] mb-4 flex items-center gap-2 italic"><Layers size={14} /> {t('label_building_guarantee')}</h4>
-                      <div className="space-y-3">
-                        {checkSeriesAvailability(selectedRoom, selectedDate, selectedTime, duration, recurringWeeks).map((p, i) => (
-                          <div key={i} className="flex justify-between items-center text-[11px] font-bold">
-                            <span className="text-slate-400">{new Date(p.date).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}</span>
-                            {p.status === "ok" ? (<span className="text-green-600 flex items-center gap-1"><CheckCircle2 size={12} /> {p.room.name}</span>) : p.status === "alternative" ? (<span className="text-orange-500 flex items-center gap-1"><AlertCircle size={12} /> {p.room.name} {t('label_alternative')}</span>) : (<span className="text-red-500 uppercase tracking-tighter"><XCircle size={12} /> {t('label_building_full')}</span>)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              {/* PASSWORT ÄNDERN */}
+              <div className="mci-field-group">
+                <label className="mci-label">{t("label_new_password")}</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="mci-input"
+                />
               </div>
 
-              <button onClick={async () => {
-                  const plan = isRecurring ? checkSeriesAvailability(selectedRoom, selectedDate, selectedTime, duration, recurringWeeks) : [{ date: selectedDate, room: selectedRoom, status: "ok" }];
-                  if (plan.some((p) => p.status === "conflict")) { alert(t('label_building_full')); return; }
-                  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-                  const bookingsToInsert = plan.map((p) => ({ room_id: p.room.id, user_id: user.id, booking_date: p.date, start_time: selectedTime, duration, user_email: user.email, booking_code: code }));
-                  const { error } = await supabase.from("bookings").insert(bookingsToInsert);
-                  if (!error) { setShowBookingModal(false); alert(isRecurring ? t('success_recurring') : t("success_booking")); initApp(); }
-                  else alert("Fehler!");
-                }} className="w-full bg-[#004a87] text-white py-7 rounded-[3.5rem] font-bold text-2xl shadow-2xl hover:bg-[#549BB7] transform mt-8 transition-all">{isRecurring ? t('btn_book_series') : t("modal_btn_confirm")}</button>
-            </div>
-          </div>
-        </div>
-      )}
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  // 1. Profil-Daten (Name) updaten
+                  await supabase
+                    .from("profiles")
+                    .update({ first_name: firstName, last_name: lastName })
+                    .eq("id", user.id);
 
-      {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-lg flex items-center justify-center z-[100] p-6 animate-in fade-in">
-          <div className="bg-white rounded-[4rem] w-full max-w-lg shadow-2xl overflow-hidden text-left animate-in zoom-in-95">
-            <div className="bg-[#004a87] p-10 text-white flex justify-between items-center italic uppercase font-bold text-2xl">{t("profile_title")}<button onClick={() => setShowSettingsModal(false)} className="hover:rotate-90 transition-all duration-300"><X size={28} /></button></div>
-            <div className="p-14 space-y-10">
-              <div className="space-y-3 font-bold"><label className="text-[10px] text-gray-400 uppercase ml-4">{t("admin_label_fname")}</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full p-6 bg-gray-50 rounded-[2rem] font-bold outline-none ring-2 ring-gray-100 focus:ring-4 focus:ring-[#004a87]/10 transition-all" /></div>
-              <div className="space-y-3 font-bold"><label className="text-[10px] text-gray-400 uppercase ml-4">{t("admin_label_lname")}</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full p-6 bg-gray-50 rounded-[2rem] font-bold outline-none ring-2 ring-gray-100 focus:ring-4 focus:ring-[#004a87]/10 transition-all" /></div>
-              <button onClick={handleUpdateProfile} className="w-full bg-[#004a87] text-white py-7 rounded-[2.25rem] font-bold text-xl shadow-xl active:scale-95 transition-all">{t("save_btn")}</button>
+                  // 2. Passwort updaten, falls etwas eingegeben wurde
+                  if (newPassword) {
+                    const { error } = await supabase.auth.updateUser({
+                      password: newPassword,
+                    });
+                    if (!error) {
+                      alert(
+                        t("password_updated_success") ||
+                          "Passwort erfolgreich aktualisiert!",
+                      );
+                      setNewPassword("");
+                    } else {
+                      alert("Fehler beim Passwort-Update: " + error.message);
+                    }
+                  }
+
+                  setShowSettingsModal(false);
+                  initApp();
+                  setLoading(false);
+                }}
+                className="btn-mci-main text-xl py-6 rounded-[2.25rem] shadow-xl"
+              >
+                {t("save_btn")}
+              </button>
             </div>
           </div>
         </div>

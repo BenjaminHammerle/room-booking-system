@@ -1,1 +1,108 @@
 @import "tailwindcss";
+
+:root {
+  --mci-blue: #004a87;
+  --mci-orange: #f7941d;
+  --mci-light-blue: #549bb7;
+  --mci-bg: #f8f9fb;
+}
+
+/* --- Globale Modal-Struktur --- */
+.mci-modal-overlay {
+  @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100];
+}
+.mci-modal-card {
+  @apply bg-white rounded-[3.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col;
+}
+.mci-modal-header {
+  @apply bg-[#004a87] p-10 text-white flex flex-row justify-between items-center shrink-0;
+}
+.mci-modal-body {
+  @apply p-10 space-y-8 max-h-[85vh] overflow-y-auto;
+}
+
+/* --- Globale Formularelemente --- */
+.mci-field-group,
+.ebene-wrapper {
+  @apply flex flex-col gap-2;
+}
+.mci-label {
+  @apply block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-3;
+}
+.mci-input,
+.mci-select {
+  @apply w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-gray-100 transition-all border-none text-base shadow-inner;
+}
+.mci-input:focus,
+.mci-select:focus {
+  @apply ring-2 ring-[var(--mci-orange)];
+}
+
+.btn-mci-main {
+  @apply w-full bg-[#004a87] text-white py-6 rounded-2xl font-bold text-xl shadow-xl hover:bg-[#549BB7] transition active:scale-95 flex items-center justify-center gap-4;
+}
+
+/* --- Feedback-Boxen (Konflikt-Meldungen) --- */
+.res-feedback-box {
+  @apply p-6 rounded-3xl font-bold text-sm flex items-center gap-3 transition-all duration-300 border;
+}
+.res-feedback-ok {
+  @apply bg-green-50 text-green-700 border-green-100;
+}
+.res-feedback-error {
+  @apply bg-red-50 text-red-700 border-red-100;
+}
+
+/* --- Zentrale Tabellen-Logik für Serien --- */
+.series-list-container {
+  @apply mt-6 rounded-[2.5rem] border border-gray-100 overflow-hidden bg-white shadow-inner;
+}
+.series-header-row {
+  @apply flex flex-row items-center gap-4 px-6 py-3 bg-gray-50 text-[9px] font-black uppercase text-gray-400 border-b border-gray-100;
+}
+.series-data-row {
+  @apply flex flex-row items-center gap-4 px-6 py-4 border-b border-gray-50 last:border-none hover:bg-blue-50/30 transition-all;
+}
+
+/* Fixierte Spaltenbreiten */
+.col-date {
+  @apply w-28 shrink-0 text-slate-500 font-bold text-[11px];
+}
+.col-status {
+  @apply w-12 shrink-0 flex justify-center;
+}
+.col-room {
+  @apply w-32 shrink-0 text-[#004a87] font-black italic text-sm;
+}
+.col-floor {
+  @apply w-16 shrink-0 text-gray-400 text-[11px];
+}
+.col-seats {
+  @apply w-16 shrink-0 text-gray-400 text-[11px] flex items-center gap-1;
+}
+.col-extra {
+  @apply flex-1 flex flex-wrap gap-1.5;
+}
+
+/* Badges */
+/* --- Equipment Vergleichs-Badges --- */
+.badge-feature {
+  @apply px-2 py-0.5 rounded-md border text-[9px] font-bold flex items-center gap-1;
+}
+
+/* Grün für zusätzliche Features */
+.badge-extra {
+  @apply bg-green-50 text-green-700 border-green-100;
+}
+
+/* Rot für fehlende Features (mit Durchstreichung) */
+.badge-missing {
+  @apply bg-red-50 text-red-600 border-red-100 line-through opacity-80;
+}
+.badge-best-match {
+  @apply bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md text-[9px] font-black italic uppercase tracking-tighter;
+}
+.filter-checkbox {
+  @apply w-5 h-5 accent-[#004a87] rounded border-gray-300 cursor-pointer
+}
+
