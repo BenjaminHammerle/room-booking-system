@@ -609,7 +609,7 @@ const handleLangToggle = () => {
 
           {/* DIE EIGENTLICHE FILTER CARD */}
           <div
-            className={`filter-card ${showMobileFilters ? "block" : "hidden lg:block"} animate-in slide-in-from-top-4 duration-300`}
+            className={`filter-card ${showMobileFilters ? "block" : "hidden lg:block"} mci-animate-fade`}
           >
             <div className="filter-title-row hidden lg:flex">
               <Filter size={20} className="text-[#f7941d]" />
@@ -836,7 +836,7 @@ const handleLangToggle = () => {
         </aside>
 
         <div className="flex-1 space-y-16">
-          <section className="text-left animate-in fade-in duration-1000">
+          <section className="text-left mci-animate-fade">
             <h1 className="room-page-title">{t("title")}</h1>
             <p className="text-gray-600 font-bold text-lg md:text-2xl italic">
               {activeCount} {t("label_active_rooms")}
