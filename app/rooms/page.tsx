@@ -70,7 +70,22 @@ interface Booking {
 
 export default function RoomBookingPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<"de" | "en">("de");
+const [lang, setLang] = useState<"de" | "en">("de");
+
+// 1. Einmaliges Laden beim Öffnen der Seite
+useEffect(() => {
+  const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
+  if (savedLang === "de" || savedLang === "en") {
+    setLang(savedLang);
+  }
+}, []);
+
+// 2. Die neue Toggle-Funktion (Speichert aktiv beim Klick)
+const handleLangToggle = () => {
+  const newLang = lang === "de" ? "en" : "de";
+  setLang(newLang);
+  localStorage.setItem("mci_lang", newLang);
+};
 
   // --- DATA STATES ---
   const [dbTrans, setDbTrans] = useState<any>({});
@@ -87,6 +102,7 @@ export default function RoomBookingPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // --- UI & FILTER STATES (SMART TIME INIT) ---
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -502,23 +518,24 @@ export default function RoomBookingPage() {
   return (
     <div className="room-page-wrapper">
       <nav className="room-navbar">
-        <div className="flex flex-row items-center gap-12">
+        <div className="flex items-center gap-4 md:gap-12">
           <img
             src="/MCI.png"
             alt="MCI"
-            className="h-16 cursor-pointer"
+            className="h-10 md:h-16 cursor-pointer"
             onClick={() => router.push("/rooms")}
           />
           <button
             onClick={() => router.push("/reservations")}
-            className="nav-link"
+            className="nav-link flex items-center gap-2"
           >
-            <Calendar size={22} /> <span>{t("nav_bookings")}</span>
+            <Calendar size={20} />{" "}
+            <span className="hidden sm:inline">{t("nav_bookings")}</span>
           </button>
         </div>
         <div className="flex flex-row items-center gap-8">
           <button
-            onClick={() => setLang(lang === "de" ? "en" : "de")}
+            onClick={handleLangToggle}
             className="nav-link text-xs uppercase"
           >
             <Globe size={18} /> {lang}
@@ -571,9 +588,31 @@ export default function RoomBookingPage() {
 
       <main className="room-main-layout">
         <aside className="room-sidebar">
-          <div className="filter-card">
-            <div className="filter-title-row">
-              <Filter size={20} className="text-[#f7941d]" />{" "}
+          {/* MOBILE FILTER TOGGLE (Nur sichtbar auf kleinen Screens) */}
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-[#004a87] font-black uppercase italic tracking-tighter"
+          >
+            <div className="flex items-center gap-3">
+              <Filter size={20} className="text-[#f7941d]" />
+              <span>
+                {t("filter_title")}{" "}
+                {selectedEquipment.length > 0 &&
+                  `(${selectedEquipment.length})`}
+              </span>
+            </div>
+            <ChevronDown
+              size={20}
+              className={`transition-transform duration-300 ${showMobileFilters ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {/* DIE EIGENTLICHE FILTER CARD */}
+          <div
+            className={`filter-card ${showMobileFilters ? "block" : "hidden lg:block"} animate-in slide-in-from-top-4 duration-300`}
+          >
+            <div className="filter-title-row hidden lg:flex">
+              <Filter size={20} className="text-[#f7941d]" />
               {t("filter_title")}
             </div>
 
@@ -591,24 +630,29 @@ export default function RoomBookingPage() {
             <div className="mci-field-group">
               <label className="mci-label">{t("filter_time_label")}</label>
               <div className="flex flex-row items-center gap-2 mb-2">
+                {/* LINKS PFEIL */}
                 <button
                   onClick={() => handleDatePagination(-1)}
-                  className="p-3 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition"
+                  className="p-3 shrink-0 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition flex items-center justify-center"
                 >
-                  <ChevronLeft size={24} />
+                  <ChevronLeft size={20} />
                 </button>
+
+                {/* DATUMS INPUT - Wichtig: flex-1 und min-w-0 */}
                 <input
                   type="date"
                   value={selectedDate}
                   min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="mci-input text-center"
+                  className="mci-input !text-center flex-1 min-w-0 !px-2"
                 />
+
+                {/* RECHTS PFEIL */}
                 <button
                   onClick={() => handleDatePagination(1)}
-                  className="p-3 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition"
+                  className="p-3 shrink-0 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition flex items-center justify-center"
                 >
-                  <ChevronRight size={24} />
+                  <ChevronRight size={20} />
                 </button>
               </div>
 
@@ -779,15 +823,22 @@ export default function RoomBookingPage() {
               <XCircle size={14} className="inline mr-2" />{" "}
               {t("filter_reset_btn")}
             </button>
+            {/* KLEINER OPTIONALER FIX: "Filter anwenden" Button am Handy */}
+            {showMobileFilters && (
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="lg:hidden btn-mci-main !py-4 !text-sm mt-4"
+              >
+                {t("apply_filters") || "Filter anwenden"}
+              </button>
+            )}
           </div>
         </aside>
 
         <div className="flex-1 space-y-16">
           <section className="text-left animate-in fade-in duration-1000">
-            <h1 className="text-5xl font-bold text-[#004a87] mb-3 tracking-tighter uppercase italic">
-              {t("title")}
-            </h1>
-            <p className="text-gray-400 font-bold text-2xl italic">
+            <h1 className="room-page-title">{t("title")}</h1>
+            <p className="text-gray-600 font-bold text-lg md:text-2xl italic">
               {activeCount} {t("label_active_rooms")}
             </p>
           </section>
@@ -843,8 +894,8 @@ export default function RoomBookingPage() {
                     )}
                   </div>
                   <div className="room-card-content">
-                    <div className="flex flex-row justify-between items-start mb-6">
-                      <h3 className="font-bold text-5xl tracking-tighter leading-none">
+                    <div className="flex flex-row justify-between items-start mb-4 md:mb-6">
+                      <h3 className="font-bold text-3xl md:text-4xl tracking-tighter leading-none">
                         {room.name}
                       </h3>
                       {idx === 0 && room.is_active && !occ.isOccupied && (

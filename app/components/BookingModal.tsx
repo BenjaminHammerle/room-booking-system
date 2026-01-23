@@ -101,6 +101,9 @@ export default function BookingModal({
   }, [isOpen, mode, booking, initialDate, initialTime]);
 
   // --- HELPERS ---
+
+  const [isExtending, setIsExtending] = useState(false);
+  const [extraWeeks, setExtraWeeks] = useState(1);
   const timeToMinutes = (timeStr: string) => {
     const [h, m] = (timeStr || "00:00").split(":").map(Number);
     return h * 60 + m;
@@ -157,12 +160,30 @@ export default function BookingModal({
     const startBuilding = currentRoom?.building;
     const minCapNum = parseInt(minCapacity) || 0;
 
-    for (let i = 0; i < (isRecurring ? recurringWeeks : 1); i++) {
-      const d = new Date(selectedDate);
+    // Berechnung der Iterationen:
+    // Im Create-Modus: recurringWeeks
+    // Im Edit-Modus: Bestehende Termine + extraWeeks (wenn isExtending aktiv)
+    let iterations = isRecurring ? recurringWeeks : 1;
+    let startDateAnchor = selectedDate;
+
+    if (mode === "edit" && isExtending) {
+      iterations = extraWeeks;
+      // Wir starten die Berechnung 7 Tage nach dem LETZTEN Termin der Serie
+      const lastBooking = relatedBookings[relatedBookings.length - 1];
+      startDateAnchor = lastBooking.booking_date;
+    }
+
+    // Wenn wir im Edit-Modus sind und NUR die Vorschau der Erweiterung wollen:
+    // (Die bestehenden Termine rendern wir separat über relatedBookings)
+    for (
+      let i = mode === "edit" ? 1 : 0;
+      i < (mode === "edit" ? iterations + 1 : iterations);
+      i++
+    ) {
+      const d = new Date(startDateAnchor);
       d.setDate(d.getDate() + i * 7);
       const curDate = d.toISOString().split("T")[0];
 
-      // 1. Original-Raum prüfen
       if (
         !isAnyRoomOccupied(
           getConflictRoomIds(currentRoom),
@@ -173,58 +194,26 @@ export default function BookingModal({
       ) {
         plan.push({ date: curDate, room: currentRoom, status: "ok" });
       } else {
-        // 2. ALTERNATIV-SUCHE STARTEN
+        // Alternativ-Suche (dein bestehender Code für Best Match...)
+        const potentialRooms = rooms
+          .filter(
+            (r) =>
+              r.building_id === currentRoom.building_id &&
+              r.id !== currentRoom.id &&
+              r.is_active &&
+              r.capacity >= minCapNum,
+          )
+          .sort((a, b) => a.capacity - b.capacity);
 
-        // Gebäude nach Entfernung sortieren (mit Schutz gegen fehlende Daten)
-        const buildingsByDistance = [...buildings].sort((a, b) => {
-          if (!startBuilding?.latitude || !a.latitude || !b.latitude) return 0; // Nicht sortieren, wenn Daten fehlen
-
-          const distA = getDistance(
-            startBuilding.latitude,
-            startBuilding.longitude,
-            a.latitude,
-            a.longitude,
-          );
-          const distB = getDistance(
-            startBuilding.latitude,
-            startBuilding.longitude,
-            b.latitude,
-            b.longitude,
-          );
-          return distA - distB;
-        });
-
-        let foundAlt = null;
-
-        // Gehe die Gebäude der Reihe nach durch (beginnend beim aktuellen)
-        for (const bld of buildingsByDistance) {
-          const potentialRooms = rooms
-            .filter(
-              (r) =>
-                r.building_id === bld.id &&
-                r.id !== currentRoom.id &&
-                r.is_active &&
-                r.capacity >= minCapNum &&
-                // WICHTIG: Muss ALLE im Filter gewählten Equipment-IDs haben
-                (selectedEquipment.length === 0 ||
-                  selectedEquipment.every((eid) =>
-                    r.equipment?.includes(eid),
-                  )) &&
-                !isAnyRoomOccupied(
-                  getConflictRoomIds(r),
-                  curDate,
-                  selectedTime,
-                  duration,
-                ),
-            )
-            .sort((a, b) => a.capacity - b.capacity);
-
-          if (potentialRooms.length > 0) {
-            foundAlt = potentialRooms[0];
-            break; // Stop, wenn ein Raum im (nächstgelegenen) Gebäude gefunden wurde
-          }
-        }
-
+        const foundAlt = potentialRooms.find(
+          (r) =>
+            !isAnyRoomOccupied(
+              getConflictRoomIds(r),
+              curDate,
+              selectedTime,
+              duration,
+            ),
+        );
         plan.push({
           date: curDate,
           room: foundAlt || null,
@@ -389,6 +378,8 @@ export default function BookingModal({
       )
       .sort((a, b) => a.booking_date.localeCompare(b.booking_date));
   }, [booking, bookings]);
+
+  const isSeries = relatedBookings.length > 1;
 
   // Initialisierung anpassen
   useEffect(() => {
@@ -586,317 +577,231 @@ export default function BookingModal({
             </span>
           </div>
 
-          {/* EBENE 5: RECURRING (TABELLE REAKTIVIERT) */}
-          <div className="pt-4 border-t border-dashed">
-            <label className="flex items-center gap-4 cursor-pointer mb-4">
+          {/* EBENE 5: RECURRING / EXTENSION (CONSOLIDATED) */}
+          <div className="res-extension-wrapper mt-8 pt-8 border-t border-dashed">
+            <label className="flex items-center gap-4 cursor-pointer mb-6 group">
               <input
                 type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                className="w-6 h-6 accent-[#004a87]"
+                checked={mode === "create" ? isRecurring : isExtending}
+                onChange={(e) =>
+                  mode === "create"
+                    ? setIsRecurring(e.target.checked)
+                    : setIsExtending(e.target.checked)
+                }
+                className="w-6 h-6 accent-[var(--mci-blue)] rounded cursor-pointer"
               />
-              <span className="font-bold text-slate-700 uppercase text-xs tracking-widest">
-                {t("label_recurring")}
+              <span className="text-sm font-black uppercase text-[var(--mci-blue)] italic group-hover:text-[var(--mci-orange)] transition-colors">
+                {mode === "create"
+                  ? t("label_recurring")
+                  : t("label_extend_series")}
               </span>
             </label>
-            {isRecurring && (
-              <div className="space-y-4 animate-in slide-in-from-top-2">
-                {/* 1. WOCHEN-EINGABE (NUR IM CREATE-MODUS) */}
-                {mode === "create" && (
-                  <div className="flex items-center gap-4 mb-4">
-                    <label className="mci-label whitespace-nowrap">
-                      Anzahl Wochen:
-                    </label>
-                    <input
-                      type="number"
-                      min="2"
-                      max="12"
-                      value={recurringWeeks}
-                      onChange={(e) =>
-                        setRecurringWeeks(parseInt(e.target.value))
-                      }
-                      className="mci-input w-24 text-center"
-                    />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase italic">
-                      Vorschau wird automatisch aktualisiert
-                    </span>
-                  </div>
-                )}
 
-                {/* 2. DIE TABELLE (Vorschau oder echte Daten) */}
-                <div className="series-list-container">
-                  <div className="series-header-row">
-                    <div className="col-date">{t("header_date")}</div>
-                    <div className="col-status">{t("header_status")}</div>
-                    <div className="col-room">{t("header_room")}</div>
-                    <div className="col-floor">{t("header_floor")}</div>
-                    <div className="col-seats">{t("header_seats")}</div>
-                    <div className="col-extra">
-                      {mode === "edit" ? "Aktion" : t("header_features")}
-                    </div>
-                  </div>
+            {((mode === "create" && isRecurring) ||
+              (mode === "edit" && isExtending)) && (
+              <div className="res-extension-box">
+                <div className="flex flex-col gap-2 shrink-0">
+                  <label className="mci-label !ml-0 !mb-0 text-orange-400">
+                    {t("label_weeks")}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={mode === "create" ? recurringWeeks : extraWeeks}
+                    onChange={(e) => {
+                      const val = Math.max(1, parseInt(e.target.value) || 0);
+                      mode === "create"
+                        ? setRecurringWeeks(val)
+                        : setExtraWeeks(val);
+                    }}
+                    className="mci-number-input-lg"
+                  />
+                </div>
+                <div className="flex flex-col gap-1 border-l-2 border-orange-100 pl-8 py-2">
+                  <p className="text-xl font-black text-[var(--mci-blue)] uppercase italic">
+                    {mode === "create"
+                      ? t("label_recurring")
+                      : t("label_extend_series")}
+                  </p>
+                  <p className="text-[11px] font-bold text-orange-400 uppercase tracking-tight">
+                    {t("hint_extension_preview")}
+                  </p>
+                </div>
+              </div>
+            )}
 
-                  <div className="max-h-80 overflow-y-auto custom-scrollbar">
-                    {mode === "edit"
-                      ? /* EDIT-MODUS: EXISTIERENDE SERIE ANZEIGEN */
-                        relatedBookings.map((b) => {
-                          const isCurrent = b.id === booking.id;
-                          const isPast =
-                            new Date(b.booking_date) <
-                            new Date(new Date().setHours(0, 0, 0, 0));
-                          const r = rooms.find((rm) => rm.id === b.room_id);
-                          return (
-                            <div
-                              key={b.id}
-                              className={`series-data-row ${isCurrent ? "bg-blue-50/50 border-l-4 border-l-[#004a87]" : ""}`}
-                            >
-                              <div className="col-date">
-                                {new Date(b.booking_date).toLocaleDateString(
-                                  lang === "de" ? "de-DE" : "en-US",
-                                  {
-                                    weekday: "short",
-                                    day: "2-digit",
-                                    month: "short",
-                                  },
-                                )}
-                              </div>
-                              <div className="col-status">
-                                {isPast ? (
-                                  <Clock size={16} className="text-gray-300" />
-                                ) : (
-                                  <CheckCircle2
-                                    size={16}
-                                    className="text-green-500"
-                                  />
-                                )}
-                              </div>
-                              <div className="col-room truncate">{r?.name}</div>
-                              <div className="col-floor">
-                                {r?.floor}. {t("label_floor_short")}
-                              </div>
-                              <div className="col-seats">
-                                <Users size={12} /> {r?.capacity}
-                              </div>
-                              <div className="col-extra flex items-center justify-between">
-                                {isCurrent ? (
-                                  <span className="badge-feature bg-[#004a87] text-white">
-                                    Aktuell
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] text-gray-400 font-bold uppercase">
-                                    {isPast ? "Vergangen" : "Zukünftig"}
-                                  </span>
-                                )}
-                                {!isPast && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancelSingle(b.id);
-                                    }}
-                                    className="p-2 text-gray-300 hover:text-red-500 transition-all"
-                                  >
-                                    <XCircle size={16} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })
-                      : /* CREATE-MODUS: VORSCHAU DER NEUEN SERIE (Nutzt recurringWeeks) */
-                        getSeriesPlan().map((p, i) => {
-                          const dateStr = new Date(p.date).toLocaleDateString(
-                            lang === "de" ? "de-DE" : "en-US",
-                            {
-                              weekday: "short",
-                              day: "2-digit",
-                              month: "short",
-                            },
-                          );
-                          return (
-                            <div key={i} className="series-data-row">
-                              <div className="col-date">{dateStr}</div>
-                              <div className="col-status">
-                                {p.status === "ok" ? (
-                                  <CheckCircle2
-                                    size={18}
-                                    className="text-green-500"
-                                  />
-                                ) : (
-                                  <AlertCircle
-                                    size={18}
-                                    className="text-[#f7941d]"
-                                  />
-                                )}
-                              </div>
-                              <div className="col-room truncate">
-                                {p.room?.name || t("label_no_room_found")}
-                              </div>
-                              <div className="col-floor">
-                                {p.room
-                                  ? `${p.room.floor}. ${t("label_floor_short")}`
-                                  : "-"}
-                              </div>
-                              <div className="col-seats">
-                                <Users size={12} /> {p.room?.capacity || 0}
-                              </div>
-                              <div className="col-extra flex flex-wrap gap-1">
+            {/* LISTE */}
+            {((mode === "create" && isRecurring) || mode === "edit") && (
+              <div className="series-list-container">
+                <div className="series-header-row">
+                  <div className="col-date">{t("header_date")}</div>
+                  <div className="col-status"></div>
+                  <div className="col-room">{t("header_room")}</div>
+                  <div className="col-floor">{t("header_floor")}</div>
+                  <div className="col-seats">{t("header_seats")}</div>
+                  <div className="col-extra">{t("header_features")}</div>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {/* BESTAND (Nur Edit) */}
+                  {mode === "edit" &&
+                    relatedBookings.map((b) => (
+                      <div
+                        key={b.id}
+                        className="series-data-row opacity-40 grayscale"
+                      >
+                        <div className="col-date">
+                          {new Date(b.booking_date).toLocaleDateString()}
+                        </div>
+                        <div className="col-status">
+                          <CheckCircle2 size={16} className="text-green-500" />
+                        </div>
+                        <div className="col-room">
+                          {rooms.find((r) => r.id === b.room_id)?.name}
+                        </div>
+                        <div className="col-floor">
+                          {rooms.find((r) => r.id === b.room_id)?.floor}.{" "}
+                          {t("label_floor_short") || "FL"}
+                        </div>
+                        <div className="col-seats">
+                          <Users size={12} />{" "}
+                          {rooms.find((r) => r.id === b.room_id)?.capacity}
+                        </div>
+                        <div className="col-extra">
+                          <span className="text-[8px] font-black uppercase">
+                            {t("label_existing")}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* 2. NEUE VORSCHAU ANZEIGEN */}
+                  {((mode === "create" && isRecurring) ||
+                    (mode === "edit" && isExtending)) &&
+                    getSeriesPlan().map((p, i) => {
+                      // Equipment-Vergleich Logik
+                      const originalFeatures = [
+                        ...(currentRoomContext?.equipment || []),
+                      ];
+                      if (currentRoomContext?.accessible)
+                        originalFeatures.push("accessible-feat");
+                      const currentFeatures = [...(p.room?.equipment || [])];
+                      if (p.room?.accessible)
+                        currentFeatures.push("accessible-feat");
+
+                      const extra = currentFeatures.filter(
+                        (id) => !originalFeatures.includes(id),
+                      );
+                      const missing = originalFeatures.filter(
+                        (id) => !currentFeatures.includes(id),
+                      );
+
+                      return (
+                        <div
+                          key={`preview-${i}`}
+                          className={`series-data-row ${p.status === "conflict" ? "bg-red-50" : "bg-orange-50/20"} border-l-4 ${p.status === "conflict" ? "border-l-red-500" : "border-l-orange-400"}`}
+                        >
+                          <div className="col-date">
+                            {new Date(p.date).toLocaleDateString(
+                              lang === "de" ? "de-DE" : "en-US",
+                              {
+                                weekday: "short",
+                                day: "2-digit",
+                                month: "short",
+                              },
+                            )}
+                          </div>
+                          <div className="col-status">
+                            {p.status === "ok" ? (
+                              <PlusCircle
+                                size={18}
+                                className="text-orange-500"
+                              />
+                            ) : (
+                              <XCircle size={18} className="text-red-500" />
+                            )}
+                          </div>
+                          <div className="col-room font-bold">
+                            {p.room?.name || "KEIN RAUM FREI"}
+                          </div>
+                          <div className="col-floor">
+                            {p.room ? `${p.room.floor}. OG` : "-"}
+                          </div>
+                          <div className="col-seats">
+                            <Users size={12} /> {p.room?.capacity || 0}
+                          </div>
+                          <div className="col-extra">
+                            {p.status === "conflict" ? (
+                              <span className="badge-feature badge-missing !no-underline font-black text-red-600">
+                                KONFLIKT
+                              </span>
+                            ) : (
+                              <>
                                 {p.status === "alternative" && (
                                   <span className="badge-best-match mr-1">
-                                    {t("label_best_match")}
+                                    Best Match
                                   </span>
                                 )}
-
-                                {p.room &&
-                                  currentRoomContext &&
-                                  (() => {
-                                    // 1. Alle Merkmale des ursprünglichen Wunschraums sammeln
-                                    const originalFeatures = [
-                                      ...(currentRoomContext.equipment || []),
-                                    ];
-                                    if (currentRoomContext.accessible)
-                                      originalFeatures.push("accessible-feat");
-
-                                    // 2. Alle Merkmale des aktuell vorgeschlagenen (Ersatz-)Raums sammeln
-                                    const currentFeatures = [
-                                      ...(p.room.equipment || []),
-                                    ];
-                                    if (p.room.accessible)
-                                      currentFeatures.push("accessible-feat");
-
-                                    // 3. Differenz berechnen
-                                    const extra = currentFeatures.filter(
-                                      (id) => !originalFeatures.includes(id),
-                                    );
-                                    const missing = originalFeatures.filter(
-                                      (id) => !currentFeatures.includes(id),
-                                    );
-
-                                    return (
-                                      <>
-                                        {/* GRÜN: Was hat dieser Ersatzraum ZUSÄTZLICH? */}
-                                        {extra.map((id) => {
-                                          if (id === "accessible-feat")
-                                            return (
-                                              <span
-                                                key={id}
-                                                className="badge-feature badge-extra"
-                                              >
-                                                <Accessibility size={10} /> +
-                                                {t("label_accessible")}
-                                              </span>
-                                            );
-                                          const eq = equipmentList.find(
-                                            (e) => e.id === id,
-                                          );
-                                          return (
-                                            <span
-                                              key={id}
-                                              className="badge-feature badge-extra"
-                                            >
-                                              +
-                                              {lang === "de"
-                                                ? eq?.name_de
-                                                : eq?.name_en}
-                                            </span>
-                                          );
-                                        })}
-
-                                        {/* ROT: Was FEHLT in diesem Ersatzraum im Vergleich zum Wunsch? */}
-                                        {missing.map((id) => {
-                                          if (id === "accessible-feat")
-                                            return (
-                                              <span
-                                                key={id}
-                                                className="badge-feature badge-missing"
-                                              >
-                                                <Accessibility size={10} /> -
-                                                {t("label_accessible")}
-                                              </span>
-                                            );
-                                          const eq = equipmentList.find(
-                                            (e) => e.id === id,
-                                          );
-                                          return (
-                                            <span
-                                              key={id}
-                                              className="badge-feature badge-missing"
-                                            >
-                                              -
-                                              {lang === "de"
-                                                ? eq?.name_de
-                                                : eq?.name_en}
-                                            </span>
-                                          );
-                                        })}
-                                      </>
-                                    );
-                                  })()}
-                              </div>
-                            </div>
-                          );
-                        })}
-                  </div>
+                                {extra.map((id) => (
+                                  <span
+                                    key={id}
+                                    className="badge-feature badge-extra"
+                                  >
+                                    +{" "}
+                                    {id === "accessible-feat"
+                                      ? t("label_accessible")
+                                      : equipmentList.find(
+                                          (e) => e.id === id,
+                                        )?.[
+                                          lang === "de" ? "name_de" : "name_en"
+                                        ] || id}
+                                  </span>
+                                ))}
+                                {missing.map((id) => (
+                                  <span
+                                    key={id}
+                                    className="badge-feature badge-missing"
+                                  >
+                                    -{" "}
+                                    {id === "accessible-feat"
+                                      ? t("label_accessible")
+                                      : equipmentList.find(
+                                          (e) => e.id === id,
+                                        )?.[
+                                          lang === "de" ? "name_de" : "name_en"
+                                        ] || id}
+                                  </span>
+                                ))}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
-
-                {/* 3. DAS VERLÄNGERUNGS-FELD (NUR IM BEARBEITUNGS-MODUS) */}
-                {mode === "edit" && (
-                  <div className="mt-6 p-6 bg-gray-50 rounded-[2rem] border border-gray-100 flex items-center justify-between gap-4">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                        Serie erweitern
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          min="1"
-                          max="12"
-                          value={weeksToAdd}
-                          onChange={(e) =>
-                            setWeeksToAdd(parseInt(e.target.value))
-                          }
-                          className="mci-input w-24 text-center"
-                        />
-                        <span className="font-bold text-slate-600 uppercase text-xs">
-                          Woche(n) anhängen
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleAddMoreWeeks}
-                      disabled={loading}
-                      className="btn-mci-main !py-4 !px-8 !w-auto text-sm shadow-lg"
-                    >
-                      <PlusCircle size={18} /> {loading ? "..." : "Anhängen"}
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
 
+          {/* DER EINZIGE SPEICHERN BUTTON AM ENDE */}
           <button
-            disabled={occ.isOccupied || duration <= 0 || loading}
+            disabled={loading}
             onClick={async () => {
               setLoading(true);
               const plan = getSeriesPlan();
-              if (plan.some((p) => p.status === "conflict" || !p.room)) {
-                alert("Serie enthält Konflikte!");
+              if (
+                ((mode === "create" && isRecurring) ||
+                  (mode === "edit" && isExtending)) &&
+                plan.some((p) => p.status === "conflict")
+              ) {
+                alert("Bitte behebe zuerst die Konflikte!");
                 setLoading(false);
                 return;
               }
               const code =
                 booking?.booking_code ||
                 Math.random().toString(36).substring(2, 8).toUpperCase();
-              const toInsert = plan.map((p) => ({
-                room_id: p.room.id,
-                user_id: userId,
-                booking_date: p.date,
-                start_time: selectedTime,
-                duration,
-                user_email: userEmail,
-                booking_code: code,
-                status: "active",
-              }));
+
               if (mode === "edit") {
                 await supabase
                   .from("bookings")
@@ -906,22 +811,39 @@ export default function BookingModal({
                     duration,
                   })
                   .eq("id", booking.id);
-                if (isRecurring && plan.length > 1)
+                if (isExtending) {
                   await supabase.from("bookings").insert(
-                    plan.slice(1).map((p) => ({
-                      ...toInsert[0],
-                      booking_date: p.date,
+                    plan.map((p) => ({
                       room_id: p.room.id,
+                      user_id: userId,
+                      booking_date: p.date,
+                      start_time: selectedTime,
+                      duration,
+                      user_email: userEmail,
+                      booking_code: code,
+                      status: "active",
                     })),
                   );
+                }
               } else {
-                await supabase.from("bookings").insert(toInsert);
+                await supabase.from("bookings").insert(
+                  plan.map((p) => ({
+                    room_id: p.room.id,
+                    user_id: userId,
+                    booking_date: p.date,
+                    start_time: selectedTime,
+                    duration,
+                    user_email: userEmail,
+                    booking_code: code,
+                    status: "active",
+                  })),
+                );
               }
               setLoading(false);
               onSuccess();
               onClose();
             }}
-            className="btn-mci-main"
+            className="btn-mci-main mt-8"
           >
             <Save size={28} />{" "}
             {loading

@@ -1,88 +1,121 @@
 @import "tailwindcss";
 
+/* --- LAYOUT WRAPPER --- */
 .res-page-wrapper {
   background-color: var(--mci-bg);
-  @apply min-h-screen text-slate-900 font-sans p-8 md:p-12;
+  @apply min-h-screen text-slate-900 font-sans p-4 md:p-12;
 }
 
 .res-layout {
-  @apply max-w-7xl mx-auto flex flex-col lg:flex-row gap-12;
+  @apply max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 md:gap-12;
 }
 
-/* Sidebar & Filters */
 .res-sidebar {
-  @apply w-full lg:w-80 shrink-0 space-y-6;
+  @apply w-full lg:w-80 shrink-0;
 }
 
 .res-filter-card {
-  @apply bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm sticky top-12 space-y-8;
+  @apply bg-white rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-10 border border-gray-100 shadow-sm sticky top-12 space-y-8;
 }
 
-/* Booking Cards (Das Herz der Seite) */
+/* --- BOOKING CARDS --- */
 .res-list {
   @apply flex-1 space-y-6;
 }
 
 .res-card {
-  @apply bg-white p-8 rounded-[3.5rem] border border-gray-100 flex flex-col md:flex-row justify-between items-center transition-all gap-8 relative overflow-hidden;
+  @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm transition-all overflow-hidden flex flex-col;
+  padding: 1.25rem;
+  gap: 1.25rem;
 }
 
-.res-card-active {
-  @apply border-l-8 border-l-[var(--mci-blue)] shadow-md;
+.res-card-active { @apply border-l-8 border-l-[var(--mci-blue)] shadow-md; }
+.res-card-expired { @apply opacity-50 grayscale bg-gray-50; }
+
+.res-card.is-series {
+  @apply bg-blue-50/30;
+  background-image: radial-gradient(#004a87 0.5px, transparent 0.5px);
+  background-size: 10px 10px;
 }
 
-.res-card-expired {
-  @apply opacity-50 grayscale bg-gray-50;
+.res-image-wrapper {
+  @apply relative rounded-[1.5rem] overflow-hidden shrink-0 bg-slate-100 w-full;
+  height: 180px;
 }
 
-.res-icon-box {
-  @apply w-28 h-28 bg-gray-100 rounded-[1.5rem] shadow-inner shrink-0 overflow-hidden flex items-center justify-center;
+.res-content-block { @apply flex-1 flex flex-col; }
+
+.res-header-row { @apply flex flex-wrap items-center justify-between gap-2 mb-4; }
+
+.res-room-title { @apply text-xl font-black text-[#004a87] m-0; }
+
+.res-meta-grid { @apply grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4; }
+
+.res-meta-item {
+  @apply flex items-center gap-2.5 text-slate-500 text-[16px] font-bold uppercase tracking-wider;
 }
 
-.res-room-name {
-  @apply text-3xl font-bold text-slate-800 tracking-tighter;
-}
-
-.res-meta-row {
-  @apply flex flex-wrap gap-4 text-[11px] font-bold uppercase tracking-wider text-gray-400 mt-2;
-}
-
-/* Action Buttons */
-.res-actions {
-  @apply flex items-center gap-3 shrink-0;
+/* --- ACTIONS --- */
+.res-action-bar {
+  @apply flex flex-col gap-2 pt-4 border-t border-gray-50;
 }
 
 .btn-res-action {
-  @apply px-6 py-3 rounded-full text-[10px] font-black uppercase transition-all shadow-sm flex items-center gap-2;
+  @apply flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase transition-all;
 }
 
-.btn-res-checkin {
-  @apply bg-[var(--mci-light-blue)] text-white hover:bg-[var(--mci-blue)];
+.btn-res-danger {
+  @apply bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white;
 }
 
-.btn-res-cancel {
-  @apply p-4 text-gray-300 hover:text-red-500 transition-colors;
+.btn-res-disabled {
+  @apply bg-gray-50 text-gray-300 border-transparent cursor-not-allowed opacity-100;
 }
 
-.res-status-badge {
-  @apply px-6 py-2 rounded-full text-[10px] font-black uppercase border font-bold italic bg-green-50 text-green-700 border-green-200;
+/* --- DESKTOP REFINEMENT --- */
+@media (min-width: 768px) {
+  .res-card {
+    flex-direction: row;
+    padding: 2rem;
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  .res-image-wrapper { width: 160px; height: 160px; }
+
+  .res-action-bar {
+    flex-direction: column;
+    width: 200px;
+    padding: 0 0 0 2rem;
+    border-top: none;
+    border-left: 1px solid #f1f5f9;
+  }
 }
 
-.res-sort-info {
-  @apply text-[9px] font-black uppercase text-gray-300 tracking-widest mb-2 flex items-center gap-2;
+/* --- RESPONSIVE HEADER --- */
+.res-page-header {
+  @apply max-w-7xl mx-auto px-4 md:px-0;
 }
 
-.badge-series-indicator {
-  @apply flex items-center gap-1.5 bg-orange-50 text-orange-700 border border-orange-100 
-         px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter italic;
+.res-page-title {
+  @apply text-4xl md:text-6xl font-black text-[#004a87] tracking-tighter uppercase italic leading-none m-0;
 }
 
+.res-stats-badge {
+  @apply bg-[#004a87] text-white px-5 py-3 rounded-2xl font-bold text-xs shadow-lg flex items-center gap-3 transition-all;
+}
 
-.res-card-active.is-series {
-  /* Wir nutzen eine Standard-Tailwind-Farbe mit Opacity-Modifier */
-  @apply bg-blue-50/30; 
+.lang-toggle-btn {
+  @apply p-3.5 bg-white rounded-2xl shadow-sm border border-gray-100 font-black text-[10px] uppercase flex items-center gap-2 hover:bg-gray-50 transition-all;
+}
+
+/* Mobile Fixes */
+@media (max-width: 768px) {
+  .res-page-title {
+    @apply text-3xl;
+  }
   
-  /* Das Muster fügen wir als Standard-CSS hinzu, da Tailwind keine Utility für Punkt-Muster hat */
-  background-image: radial-gradient(#004a87 0.5px, transparent 0.5px);
-  background-size: 10px 10px;
+  .res-stats-badge {
+    @apply flex-1 justify-center py-4;
+  }
 }

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* --- 1. FARB-VARIABLEN --- */
 :root {
   --mci-blue: #004a87;
   --mci-orange: #f7941d;
@@ -7,102 +8,113 @@
   --mci-bg: #f8f9fb;
 }
 
-/* --- Globale Modal-Struktur --- */
-.mci-modal-overlay {
-  @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100];
-}
-.mci-modal-card {
-  @apply bg-white rounded-[3.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col;
-}
-.mci-modal-header {
-  @apply bg-[#004a87] p-10 text-white flex flex-row justify-between items-center shrink-0;
-}
-.mci-modal-body {
-  @apply p-10 space-y-8 max-h-[85vh] overflow-y-auto;
+/* --- 2. EIGENE ANIMATIONEN (Ersatz für Plugins) --- */
+@keyframes mciFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* --- Globale Formularelemente --- */
-.mci-field-group,
-.ebene-wrapper {
-  @apply flex flex-col gap-2;
-}
-.mci-label {
-  @apply block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-3;
-}
-.mci-input,
-.mci-select {
-  @apply w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-gray-100 transition-all border-none text-base shadow-inner;
-}
-.mci-input:focus,
-.mci-select:focus {
-  @apply ring-2 ring-[var(--mci-orange)];
+@keyframes mciPop {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-.btn-mci-main {
-  @apply w-full bg-[#004a87] text-white py-6 rounded-2xl font-bold text-xl shadow-xl hover:bg-[#549BB7] transition active:scale-95 flex items-center justify-center gap-4;
+.mci-animate-fade { animation: mciFade 0.4s ease-out; }
+.mci-animate-pop { animation: mciPop 0.3s ease-out; }
+
+/* --- 3. BASIS-STRUKTUR & MODALS --- */
+.mci-modal-overlay { 
+  @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100]; 
+  animation: mciFade 0.3s ease-out;
+}
+.mci-modal-card { 
+  @apply bg-white rounded-[3.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col; 
+  animation: mciPop 0.4s ease-out;
+}
+.mci-modal-header { @apply bg-[var(--mci-blue)] p-10 text-white flex flex-row justify-between items-center shrink-0; }
+.mci-modal-body { @apply p-10 space-y-8 max-h-[85vh] overflow-y-auto; }
+
+/* --- 4. FORMULARE & FILTER-UI --- */
+.mci-label { @apply block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-3 mb-2; }
+.mci-input, .mci-select { @apply w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-gray-100 transition-all border-none text-base shadow-inner focus:ring-2 focus:ring-[var(--mci-orange)]; }
+
+.mci-filter-list { @apply flex flex-col gap-1 mt-2 ml-2; }
+.mci-filter-item { @apply flex items-center gap-3 cursor-pointer py-1.5 px-3 rounded-xl transition-all hover:bg-gray-50; }
+.filter-checkbox { @apply w-6 h-6 accent-[var(--mci-blue)] rounded border-gray-300 cursor-pointer shrink-0; }
+.mci-filter-text { @apply text-sm font-bold text-slate-500 transition-colors; }
+.mci-filter-text-active { @apply text-[var(--mci-blue)]; }
+
+/* Kapazitätsslider */
+.filter-capacity-bar { @apply flex-1 accent-[var(--mci-orange)] h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer; }
+.filter-capacity-number { @apply w-20 p-3 bg-gray-50 rounded-xl font-bold text-center text-sm shadow-inner; }
+
+/* --- 5. RESERVATIONS PAGE (3-SÄULEN LAYOUT) --- */
+.res-card { @apply bg-white rounded-[3rem] border border-gray-100 shadow-sm transition-all overflow-hidden flex flex-col lg:flex-row items-stretch mb-8; }
+.res-image-wrapper { @apply shrink-0 bg-slate-100 overflow-hidden w-full lg:w-[320px]; }
+.res-content-block { @apply flex-1 flex flex-col justify-center p-8 lg:p-12 min-w-0; }
+.res-action-bar { @apply flex flex-col items-center justify-between w-full lg:w-[260px] shrink-0 p-8 lg:border-l border-gray-50 bg-slate-50/30 gap-4; }
+.res-cancel-group { @apply flex flex-col gap-2 w-full mt-4 pt-4 border-t border-gray-100; }
+
+/* --- 6. BUTTONS & STATUS --- */
+.btn-mci-main { @apply w-full bg-[var(--mci-blue)] text-white py-4 rounded-2xl font-bold text-base shadow-lg hover:bg-[var(--mci-light-blue)] transition active:scale-95 flex items-center justify-center gap-3 disabled:bg-gray-200; }
+.btn-res-edit { @apply flex items-center justify-center gap-2 py-3 px-4 mt-1 bg-white text-slate-500 border border-slate-200 hover:text-[var(--mci-blue)] hover:border-[var(--mci-blue)] rounded-xl text-[9px] font-black uppercase w-full tracking-widest transition-all; }
+.btn-res-danger { @apply bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white h-11; }
+
+.res-status-indicator { @apply flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase w-full border; }
+.res-status-checked { @apply !bg-green-50 !text-green-700 !border-green-100; }
+
+/* --- 7. ROOM BADGES & INFO --- */
+.room-badge-container { @apply absolute bottom-4 left-6 flex flex-wrap gap-2 pr-6 z-10; }
+.mci-badge { @apply bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-md text-[var(--mci-blue)] text-[10px] font-black uppercase border border-white/50 flex items-center gap-1.5; }
+.accessible-badge { @apply !bg-green-50 !text-green-700 px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase flex items-center gap-1.5 border border-green-100; }
+
+/* --- 8. EXTENSION BOX (POP-UP ZAHLENFELD) --- */
+.res-extension-box { 
+  @apply mb-8 mt-2 p-8 bg-white rounded-[3rem] border-2 border-orange-100 flex flex-row items-center gap-10 shadow-xl shadow-orange-900/5;
+  animation: mciPop 0.3s ease-out; 
+}
+.mci-number-input-lg { @apply w-32 h-24 bg-orange-50 border-none rounded-3xl text-5xl font-black text-[var(--mci-blue)] text-center outline-none ring-2 ring-orange-100 focus:ring-4 focus:ring-[var(--mci-orange)] shadow-inner transition-all; }
+
+@keyframes mciFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* --- Feedback-Boxen (Konflikt-Meldungen) --- */
-.res-feedback-box {
-  @apply p-6 rounded-3xl font-bold text-sm flex items-center gap-3 transition-all duration-300 border;
-}
-.res-feedback-ok {
-  @apply bg-green-50 text-green-700 border-green-100;
-}
-.res-feedback-error {
-  @apply bg-red-50 text-red-700 border-red-100;
+/* Du kannst die Utility-Klasse hier lassen für JSX-Files */
+.mci-animate-fade { 
+  animation: mciFade 0.4s ease-out; 
 }
 
-/* --- Zentrale Tabellen-Logik für Serien --- */
+/* --- 5. SERIEN-TABELLEN (GRID SYSTEM) --- */
 .series-list-container {
-  @apply mt-6 rounded-[2.5rem] border border-gray-100 overflow-hidden bg-white shadow-inner;
+  @apply mt-6 rounded-[2rem] border border-gray-100 overflow-hidden bg-white shadow-inner;
 }
-.series-header-row {
-  @apply flex flex-row items-center gap-4 px-6 py-3 bg-gray-50 text-[9px] font-black uppercase text-gray-400 border-b border-gray-100;
-}
+
+/* Definition der 6 Spalten: Datum | Status | Raum | Stock | Plätze | Features */
+.series-header-row, 
 .series-data-row {
-  @apply flex flex-row items-center gap-4 px-6 py-4 border-b border-gray-50 last:border-none hover:bg-blue-50/30 transition-all;
+  display: grid !important;
+  grid-template-columns: 1.2fr 0.5fr 1.5fr 0.8fr 0.7fr 2.5fr !important;
+  @apply items-center px-8 transition-all w-full;
 }
 
-/* Fixierte Spaltenbreiten */
-.col-date {
-  @apply w-28 shrink-0 text-slate-500 font-bold text-[11px];
-}
-.col-status {
-  @apply w-12 shrink-0 flex justify-center;
-}
-.col-room {
-  @apply w-32 shrink-0 text-[#004a87] font-black italic text-sm;
-}
-.col-floor {
-  @apply w-16 shrink-0 text-gray-400 text-[11px];
-}
-.col-seats {
-  @apply w-16 shrink-0 text-gray-400 text-[11px] flex items-center gap-1;
-}
-.col-extra {
-  @apply flex-1 flex flex-wrap gap-1.5;
+.series-header-row {
+  @apply py-4 bg-gray-50 text-[9px] font-black uppercase text-gray-400 border-b border-gray-100;
 }
 
-/* Badges */
-/* --- Equipment Vergleichs-Badges --- */
-.badge-feature {
-  @apply px-2 py-0.5 rounded-md border text-[9px] font-bold flex items-center gap-1;
+.series-data-row {
+  @apply py-5 border-b border-gray-50 last:border-none text-[11px];
 }
 
-/* Grün für zusätzliche Features */
-.badge-extra {
-  @apply bg-green-50 text-green-700 border-green-100;
-}
+/* Spalten-Inhalte */
+.col-date { @apply font-bold text-slate-500; }
+.col-status { @apply flex justify-center items-center; }
+.col-room { @apply font-black text-[var(--mci-blue)] truncate; }
+.col-floor { @apply text-gray-400 font-bold uppercase text-[9px]; }
+.col-seats { @apply text-gray-500 flex items-center gap-1.5 font-bold; }
+.col-extra { @apply flex flex-wrap gap-1 items-center; }
 
-/* Rot für fehlende Features (mit Durchstreichung) */
-.badge-missing {
-  @apply bg-red-50 text-red-600 border-red-100 line-through opacity-80;
-}
-.badge-best-match {
-  @apply bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md text-[9px] font-black italic uppercase tracking-tighter;
-}
-.filter-checkbox {
-  @apply w-5 h-5 accent-[#004a87] rounded border-gray-300 cursor-pointer
-}
-
+/* Scrollbar für die Liste */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-200 rounded-full; }

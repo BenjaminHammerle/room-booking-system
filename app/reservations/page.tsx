@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import "./reservations.css";
 import BookingModal from "@/app/components/BookingModal";
+import { findById, getEndTimeParts } from "@/lib/utils";
 import {
   ArrowLeft,
   Calendar,
@@ -18,6 +19,7 @@ import {
   PlusCircle,
   AlertCircle,
   Building2,
+  Users,
   History,
   Edit3,
   X,
@@ -28,7 +30,22 @@ import {
 
 export default function ReservationsPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<"de" | "en">("de");
+const [lang, setLang] = useState<"de" | "en">("de");
+
+// 1. Einmaliges Laden beim Öffnen der Seite
+useEffect(() => {
+  const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
+  if (savedLang === "de" || savedLang === "en") {
+    setLang(savedLang);
+  }
+}, []);
+
+// 2. Die neue Toggle-Funktion (Speichert aktiv beim Klick)
+const handleLangToggle = () => {
+  const newLang = lang === "de" ? "en" : "de";
+  setLang(newLang);
+  localStorage.setItem("mci_lang", newLang);
+};
   const [dbTrans, setDbTrans] = useState<any>({});
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -51,6 +68,12 @@ export default function ReservationsPage() {
   const [editingBooking, setEditingBooking] = useState<any>(null);
   const [editTime, setEditTime] = useState("");
   const [editDuration, setEditDuration] = useState(1);
+
+  // Diese Funktion verbindet den Button mit dem Modal
+  const handleEdit = (booking: any) => {
+    setEditingBooking(booking); // Speichert die Buchung, die wir bearbeiten wollen
+    setShowEditModal(true); // Öffnet das Modal
+  };
 
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
@@ -102,6 +125,34 @@ export default function ReservationsPage() {
         .padStart(2, "0"),
       mm: (totalMinutes % 60).toString().padStart(2, "0"),
     };
+  };
+
+  const handleCancelSingle = async (id: string) => {
+    if (!confirm("Möchtest du diesen einzelnen Termin wirklich stornieren?"))
+      return;
+    setLoading(true);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", id);
+    if (!error) loadAllData();
+    setLoading(false);
+  };
+
+  const handleCancelSeries = async (code: string) => {
+    if (
+      !confirm(
+        "Möchtest du die gesamte Serie (alle zukünftigen Termine) stornieren?",
+      )
+    )
+      return;
+    setLoading(true);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("booking_code", code);
+    if (!error) loadAllData();
+    setLoading(false);
   };
 
   // --- DATA LOADING ---
@@ -350,30 +401,38 @@ export default function ReservationsPage() {
 
   return (
     <div className="res-page-wrapper">
-      <div className="max-w-7xl mx-auto mb-12 flex justify-between items-end">
-        <div className="space-y-2">
-          <button
-            onClick={() => router.push("/rooms")}
-            className="flex items-center gap-2 text-gray-400 font-bold hover:text-[#004a87] transition mb-4"
-          >
-            <ArrowLeft size={18} /> {t("archiv_back")}
-          </button>
-          <h1 className="text-6xl font-black text-[#004a87] tracking-tighter uppercase italic">
-            {t("archiv_title")}
-          </h1>
-        </div>
-        <div className="flex items-center gap-4 mb-2">
-          <div className="bg-[#004a87] text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg flex items-center gap-3">
-            <History size={18} /> {filteredBookings.length} {t("label_entries")}
+      <header className="res-page-header mb-8 md:mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="space-y-2 w-full md:w-auto">
+            <button
+              onClick={() => router.push("/rooms")}
+              className="nav-link group"
+            >
+              <ArrowLeft
+                size={18}
+                className="group-hover:-translate-x-1 transition-transform"
+              />
+              <span>{t("archiv_back")}</span>
+            </button>
+            <h1 className="res-page-title">{t("archiv_title")}</h1>
           </div>
-          <button
-            onClick={() => setLang(lang === "de" ? "en" : "de")}
-            className="p-3 bg-white rounded-xl shadow-sm font-bold text-xs uppercase"
-          >
-            {lang}
-          </button>
+
+          <div className="flex items-center justify-between w-full md:w-auto gap-4">
+            <div className="res-stats-badge">
+              <History size={18} className="text-[var(--mci-orange)]" />
+              <span>
+                {filteredBookings.length} {t("label_entries")}
+              </span>
+            </div>
+            <button
+              onClick={handleLangToggle}
+              className="lang-toggle-btn"
+            >
+              <Globe size={14} /> {lang}
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
       <div className="res-layout">
         <aside className="res-sidebar">
@@ -458,105 +517,147 @@ export default function ReservationsPage() {
             <Clock size={12} /> {t("label_sorted_by_nearest")}
           </div>
           {filteredBookings.map((b) => {
-            const room = rooms.find((r) => r.id === b.room_id);
-            const owner = profiles.find((p) => p.id === b.user_id);
-
-            // Prüfen, wie viele Termine diesen Code haben
-            const seriesCount = bookings.filter(
-              (bk) => bk.booking_code === b.booking_code,
-            ).length;
+            const room = findById(rooms, b.room_id);
+            const activeSeriesDates = bookings
+              .filter(
+                (bk) =>
+                  bk.booking_code === b.booking_code &&
+                  bk.status !== "cancelled",
+              )
+              .sort((a, b) => a.booking_date.localeCompare(b.booking_date));
+            const seriesCount = activeSeriesDates.length;
             const isSeries = seriesCount > 1;
-
-            const isActive = b.status === "active";
-            const checkInWindow = isCheckInAvailable(b);
+            const currentIndex =
+              activeSeriesDates.findIndex((bk) => bk.id === b.id) + 1;
+            const { hh, mm } = getEndTimeParts(b.start_time, b.duration);
+            const canCheckIn =
+              typeof isCheckInAvailable === "function"
+                ? isCheckInAvailable(b)
+                : false;
 
             return (
               <div
                 key={b.id}
-                className={`res-card group ${isActive ? "res-card-active" : "res-card-expired"}`}
+                className={`res-card ${isSeries ? "is-series" : ""}`}
               >
-                <div className="flex items-center gap-8 text-left flex-1">
-                  <div className="res-icon-box">
-                    {room?.image_url ? (
-                      <img
-                        src={room.image_url}
-                        alt={room.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      room?.image || "🏢"
+                {/* SÄULE 1: BILD (Links) */}
+                <div className="res-image-wrapper">
+                  {room?.image_url ? (
+                    <img
+                      src={room.image_url}
+                      className="w-full h-full object-cover"
+                      alt={room.name}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl bg-slate-100">
+                      🏢
+                    </div>
+                  )}
+                </div>
+
+                {/* SÄULE 2: CONTENT (Mitte - Füllt den gesamten Raum aus) */}
+                <div className="res-content-block">
+                  <div className="flex items-center gap-4 mb-2">
+                    <h3 className="res-room-title">{room?.name}</h3>
+                    {isSeries && currentIndex > 0 && (
+                      <span className="badge-series-indicator">
+                        <Repeat
+                          size={12}
+                          className="text-[var(--mci-orange)]"
+                        />
+                        {t("label_series")} ({currentIndex}/{seriesCount})
+                      </span>
                     )}
                   </div>
-                  <div className="res-info-main">
-                    <div className="res-room-name flex items-center gap-3">
-                      {room?.name}
-                      {isSeries && (
-                        <span
-                          className="badge-series-indicator"
-                          title="Teil einer Kursreihe"
-                        >
-                          <Repeat size={12} className="text-[#f7941d]" />
-                          Serie ({seriesCount})
-                        </span>
-                      )}
-                    </div>
-                    <div className="res-meta-row">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar size={14} className="text-[#f7941d]" />{" "}
-                        {b.booking_date}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Clock size={14} className="text-[#f7941d]" />{" "}
-                        {b.start_time} -{" "}
-                        {minutesToTime(
-                          timeToMinutes(b.start_time) + b.duration * 60,
+                  <p className="text-slate-400 font-bold text-xs uppercase italic tracking-tight mb-8">
+                    {room?.building?.name} • {room?.floor}.{" "}
+                    {t("label_floor_short")}
+                  </p>
+
+                  {/* Die Infos in der Mitte - sauber verteilt */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-y-4 gap-x-8">
+                    <div className="res-meta-item">
+                      <Calendar
+                        size={16}
+                        className="text-[var(--mci-orange)]"
+                      />
+                      <span>
+                        {new Date(b.booking_date).toLocaleDateString(
+                          lang === "de" ? "de-DE" : "en-US",
+                          { weekday: "long", day: "2-digit", month: "long" },
                         )}
                       </span>
-                      {isAdmin && (
-                        <span className="text-[#004a87] font-black border-l pl-4 flex items-center gap-2">
-                          <UserIcon size={14} /> {owner?.first_name}{" "}
-                          {owner?.last_name}
-                        </span>
-                      )}
+                    </div>
+                    <div className="res-meta-item">
+                      <Clock size={16} className="text-[var(--mci-orange)]" />
+                      <span>
+                        {b.start_time} - {hh}:{mm} {t("label_uhr")}
+                      </span>
+                    </div>
+                    <div className="res-meta-item">
+                      <Users size={16} className="text-slate-300" />
+                      <span>
+                        {room?.capacity} {t("label_seats")}
+                      </span>
+                    </div>
+                    <div className="res-meta-item">
+                      <History size={16} className="text-slate-300" />
+                      <span className="tracking-tighter font-black opacity-40">
+                        {b.booking_code}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="res-actions">
-                  {isActive && !b.is_checked_in && (
+                {/* SÄULE 3: AKTIONEN (Rechts) */}
+                <div className="res-action-bar">
+                  {/* OBERER TEIL: STATUS & DETAILS */}
+                  <div className="w-full space-y-3">
+                    {b.is_checked_in ? (
+                      <div className="res-status-indicator res-status-checked">
+                        <CheckCircle size={16} />{" "}
+                        <span>{t("label_checked_in")}</span>
+                      </div>
+                    ) : canCheckIn ? (
+                      <button
+                        onClick={() => handleCheckIn(b)}
+                        className="btn-mci-main"
+                      >
+                        <CheckCircle2 size={16} />{" "}
+                        <span>{t("btn_checkin")}</span>
+                      </button>
+                    ) : (
+                      <div className="res-status-indicator res-status-waiting">
+                        <Clock size={16} /> <span>{t("label_waiting")}</span>
+                      </div>
+                    )}
+
                     <button
-                      onClick={() => {
-                        setEditingBooking(b);
-                        setEditTime(b.start_time);
-                        setEditDuration(b.duration);
-                        setShowEditModal(true);
-                      }}
-                      className="p-4 text-blue-400 hover:text-[#004a87] transition-all hover:scale-110"
+                      onClick={() => handleEdit(b)}
+                      className="btn-res-edit"
                     >
-                      <Edit3 size={24} />
+                      <Edit3 size={14} /> <span>{t("label_edit_booking")}</span>
                     </button>
-                  )}
-                  {checkInWindow && (
+                  </div>
+
+                  {/* UNTERER TEIL: STORNO GRUPPE */}
+                  <div className="res-cancel-group">
                     <button
-                      onClick={() => handleCheckIn(b)}
-                      className="btn-res-action btn-res-checkin animate-pulse"
+                      onClick={() => handleCancelSingle(b.id)}
+                      className="btn-res-action btn-res-danger"
                     >
-                      <CheckCircle2 size={16} /> {t("checkin_btn")}
+                      <X size={14} /> <span>{t("btn_cancel_single")}</span>
                     </button>
-                  )}
-                  {!b.is_checked_in && isActive && (
-                    <button
-                      onClick={() => handleCancel(b.id)}
-                      className="btn-res-cancel"
-                    >
-                      <XCircle size={28} />
-                    </button>
-                  )}
-                  {b.is_checked_in && (
-                    <div className="res-status-badge bg-green-50 text-green-700 border-green-200 font-black italic">
-                      {t("archiv_status_checkin")}
-                    </div>
-                  )}
+                    {isSeries && (
+                      <button
+                        onClick={() => handleCancelSeries(b.booking_code)}
+                        className="btn-res-action btn-res-danger bg-red-100/30"
+                      >
+                        <XCircle size={14} />{" "}
+                        <span>{t("btn_cancel_series")}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
