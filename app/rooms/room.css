@@ -49,7 +49,7 @@
 .room-occupied-until { @apply bg-red-500 text-white animate-pulse; }
 .room-inactive { @apply bg-gray-900 text-white; }
 
-/* Badges auf dem Bild - Nutzen jetzt die Styles aus der globals.css für Konsistenz */
+/* Badges auf dem Bild */
 .room-badge-container {
   @apply absolute bottom-4 left-6 flex flex-wrap gap-2 pr-6 z-10;
 }
@@ -73,9 +73,10 @@
   .room-info-container { @apply grid-cols-1 gap-2; }
 }
 
-/* Animation für das Einblenden der Filter am Handy - FIX: Nutzt jetzt mci-animate-fade aus globals.css */
+/* Animation für das Einblenden der Filter am Handy */
+
 .filter-card.block {
-  @apply mci-animate-fade;
+  animation: mciFade 0.4s ease-out forwards;
 }
 
 /* Den Toggle-Button am Handy etwas hervorheben */
