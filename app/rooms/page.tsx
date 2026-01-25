@@ -29,8 +29,7 @@ import {
   ChevronRight,
   Accessibility,
   Ban,
-  Printer,
-  Save,
+  History,
 } from "lucide-react";
 
 // --- TYPES ---
@@ -43,7 +42,6 @@ interface Room {
   is_active: boolean;
   accessible: boolean;
   image_url: string;
-  image?: string;
   seating_arrangement?: string;
   equipment?: string[];
   building?: { id: string; name: string; latitude: number; longitude: number };
@@ -72,15 +70,11 @@ export default function RoomBookingPage() {
   const router = useRouter();
   const [lang, setLang] = useState<"de" | "en">("de");
 
-  // 1. Einmaliges Laden beim Öffnen der Seite
   useEffect(() => {
     const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
-    if (savedLang === "de" || savedLang === "en") {
-      setLang(savedLang);
-    }
+    if (savedLang) setLang(savedLang);
   }, []);
 
-  // 2. Die neue Toggle-Funktion (Speichert aktiv beim Klick)
   const handleLangToggle = () => {
     const newLang = lang === "de" ? "en" : "de";
     setLang(newLang);
@@ -104,10 +98,9 @@ export default function RoomBookingPage() {
   const [newPassword, setNewPassword] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // --- UI & FILTER STATES (SMART TIME INIT) ---
+  // --- UI & FILTER STATES ---
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
-    // Wenn es 23:00 Uhr oder später ist, schlage direkt morgen vor
     if (now.getHours() >= 23) {
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -137,24 +130,6 @@ export default function RoomBookingPage() {
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
   const [selectedSeating, setSelectedSeating] = useState("all");
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [duration, setDuration] = useState(1);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurringWeeks, setRecurringWeeks] = useState(1);
-  const getEndTimeParts = (startTime: string, duration: number) => {
-    const totalMinutes = timeToMinutes(startTime) + duration * 60;
-    return {
-      hh: Math.floor(totalMinutes / 60)
-        .toString()
-        .padStart(2, "0"),
-      mm: (totalMinutes % 60).toString().padStart(2, "0"),
-    };
-  };
-
-  // --- NOW-ZEIT HELFER ---
-  const nowForValidation = new Date();
-  const currentHH = nowForValidation.getHours();
-  const currentMM = nowForValidation.getMinutes();
-  const isToday = selectedDate === new Date().toISOString().split("T")[0];
 
   // --- HELPERS ---
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
@@ -169,131 +144,66 @@ export default function RoomBookingPage() {
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   };
 
-  const getOccupancyInfo = (
-    roomId: string,
-    date: string,
-    time: string,
-    currentBookings: Booking[] = [],
-  ) => {
-    const checkMin = timeToMinutes(time);
-    const activeBookings = currentBookings || [];
-    const conflict = activeBookings.find(
-      (b) =>
-        b.room_id === roomId &&
-        b.booking_date === date &&
-        b.status === "active" &&
-        checkMin >= timeToMinutes(b.start_time) &&
-        checkMin < timeToMinutes(b.start_time) + b.duration * 60,
-    );
-    return conflict
-      ? {
-          isOccupied: true,
-          until: minutesToTime(
-            timeToMinutes(conflict.start_time) + conflict.duration * 60,
-          ),
-        }
-      : { isOccupied: false, until: null };
-  };
+  // --- DYNAMISCHE STATUS LOGIK ---
+  const getRoomContextStatus = (roomId: string) => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
 
-  const isCheckInWindowOpen = (booking: Booking) => {
-    const nowLocal = new Date();
-    const start = new Date(`${booking.booking_date}T${booking.start_time}`);
-    return (
-      nowLocal >= new Date(start.getTime() - 15 * 60000) &&
-      nowLocal <=
-        new Date(start.getTime() + (booking.duration || 1) * 3600000) &&
-      booking.status === "active"
-    );
-  };
+    // Referenz-Zeitpunkt: "Echt-Jetzt" für heute, "Gewählte-Zeit" für die Zukunft
+    const referenceTimeMin =
+      selectedDate === todayStr
+        ? now.getHours() * 60 + now.getMinutes()
+        : timeToMinutes(selectedTime);
 
-  const getConflictRoomIds = (room: Room): string[] => {
-    if (!room?.room_combi) return [room.id];
-    const c = room.room_combi;
-    const singles = [c.room_id_1, c.room_id_2, c.room_id_3].filter(Boolean);
-    return room.id === c.room_id_0
-      ? Array.from(new Set([c.room_id_0, ...singles]))
-      : Array.from(new Set([room.id, c.room_id_0]));
-  };
-
-  const isAnyRoomOccupied = (
-    roomIds: string[],
-    date: string,
-    startTime: string,
-    durationHours: number,
-    currentBookings: Booking[],
-  ) => {
-    const reqStartMin = timeToMinutes(startTime);
-    const reqEndMin = reqStartMin + durationHours * 60;
-    return currentBookings.some((b) => {
-      if (
-        b.status !== "active" ||
-        b.booking_date !== date ||
-        !roomIds.includes(b.room_id)
+    const dayBookings = bookings
+      .filter(
+        (b) =>
+          b.room_id === roomId &&
+          b.booking_date === selectedDate &&
+          b.status === "active",
       )
-        return false;
-      const bStartMin = timeToMinutes(b.start_time);
-      return (
-        reqStartMin < bStartMin + (b.duration || 1) * 60 &&
-        bStartMin < reqEndMin
+      .sort(
+        (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time),
       );
+
+    // 1. Ist der Raum zum Referenzzeitpunkt belegt?
+    const currentBooking = dayBookings.find((b) => {
+      const start = timeToMinutes(b.start_time);
+      const end = start + (b.duration || 1) * 60;
+      return referenceTimeMin >= start && referenceTimeMin < end;
     });
-  };
 
-  const getSeriesPlan = (
-    room: Room,
-    startDate: string,
-    startTime: string,
-    durationHours: number,
-    weeks: number,
-    currentBookings: Booking[],
-  ) => {
-    const plan = [];
-    const minCapNum = parseInt(minCapacity) || 0;
-
-    for (let i = 0; i < weeks; i++) {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + i * 7);
-      const curDate = d.toISOString().split("T")[0];
-
-      const conflictIds = getConflictRoomIds(room);
-      const isOriginalOccupied = isAnyRoomOccupied(
-        conflictIds,
-        curDate,
-        startTime,
-        durationHours,
-        currentBookings,
+    if (currentBooking) {
+      const endT = minutesToTime(
+        timeToMinutes(currentBooking.start_time) + currentBooking.duration * 60,
       );
-
-      if (!isOriginalOccupied) {
-        plan.push({ date: curDate, room: room, status: "ok" });
-      } else {
-        // BEST MATCH SUCHE
-        const alternatives = rooms
-          .filter(
-            (r) =>
-              r.building_id === room.building_id &&
-              r.id !== room.id &&
-              r.is_active &&
-              r.capacity >= minCapNum &&
-              !isAnyRoomOccupied(
-                getConflictRoomIds(r),
-                curDate,
-                startTime,
-                durationHours,
-                currentBookings,
-              ),
-          )
-          .sort((a, b) => a.capacity - b.capacity); // Nimm den kleinstmöglichen passenden Raum
-
-        const bestAlt = alternatives[0] || null;
-        plan.push({
-          date: curDate,
-          room: bestAlt,
-          status: bestAlt ? "alternative" : "conflict",
-        });
-      }
+      return {
+        type: "occupied",
+        isOccupiedNow: true,
+        label: `${t("label_occupied_until")} ${endT}`,
+        className: "room-occupied-until",
+      };
     }
-    return plan;
+
+    // 2. Ist der Raum frei, hat aber heute/am Zieltag noch spätere Buchungen?
+    const nextBooking = dayBookings.find(
+      (b) => timeToMinutes(b.start_time) > referenceTimeMin,
+    );
+    if (nextBooking) {
+      return {
+        type: "available",
+        isOccupiedNow: false,
+        label: `${t("label_available_until")} ${nextBooking.start_time}`,
+        className: "room-available-until",
+      };
+    }
+
+    return {
+      type: "free",
+      isOccupiedNow: false,
+      label: t("label_available_all_day"),
+      className: "room-available-until",
+    };
   };
 
   // --- INITIAL LOAD ---
@@ -311,6 +221,7 @@ export default function RoomBookingPage() {
       return;
     }
     setUser(session.user);
+
     const [transRes, equipRes, roomsRes, bookingsRes, profileRes] =
       await Promise.all([
         supabase.from("translations").select("*"),
@@ -327,32 +238,6 @@ export default function RoomBookingPage() {
           .eq("id", session.user.id)
           .single(),
       ]);
-    // --- Overdue Check (Räume freigeben) ---
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const currentTimeMin = now.getHours() * 60 + now.getMinutes();
-
-    // Hole alle aktiven Buchungen von heute, die NICHT eingecheckt sind
-    const { data: todayBookings } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("booking_date", todayStr)
-      .eq("status", "active")
-      .eq("is_checked_in", false);
-
-    if (todayBookings) {
-      for (const b of todayBookings) {
-        const startMin = timeToMinutes(b.start_time);
-        // Wenn 15 Minuten vergangen sind -> Stornieren (Freigeben)
-        if (currentTimeMin > startMin + 15) {
-          await supabase
-            .from("bookings")
-            .update({ status: "released" }) // oder 'released', je nach DB-Logik
-            .eq("id", b.id);
-        }
-      }
-    }
-    // --- Ende Overdue Check ---
 
     if (transRes.data) {
       const tMap: any = {};
@@ -383,7 +268,7 @@ export default function RoomBookingPage() {
     setLoading(false);
   }
 
-  // --- FILTER & SORT LOGIK ---
+  // --- FILTER & SORTIERUNG ---
   const maxRoomCapacity = useMemo(
     () =>
       rooms.length === 0 ? 100 : Math.max(...rooms.map((r) => r.capacity)),
@@ -393,17 +278,16 @@ export default function RoomBookingPage() {
   const filteredRooms = useMemo(() => {
     return rooms
       .filter((r) => {
-        const occInfo = getOccupancyInfo(
-          r.id,
-          selectedDate,
-          selectedTime,
-          bookings,
-        );
+        const status = getRoomContextStatus(r.id);
         const matchesSearch =
           searchQuery &&
           r.name.toLowerCase().includes(searchQuery.toLowerCase());
-        if (!searchQuery && (!r.is_active || occInfo.isOccupied)) return false;
+
+        // Filter-Logik: Belegte Räume nur bei aktiver Suche anzeigen
+        if (!searchQuery && (!r.is_active || status.isOccupiedNow))
+          return false;
         if (searchQuery && !matchesSearch) return false;
+
         if (onlyAccessible && !r.accessible) return false;
         if (minCapacity && r.capacity < parseInt(minCapacity)) return false;
         if (
@@ -424,33 +308,18 @@ export default function RoomBookingPage() {
         return true;
       })
       .sort((a, b) => {
+        // 1. Inaktive nach hinten
         if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
-        const occA = getOccupancyInfo(
-          a.id,
-          selectedDate,
-          selectedTime,
-          bookings,
-        ).isOccupied;
-        const occB = getOccupancyInfo(
-          b.id,
-          selectedDate,
-          selectedTime,
-          bookings,
-        ).isOccupied;
-        if (occA !== occB) return occA ? 1 : -1;
+
+        // 2. Belegte (zum Zielzeitpunkt) nach hinten
+        const statusA = getRoomContextStatus(a.id);
+        const statusB = getRoomContextStatus(b.id);
+        if (statusA.isOccupiedNow !== statusB.isOccupiedNow)
+          return statusA.isOccupiedNow ? 1 : -1;
+
+        // 3. Nach Kapazität (Best Match Logik)
         const req = parseInt(minCapacity) || 0;
-        const deltaA = a.capacity - req;
-        const deltaB = b.capacity - req;
-        const inA = deltaA >= 0 && deltaA <= 2;
-        const inB = deltaB >= 0 && deltaB <= 2;
-        if (inA && !inB) return -1;
-        if (!inA && inB) return 1;
-        if (inA && inB) {
-          const eqCountA = a.equipment?.length || 0;
-          const eqCountB = b.equipment?.length || 0;
-          if (eqCountA !== eqCountB) return eqCountA - eqCountB;
-        }
-        return deltaA - deltaB;
+        return a.capacity - req - (b.capacity - req);
       });
   }, [
     rooms,
@@ -465,55 +334,13 @@ export default function RoomBookingPage() {
     bookings,
   ]);
 
-  // Zählt nur AKTIVE UND FREIE Räume
   const activeCount = useMemo(
     () =>
       filteredRooms.filter(
-        (r) =>
-          r.is_active &&
-          !getOccupancyInfo(r.id, selectedDate, selectedTime, bookings)
-            .isOccupied,
+        (r) => r.is_active && !getRoomContextStatus(r.id).isOccupiedNow,
       ).length,
     [filteredRooms, selectedDate, selectedTime, bookings],
   );
-
-  // --- UI ACTIONS ---
-  const handleDatePagination = (days: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + days);
-    const newDateStr = d.toISOString().split("T")[0];
-    if (newDateStr < new Date().toISOString().split("T")[0]) return;
-    setSelectedDate(newDateStr);
-  };
-
-  const handleCancel = async (id: string) => {
-    if (!confirm(t("confirm_cancel"))) return;
-    await supabase
-      .from("bookings")
-      .update({ status: "cancelled" })
-      .eq("id", id);
-    initApp();
-  };
-
-  const handleCheckIn = async (booking: Booking) => {
-    const input = prompt(t("checkin_prompt"));
-    if (input?.toUpperCase() === booking.booking_code) {
-      await supabase
-        .from("bookings")
-        .update({ is_checked_in: true, checked_in_at: new Date() })
-        .eq("id", booking.id);
-      initApp();
-      alert(t("checkin_ok"));
-    }
-  };
-
-  if (loading)
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-[#004a87] font-black uppercase italic animate-pulse">
-        <ShieldCheck size={80} className="mb-6 text-[#549BB7]" />
-        <span className="text-2xl tracking-tighter">MCI System Check...</span>
-      </div>
-    );
 
   return (
     <div className="room-page-wrapper">
@@ -589,14 +416,13 @@ export default function RoomBookingPage() {
 
       <main className="room-main-layout">
         <aside className="room-sidebar">
-          {/* MOBILE FILTER TOGGLE (Nur sichtbar auf kleinen Screens) */}
+          {/* MOBILE FILTER TOGGLE */}
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
             className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm"
           >
             <div className="flex items-center gap-3">
               <Filter size={20} className="text-[#f7941d]" />
-              {/* Styling identisch zu Desktop-Header: normal, nicht fett, mci-blue */}
               <span className="text-[#004a87] italic uppercase text-sm tracking-widest">
                 {t("filter_title")}
               </span>
@@ -606,16 +432,13 @@ export default function RoomBookingPage() {
             />
           </button>
 
-          {/* FILTER CARD */}
           <div
             className={`filter-card hide-scrollbar ${showMobileFilters ? "block" : "hidden lg:block"} max-h-[85vh] overflow-y-auto`}
           >
-            {/* Desktop Title: Auf Mobile jetzt ausgeblendet */}
             <div className="hidden lg:flex items-center gap-2 mb-8 text-[#004a87] italic uppercase text-sm tracking-widest">
               <Filter size={20} className="text-[#f7941d]" />{" "}
               {t("filter_title")}
             </div>
-
             <div className="mci-field-group">
               <label className="mci-label">{t("filter_search_label")}</label>
               <input
@@ -626,38 +449,42 @@ export default function RoomBookingPage() {
                 className="mci-input"
               />
             </div>
-
             <div className="mci-field-group">
               <label className="mci-label">{t("filter_time_label")}</label>
               <div className="flex flex-row items-center gap-2 mb-2">
-                {/* LINKS PFEIL */}
                 <button
-                  onClick={() => handleDatePagination(-1)}
-                  className="p-3 shrink-0 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition flex items-center justify-center"
+                  onClick={() => {
+                    const d = new Date(selectedDate);
+                    d.setDate(d.getDate() - 1);
+                    if (
+                      d.toISOString().split("T")[0] >=
+                      new Date().toISOString().split("T")[0]
+                    )
+                      setSelectedDate(d.toISOString().split("T")[0]);
+                  }}
+                  className="p-3 bg-gray-50 rounded-xl border border-gray-100"
                 >
                   <ChevronLeft size={20} />
                 </button>
-
-                {/* DATUMS INPUT - Wichtig: flex-1 und min-w-0 */}
                 <input
                   type="date"
                   value={selectedDate}
                   min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="mci-input !text-center flex-1 min-w-0 !px-2"
+                  className="mci-input !text-center flex-1 !px-2"
                 />
-
-                {/* RECHTS PFEIL */}
                 <button
-                  onClick={() => handleDatePagination(1)}
-                  className="p-3 shrink-0 bg-gray-50 rounded-xl hover:bg-white border border-gray-100 shadow-sm transition flex items-center justify-center"
+                  onClick={() => {
+                    const d = new Date(selectedDate);
+                    d.setDate(d.getDate() + 1);
+                    setSelectedDate(d.toISOString().split("T")[0]);
+                  }}
+                  className="p-3 bg-gray-50 rounded-xl border border-gray-100"
                 >
                   <ChevronRight size={20} />
                 </button>
               </div>
-
               <div className="flex flex-row items-center gap-2 mt-2">
-                {/* HH SELECT MIT VALIDIERUNG */}
                 <select
                   value={selectedTime.split(":")[0]}
                   onChange={(e) =>
@@ -669,23 +496,13 @@ export default function RoomBookingPage() {
                 >
                   {Array.from({ length: 17 }, (_, i) =>
                     (i + 7).toString().padStart(2, "0"),
-                  ).map((h) => {
-                    const hNum = parseInt(h);
-                    const selectedMin = parseInt(selectedTime.split(":")[1]);
-                    // Sperren wenn Stunde vorbei ODER (Stunde ist jetzt UND gewählte Minute ist schon vorbei)
-                    const isDisabled =
-                      isToday &&
-                      (hNum < currentHH ||
-                        (hNum === currentHH && selectedMin <= currentMM));
-                    return (
-                      <option key={h} value={h} disabled={isDisabled}>
-                        {h}
-                      </option>
-                    );
-                  })}
+                  ).map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
                 </select>
                 <span className="font-bold">:</span>
-                {/* MM SELECT MIT VALIDIERUNG */}
                 <select
                   value={selectedTime.split(":")[1]}
                   onChange={(e) =>
@@ -695,24 +512,14 @@ export default function RoomBookingPage() {
                   }
                   className="mci-select text-center flex-1"
                 >
-                  {["00", "15", "30", "45"].map((m) => {
-                    const mNum = parseInt(m);
-                    const selectedHour = parseInt(selectedTime.split(":")[0]);
-                    // Sperren wenn heute UND gewählte Stunde ist die aktuelle Stunde UND Minute ist vorbei
-                    const isDisabled =
-                      isToday &&
-                      selectedHour === currentHH &&
-                      mNum <= currentMM;
-                    return (
-                      <option key={m} value={m} disabled={isDisabled}>
-                        {m}
-                      </option>
-                    );
-                  })}
+                  {["00", "15", "30", "45"].map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
-
             <div className="mci-field-group">
               <label className="mci-label">{t("filter_cap")}</label>
               <div className="flex flex-row items-center gap-4">
@@ -724,7 +531,6 @@ export default function RoomBookingPage() {
                   onChange={(e) => setMinCapacity(e.target.value)}
                   className="filter-capacity-bar"
                 />
-                {/* Schmale Input Box */}
                 <input
                   type="number"
                   min="0"
@@ -734,7 +540,6 @@ export default function RoomBookingPage() {
                 />
               </div>
             </div>
-
             <div className="mci-field-group">
               <label className="mci-label">{t("filter_location")}</label>
               <select
@@ -769,7 +574,6 @@ export default function RoomBookingPage() {
                 ))}
               </select>
             </div>
-
             <div className="mci-field-group">
               <label className="mci-label">{t("filter_equip")}</label>
               <div className="flex flex-col gap-1 mt-2">
@@ -807,7 +611,6 @@ export default function RoomBookingPage() {
                 ))}
               </div>
             </div>
-
             <button
               onClick={() => {
                 setSearchQuery("");
@@ -826,32 +629,38 @@ export default function RoomBookingPage() {
         </aside>
 
         <div className="flex-1 space-y-16">
-          <section className="text-left mci-animate-fade">
-            <h1 className="room-page-title">{t("title")}</h1>
-            <p className="text-gray-600 font-bold text-lg md:text-2xl italic">
-              {activeCount} {t("label_active_rooms")}
-            </p>
+          <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mci-animate-fade">
+            <div className="text-left">
+              <h1 className="room-page-title">{t("title")}</h1>
+              {/* MOBIL Badge unter dem Titel */}
+              <div className="md:hidden mt-2">
+                <div className="bg-[#004a87] text-white px-4 py-2 rounded-xl font-bold text-xs inline-flex items-center gap-2 shadow-md">
+                  <History size={16} className="text-[#f7941d]" /> {activeCount}{" "}
+                  {t("label_active_rooms")}
+                </div>
+              </div>
+              <p className="hidden md:block text-gray-600 font-bold text-lg md:text-2xl italic">
+                {activeCount} {t("label_active_rooms")}
+              </p>
+            </div>
           </section>
 
           <div className="room-grid">
             {filteredRooms.map((room, idx) => {
-              const occ = getOccupancyInfo(
-                room.id,
-                selectedDate,
-                selectedTime,
-                bookings,
-              );
+              const status = getRoomContextStatus(room.id);
+
               return (
                 <div
                   key={room.id}
-                  className={`room-card group ${!room.is_active || occ.isOccupied ? "opacity-70" : ""}`}
+                  className={`room-card group ${!room.is_active || status.isOccupiedNow ? "opacity-70" : ""}`}
                 >
                   <div className="room-card-image-wrapper">
                     <img
                       src={room.image_url}
-                      className={`room-card-image group-hover:scale-105 transition-all duration-1000 ${occ.isOccupied ? "grayscale shadow-inner" : ""}`}
+                      className={`room-card-image group-hover:scale-105 transition-all duration-1000 ${status.isOccupiedNow ? "grayscale" : ""}`}
                       alt={room.name}
                     />
+
                     <div className="room-badge-container">
                       {room.accessible && (
                         <div className="accessible-badge">
@@ -871,44 +680,54 @@ export default function RoomBookingPage() {
                         );
                       })}
                     </div>
-                    {occ.isOccupied && room.is_active && (
-                      <div className="room-occupied-until">
-                        <XCircle size={18} /> {t("label_occupied_until")}{" "}
-                        {occ.until}
+
+                    {/* DYNAMISCHES LIVE STATUS BADGE (Echtzeit Berechnung) */}
+                    {room.is_active && (
+                      <div
+                        className={`${status.className} flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-500`}
+                      >
+                        {status.type === "occupied" ? (
+                          <XCircle size={18} />
+                        ) : (
+                          <CheckCircle2 size={18} />
+                        )}
+                        {status.label}
                       </div>
                     )}
+
                     {!room.is_active && (
                       <div className="room-inactive">
                         <Ban size={18} /> {t("label_inactive")}
                       </div>
                     )}
                   </div>
+
                   <div className="room-card-content">
-                    <div className="flex flex-row justify-between items-start mb-4 md:mb-6">
-                      <h3 className="font-bold text-3xl md:text-4xl tracking-tighter leading-none">
+                    <div className="flex flex-row justify-between items-start mb-6">
+                      <h3 className="font-bold text-3xl md:text-4xl tracking-tighter leading-none text-left">
                         {room.name}
                       </h3>
-                      {idx === 0 && room.is_active && !occ.isOccupied && (
+                      {idx === 0 && room.is_active && !status.isOccupiedNow && (
                         <div className="best-match">
                           <Info size={18} /> {t("label_best_match")}
                         </div>
                       )}
                     </div>
-                    <div className="room-info-container">
+                    <div className="room-info-container text-left">
                       <span className="mci-info-tag">
-                        <Users size={20} />{" "}
+                        <Users size={20} />
                         <span className="mci-info-tag-text">
                           {room.capacity} {t("admin_label_capacity")}
                         </span>
                       </span>
                       <span className="mci-info-tag">
-                        <MapPin size={20} />{" "}
+                        <MapPin size={20} />
                         <span className="mci-info-tag-text">
                           {room.building?.name}
                         </span>
                       </span>
                       <span className="mci-info-tag">
-                        <Layers size={20} />{" "}
+                        <Layers size={20} />
                         <span className="mci-info-tag-text">
                           {room.floor}. OG
                         </span>
@@ -916,9 +735,7 @@ export default function RoomBookingPage() {
                       {room.seating_arrangement && (
                         <span
                           className="mci-info-tag"
-                          title={t(
-                            room.seating_arrangement,
-                          )} /* <--- Erzeugt den Hover-Effekt */
+                          title={t(room.seating_arrangement)}
                         >
                           <List size={20} />
                           <span className="mci-info-tag-text">
@@ -927,20 +744,17 @@ export default function RoomBookingPage() {
                         </span>
                       )}
                     </div>
-
                     <button
-                      disabled={occ.isOccupied || !room.is_active}
+                      disabled={status.isOccupiedNow || !room.is_active}
                       onClick={() => {
                         setSelectedRoom(room);
-                        setDuration(1);
-                        setIsRecurring(false);
                         setShowBookingModal(true);
                       }}
-                      className={`btn-mci-main ${occ.isOccupied || !room.is_active ? "bg-gray-300 shadow-none" : ""}`}
+                      className={`btn-mci-main ${status.isOccupiedNow || !room.is_active ? "bg-gray-300 shadow-none" : ""}`}
                     >
                       {!room.is_active
                         ? t("label_inactive")
-                        : occ.isOccupied
+                        : status.isOccupiedNow
                           ? t("btn_occupied")
                           : t("btn_reserve")}
                     </button>
@@ -951,8 +765,6 @@ export default function RoomBookingPage() {
           </div>
         </div>
       </main>
-
-      {/* --- ELEGANTES BUCHUNGS-MODAL (VERTIKAL GESTAPELT) --- */}
 
       <BookingModal
         isOpen={showBookingModal}
@@ -965,16 +777,15 @@ export default function RoomBookingPage() {
         lang={lang}
         t={t}
         onSuccess={initApp}
-        userId={user.id}
-        userEmail={user.email}
+        userId={user?.id}
+        userEmail={user?.email}
         initialDate={selectedDate}
         initialTime={selectedTime}
         minCapacity={minCapacity}
         selectedEquipment={selectedEquipment}
-        buildings={buildings} // <--- DAS STEUERT DIE DATEN INS MODAL
+        buildings={buildings}
       />
 
-      {/* --- PROFIL SETTINGS MODAL --- */}
       {showSettingsModal && (
         <div className="mci-modal-overlay animate-in fade-in">
           <div className="mci-modal-card max-w-lg animate-in zoom-in-95">
@@ -987,9 +798,7 @@ export default function RoomBookingPage() {
                 <X size={28} />
               </button>
             </div>
-
-            <div className="p-14 space-y-10">
-              {/* E-MAIL (Nur Anzeige) */}
+            <div className="p-14 space-y-10 text-left">
               <div className="mci-field-group">
                 <label className="mci-label">Email (MCI ID)</label>
                 <div className="mci-input opacity-50 bg-gray-100 flex items-center gap-3 cursor-not-allowed">
@@ -997,8 +806,6 @@ export default function RoomBookingPage() {
                   {user?.email}
                 </div>
               </div>
-
-              {/* NAMEN */}
               <div className="flex flex-row gap-6">
                 <div className="mci-field-group flex-1">
                   <label className="mci-label">{t("admin_label_fname")}</label>
@@ -1019,8 +826,6 @@ export default function RoomBookingPage() {
                   />
                 </div>
               </div>
-
-              {/* PASSWORT ÄNDERN */}
               <div className="mci-field-group">
                 <label className="mci-label">{t("label_new_password")}</label>
                 <input
@@ -1031,32 +836,18 @@ export default function RoomBookingPage() {
                   className="mci-input"
                 />
               </div>
-
               <button
                 onClick={async () => {
                   setLoading(true);
-                  // 1. Profil-Daten (Name) updaten
                   await supabase
                     .from("profiles")
                     .update({ first_name: firstName, last_name: lastName })
                     .eq("id", user.id);
-
-                  // 2. Passwort updaten, falls etwas eingegeben wurde
                   if (newPassword) {
-                    const { error } = await supabase.auth.updateUser({
-                      password: newPassword,
-                    });
-                    if (!error) {
-                      alert(
-                        t("password_updated_success") ||
-                          "Passwort erfolgreich aktualisiert!",
-                      );
-                      setNewPassword("");
-                    } else {
-                      alert("Fehler beim Passwort-Update: " + error.message);
-                    }
+                    await supabase.auth.updateUser({ password: newPassword });
+                    alert(t("password_updated_success"));
+                    setNewPassword("");
                   }
-
                   setShowSettingsModal(false);
                   initApp();
                   setLoading(false);
