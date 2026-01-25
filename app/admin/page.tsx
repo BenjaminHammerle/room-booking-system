@@ -3,38 +3,34 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-// Server Actions für Mitarbeiter-Verwaltung
 import { updateUserAdmin, createNewUserAdmin } from "./actions";
+import "./admin.css";
 import {
   Users,
   Calendar,
   BarChart3,
-  Settings,
   X,
   ArrowLeft,
   Power,
   Plus,
-  AlertTriangle,
-  Save,
   Edit3,
-  Monitor,
   UserPlus,
   Home,
   Layers,
-  Trash2,
   PlusCircle,
   Globe,
-  CheckCircle2,
-  Link as LinkIcon,
-  Info,
-  Printer,
-  ShieldCheck,
+  Search,
+  Monitor,
   ChevronLeft,
   ChevronRight,
-  Search
+  ChevronDown,
+  Menu,
+  Printer,
+  Accessibility,
+  Repeat,
+  Info,
 } from "lucide-react";
 
-// Exakte Werte laut DB-Schema
 const SEATING_OPTIONS = [
   "school with a central corridor",
   "edv room",
@@ -50,32 +46,22 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("planning");
   const [lang, setLang] = useState<"de" | "en">("de");
   const [dbTrans, setDbTrans] = useState<any>({});
+  const [loading, setLoading] = useState(true);
 
-  // Daten-States laut Schema
+  // --- DATA STATES ---
   const [profiles, setProfiles] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
-  const [timeSlots, setTimeSlots] = useState<string[]>([]);
 
-  // Status-States
-  const [loading, setLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-
-  // --- NEU: STATE FÜR RAUM-FILTER IM PLANNING ---
-  const [planningSearch, setPlanningSearch] = useState("");
-
-  // Modal-Zustände
+  // --- MODAL STATES ---
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showBuildingModal, setShowBuildingModal] = useState(false);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
 
-  // Edit-Objekte
+  // --- OBJECT STATES ---
   const [currentRoom, setCurrentRoom] = useState<any>(null);
   const [currentBuilding, setCurrentBuilding] = useState<any>(null);
   const [editUser, setEditUser] = useState<any>(null);
@@ -86,558 +72,1304 @@ export default function AdminPage() {
     last_name: "",
     is_admin: false,
   });
-
-  // Kombinationsraum-Logik
   const [isCombi, setIsCombi] = useState(false);
   const [combiParts, setCombiParts] = useState<string[]>([]);
 
-  const t = (key: string) => dbTrans[key]?.[lang] || key;
+  // --- UI STATES ---
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [planningSearch, setPlanningSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"day" | "14days">("day");
+  const [selectedRoomForCalendar, setSelectedRoomForCalendar] =
+    useState<string>("");
 
-  // --- HILFSFUNKTIONEN FÜR DEN ZEITSTRAHL ---
-  const START_HOUR = 7;
-  const END_HOUR = 23.5; // 23:30
-  const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
+  const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
-  const timeToMinutes = (timeStr: string) => {
-    if (!timeStr) return 0;
-    const [h, m] = timeStr.split(":").map(Number);
-    return h * 60 + m;
-  };
-
-  const getPositionX = (timeStr: string) => {
-    const startMin = timeToMinutes(timeStr);
-    const timelineStartMin = START_HOUR * 60;
-    const diff = startMin - timelineStartMin;
-    return Math.max(0, (diff / TOTAL_MINUTES) * 100);
-  };
-
-  const getWidthX = (duration: number) => {
-    return ((duration * 60) / TOTAL_MINUTES) * 100;
-  };
-
-  // hourLabels mit fixem Typ
-  const hourLabels: string[] = useMemo(() => {
-    const labels: string[] = [];
-    for (let h = START_HOUR; h <= 23; h++) {
-      labels.push(`${h.toString().padStart(2, "0")}:00`);
-    }
-    return labels;
-  }, []);
-
-  // --- NEU: DATUM BLÄTTERN LOGIK ---
-  const handleDatePagination = (days: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + days);
-    setSelectedDate(d.toISOString().split('T')[0]);
-  };
-
-  // --- NEU: GEFILTERTE RÄUME FÜR PLANNING ---
-  const filteredPlanningRooms = useMemo(() => {
-    return rooms.filter(r => 
-      r.name.toLowerCase().includes(planningSearch.toLowerCase())
-    );
-  }, [rooms, planningSearch]);
-
+  // --- INITIAL LOAD ---
   useEffect(() => {
-    checkAdminAccess();
+    const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
+    if (savedLang) setLang(savedLang);
+    loadAdminData();
   }, []);
 
-  // 1. Sicherheit: Berechtigung beim Laden prüfen
-  async function checkAdminAccess() {
+  const handleLangToggle = () => {
+    const newLang = lang === "de" ? "en" : "de";
+    setLang(newLang);
+    localStorage.setItem("mci_lang", newLang);
+  };
+
+  async function loadAdminData() {
     setLoading(true);
     const {
       data: { session },
     } = await supabase.auth.getSession();
-
     if (!session) {
       router.push("/login");
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", session.user.id)
-      .single();
-
-    if (!profile?.is_admin) {
-      setIsAuthorized(false);
-      router.push("/rooms");
-      return;
-    }
-
-    setIsAuthorized(true);
-    await loadAdminData();
-  }
-
-  // 2. Daten laden (Data-Driven)
-  async function loadAdminData() {
-    const [transRes, profRes, roomRes, buildRes, bookRes, timeRes, equipRes] =
+    const [transRes, profRes, roomRes, buildRes, bookRes, equipRes] =
       await Promise.all([
         supabase.from("translations").select("*"),
         supabase.from("profiles").select("*").order("last_name"),
         supabase.from("rooms").select("*").order("name"),
         supabase.from("buildings").select("*").order("name"),
         supabase.from("bookings").select("*"),
-        supabase.from("timeslots").select("*").order("id"),
         supabase.from("equipment").select("*"),
       ]);
 
     if (transRes.data) {
       const tMap: any = {};
-      transRes.data.forEach((i) => (tMap[i.key.toLowerCase()] = { de: i.de, en: i.en }));
+      transRes.data.forEach(
+        (i) => (tMap[i.key.toLowerCase()] = { de: i.de, en: i.en }),
+      );
       setDbTrans(tMap);
     }
     setProfiles(profRes.data || []);
     setRooms(roomRes.data || []);
     setBuildings(buildRes.data || []);
     setBookings(bookRes.data || []);
-    setTimeSlots(timeRes.data?.map((ts) => ts.time_string) || []);
     setEquipmentList(equipRes.data || []);
     setLoading(false);
   }
 
-  // --- HANDLER: SPEICHERN & DEAKTIVIEREN ---
+  // --- LOGIC HELPER ---
+  const stats = useMemo(() => {
+    const activeB = bookings.filter((b) => b.status === "active");
+    const now = new Date();
+    const oneWeekAgoStr = new Date(now.setDate(now.getDate() - 7))
+      .toISOString()
+      .split("T")[0];
 
+    const topLifetime = rooms
+      .map((r) => ({
+        name: r.name,
+        count: bookings.filter(
+          (b) => b.room_id === r.id && b.status !== "cancelled",
+        ).length,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const topLastWeek = rooms
+      .map((r) => ({
+        name: r.name,
+        count: bookings.filter(
+          (b) =>
+            b.room_id === r.id &&
+            b.status !== "cancelled" &&
+            b.booking_date >= oneWeekAgoStr,
+        ).length,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const totalDur = activeB.reduce((sum, b) => sum + (b.duration || 0), 0);
+    return {
+      topLifetime,
+      topLastWeek,
+      checkInRate:
+        bookings.length > 0
+          ? Math.round(
+              (bookings.filter((b) => b.is_checked_in).length /
+                bookings.length) *
+                100,
+            )
+          : 0,
+      avgDuration:
+        activeB.length > 0 ? (totalDur / activeB.length).toFixed(1) : "0",
+      totalBookings: activeB.length,
+    };
+  }, [bookings, rooms]);
+
+  const calendarDays = useMemo(() => {
+    const days = [];
+    const base = new Date(selectedDate);
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      days.push(d.toISOString().split("T")[0]);
+    }
+    return days;
+  }, [selectedDate]);
+
+  const getPositionX = (time: string) => {
+    const [h, m] = (time || "07:00").split(":").map(Number);
+    return Math.max(0, ((h * 60 + m - 7 * 60) / ((23.5 - 7) * 60)) * 100);
+  };
+
+  // --- ACTIONS ---
   const handleSaveBuilding = async () => {
-    const payload = { ...currentBuilding };
-    const { error } = payload.id
-      ? await supabase.from("buildings").update(payload).eq("id", payload.id)
-      : await supabase.from("buildings").insert([payload]);
-
-    if (error) alert("Fehler: " + error.message);
-    else {
+    setLoading(true);
+    const { error } = currentBuilding.id
+      ? await supabase
+          .from("buildings")
+          .update(currentBuilding)
+          .eq("id", currentBuilding.id)
+      : await supabase.from("buildings").insert([currentBuilding]);
+    if (!error) {
       setShowBuildingModal(false);
       loadAdminData();
-    }
-  };
-
-  const handleSaveRoom = async () => {
-    const payload = { ...currentRoom };
-    // Technische Spalten entfernen
-    delete payload.latitude_delete;
-    delete payload.longitude_delete;
-
-    const { data: savedRoom, error: roomError } = payload.id
-      ? await supabase
-          .from("rooms")
-          .update(payload)
-          .eq("id", payload.id)
-          .select()
-          .single()
-      : await supabase.from("rooms").insert([payload]).select().single();
-
-    if (roomError) {
-      alert("Raum-Fehler: " + roomError.message);
-      return;
-    }
-
-    // Kombinationsraum-Relation pflegen
-    if (isCombi && savedRoom) {
-      await supabase.from("rooms_combi").upsert(
-        {
-          room_id_0: savedRoom.id,
-          name: savedRoom.name,
-          room_id_1: combiParts[0] || null,
-          room_id_2: combiParts[1] || null,
-          room_id_3: combiParts[2] || null,
-        },
-        { onConflict: "room_id_0" }
-      );
-    } else if (!isCombi && savedRoom.id) {
-      await supabase.from("rooms_combi").delete().eq("room_id_0", savedRoom.id);
-    }
-
-    setShowRoomModal(false);
-    loadAdminData();
-  };
-
-  const toggleStatus = async (type: "rooms" | "buildings", item: any) => {
-    const nextStatus = !item.is_active;
-    const { error } = await supabase
-      .from(type)
-      .update({ is_active: nextStatus })
-      .eq("id", item.id);
-
-    // Kaskadierung: Wenn Gebäude deaktiviert wird, auch alle Räume deaktivieren
-    if (type === "buildings" && !nextStatus) {
-      await supabase
-        .from("rooms")
-        .update({ is_active: false })
-        .eq("building_id", item.id);
-    }
-
-    if (!error) loadAdminData();
-  };
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await createNewUserAdmin(newUser);
-      setShowAddUserModal(false);
-      await loadAdminData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
+    } else {
+      alert("Error: " + error.message);
       setLoading(false);
     }
   };
 
-  // --- RENDER-LOGIK ---
+  const handleSaveRoom = async () => {
+    setLoading(true);
+    const { data: savedRoom, error } = currentRoom.id
+      ? await supabase
+          .from("rooms")
+          .update(currentRoom)
+          .eq("id", currentRoom.id)
+          .select()
+          .single()
+      : await supabase.from("rooms").insert([currentRoom]).select().single();
 
-  if (loading || isAuthorized === null)
+    if (!error && savedRoom) {
+      if (isCombi) {
+        await supabase.from("rooms_combi").upsert(
+          {
+            room_id_0: savedRoom.id,
+            name: savedRoom.name,
+            room_id_1: combiParts[0] || null,
+            room_id_2: combiParts[1] || null,
+            room_id_3: combiParts[2] || null,
+          },
+          { onConflict: "room_id_0" },
+        );
+      } else {
+        await supabase
+          .from("rooms_combi")
+          .delete()
+          .eq("room_id_0", savedRoom.id);
+      }
+      setShowRoomModal(false);
+      loadAdminData();
+    } else {
+      alert("Error: " + error?.message);
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    setLoading(true);
+    const res: any = await updateUserAdmin(editUser.id, editUser);
+    if (!res?.error) {
+      setShowUserEditModal(false);
+      loadAdminData();
+    } else {
+      alert(res.error);
+      setLoading(false);
+    }
+  };
+
+  const handleCreateUser = async (e: any) => {
+    e.preventDefault();
+    setLoading(true);
+    const res: any = await createNewUserAdmin(newUser);
+    if (!res?.error) {
+      setShowAddUserModal(false);
+      setNewUser({
+        email: "",
+        password: "",
+        first_name: "",
+        last_name: "",
+        is_admin: false,
+      });
+      loadAdminData();
+    } else {
+      alert(res.error);
+      setLoading(false);
+    }
+  };
+
+  const toggleStatus = async (type: "rooms" | "buildings", item: any) => {
+    await supabase
+      .from(type)
+      .update({ is_active: !item.is_active })
+      .eq("id", item.id);
+    loadAdminData();
+  };
+
+  if (loading)
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#004a87] text-white">
-        <ShieldCheck size={48} className="animate-bounce mb-4 text-[#549BB7]" />
-        <p className="font-bold italic uppercase tracking-widest text-sm">
-          MCI System-Check...
-        </p>
+      <div className="h-screen flex items-center justify-center font-black italic text-[#004a87] uppercase animate-pulse">
+        Lade Konsole...
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB] flex text-left font-sans text-slate-900 overflow-hidden">
-      {/* SIDEBAR */}
-      <aside className="w-80 bg-[#004a87] text-white p-10 flex flex-col justify-between sticky top-0 h-screen shadow-2xl no-print">
-        <div>
-          <div className="mb-12">
-            <img src="/MCI.png" className="h-16 object-contain" alt="MCI" />
-          </div>
-          <nav className="space-y-4">
-            <button
-              onClick={() => setActiveTab("planning")}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition font-bold text-sm ${
-                activeTab === "planning"
-                  ? "bg-[#549BB7] shadow-lg"
-                  : "hover:bg-white/10 opacity-60"
-              }`}
-            >
-              <Calendar size={18} /> Belegungsplan
-            </button>
-            <button
-              onClick={() => setActiveTab("buildings")}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition font-bold text-sm ${
-                activeTab === "buildings"
-                  ? "bg-[#549BB7] shadow-lg"
-                  : "hover:bg-white/10 opacity-60"
-              }`}
-            >
-              <Home size={18} /> Gebäude
-            </button>
-            <button
-              onClick={() => setActiveTab("rooms")}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition font-bold text-sm ${
-                activeTab === "rooms"
-                  ? "bg-[#549BB7] shadow-lg"
-                  : "hover:bg-white/10 opacity-60"
-              }`}
-            >
-              <Layers size={18} /> Räume
-            </button>
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition font-bold text-sm ${
-                activeTab === "users"
-                  ? "bg-[#549BB7] shadow-lg"
-                  : "hover:bg-white/10 opacity-60"
-              }`}
-            >
-              <Users size={18} /> Mitarbeiter
-            </button>
-            <button
-              onClick={() => setActiveTab("stats")}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition font-bold text-sm ${
-                activeTab === "stats"
-                  ? "bg-[#549BB7] shadow-lg"
-                  : "hover:bg-white/10 opacity-60"
-              }`}
-            >
-              <BarChart3 size={18} /> Statistiken
-            </button>
-          </nav>
+    <div className="admin-page-wrapper">
+      <header className="admin-header-nav no-print">
+        <div className="flex flex-col items-start text-left">
+          <button
+            onClick={() => router.push("/rooms")}
+            className="nav-link group"
+          >
+            <ArrowLeft
+              size={16}
+              className="group-hover:-translate-x-1 transition-transform"
+            />{" "}
+            <span>{t("archiv_back")}</span>
+          </button>
+          <h1 className="res-page-title">{t("nav_admin")}</h1>
         </div>
-        <button
-          onClick={() => router.push("/rooms")}
-          className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl font-bold text-xs border border-white/10 hover:bg-white/10 transition"
-        >
-          <ArrowLeft size={16} /> Zurück
+        <button onClick={handleLangToggle} className="lang-toggle-btn">
+          <Globe size={16} /> {lang.toUpperCase()}
         </button>
-      </aside>
+      </header>
 
-      <main className="flex-1 p-16 overflow-y-auto">
-        {/* TAB 1: BELEGUNGSPLAN (MIT DATUM-PAGER & FILTER) */}
-        {activeTab === "planning" && (
-          <div className="space-y-10 animate-in fade-in">
-            {/* CSS FÜR DRUCK OPTIMIERUNG */}
-            <style>{`
-              @media print {
-                @page { size: A4 landscape; margin: 5mm; }
-                aside, button, input, .no-print { display: none !important; }
-                main { padding: 0 !important; margin: 0 !important; width: 100% !important; }
-                .print-container { width: 100% !important; border: 1px solid #eee !important; border-radius: 0 !important; padding: 0 !important; box-shadow: none !important; }
-                .timeline-wrapper { min-width: 100% !important; width: 100% !important; }
-                .room-emoji { display: none !important; }
-                .room-row { height: 35px !important; border-bottom: 1px solid #eee !important; }
-                div, span { border-radius: 0 !important; }
-                .room-label-column { width: 80px !important; font-size: 8px !important; }
-              }
-            `}</style>
+      <div className="admin-layout-grid">
+        <aside className="admin-sidebar-container no-print">
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <Menu size={20} className="text-[#f7941d]" />
+              <span className="text-[#004a87] italic uppercase text-sm tracking-widest">
+                {t("filter_title")}
+              </span>
+            </div>
+            <ChevronDown
+              className={`text-[#004a87] transition-transform ${showMobileMenu ? "rotate-180" : ""}`}
+            />
+          </button>
+          <div
+            className={`admin-menu-card hide-scrollbar ${showMobileMenu ? "block" : "hidden lg:block"}`}
+          >
+            <nav className="space-y-1">
+              <button
+                onClick={() => {
+                  setActiveTab("planning");
+                  setShowMobileMenu(false);
+                }}
+                className={`admin-tab-btn ${activeTab === "planning" ? "active" : ""}`}
+              >
+                <Calendar size={18} />{" "}
+                <span>{t("admin_sidebar_planning")}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("buildings");
+                  setShowMobileMenu(false);
+                }}
+                className={`admin-tab-btn ${activeTab === "buildings" ? "active" : ""}`}
+              >
+                <Home size={18} /> <span>{t("admin_tab_buildings")}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("rooms");
+                  setShowMobileMenu(false);
+                }}
+                className={`admin-tab-btn ${activeTab === "rooms" ? "active" : ""}`}
+              >
+                <Layers size={18} /> <span>{t("admin_sidebar_rooms")}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("users");
+                  setShowMobileMenu(false);
+                }}
+                className={`admin-tab-btn ${activeTab === "users" ? "active" : ""}`}
+              >
+                <Users size={18} /> <span>{t("admin_sidebar_users")}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("stats");
+                  setShowMobileMenu(false);
+                }}
+                className={`admin-tab-btn ${activeTab === "stats" ? "active" : ""}`}
+              >
+                <BarChart3 size={18} /> <span>{t("admin_sidebar_stats")}</span>
+              </button>
+            </nav>
+          </div>
+        </aside>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 no-print">
-              <div>
-                <h1 className="text-3xl font-bold text-[#004a87] tracking-tight uppercase italic mb-1"> Campus-Planung </h1>
-                <div className="flex items-center gap-4 mt-4">
-                  {/* Blättern Links */}
-                  <button onClick={() => handleDatePagination(-1)} className="p-2 bg-white border border-gray-100 rounded-lg hover:bg-gray-50 shadow-sm transition"><ChevronLeft size={20}/></button>
-                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="p-3 bg-white border border-gray-100 rounded-xl font-bold text-[#004a87] outline-none shadow-sm" />
-                  {/* Blättern Rechts */}
-                  <button onClick={() => handleDatePagination(1)} className="p-2 bg-white border border-gray-100 rounded-lg hover:bg-gray-50 shadow-sm transition"><ChevronRight size={20}/></button>
-                  
-                  {/* Raum Filter */}
-                  <div className="relative ml-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16}/>
-                    <input type="text" placeholder="Raum filtern..." value={planningSearch} onChange={(e) => setPlanningSearch(e.target.value)} className="pl-10 pr-4 py-3 bg-white border border-gray-100 rounded-xl font-bold text-sm outline-none shadow-sm focus:ring-2 focus:ring-[#549BB7]" />
+        <main className="flex-1 w-full min-w-0">
+          {/* TAB 1: PLANNING */}
+          {activeTab === "planning" && (
+            <div className="space-y-6 mci-animate-fade">
+              <div className="admin-header-row">
+                <div className="flex gap-2 bg-slate-100 p-1.5 rounded-xl">
+                  <button
+                    onClick={() => setViewMode("day")}
+                    className={`px-4 py-2 rounded-lg font-bold text-xs transition ${viewMode === "day" ? "bg-white text-[#004a87] shadow-sm" : "text-slate-400"}`}
+                  >
+                    {t("admin_planning_view_day")}
+                  </button>
+                  <button
+                    onClick={() => setViewMode("14days")}
+                    className={`px-4 py-2 rounded-lg font-bold text-xs transition ${viewMode === "14days" ? "bg-white text-[#004a87] shadow-sm" : "text-slate-400"}`}
+                  >
+                    {t("admin_planning_view_14days")}
+                  </button>
+                </div>
+                <button
+                  onClick={() => window.print()}
+                  className="admin-action-btn !bg-slate-800"
+                >
+                  <Printer size={16} /> {t("admin_btn_print")}
+                </button>
+              </div>
+
+              {viewMode === "day" ? (
+                <div className="space-y-6">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          setSelectedDate(
+                            (d) =>
+                              new Date(
+                                new Date(d).setDate(new Date(d).getDate() - 1),
+                              )
+                                .toISOString()
+                                .split("T")[0],
+                          )
+                        }
+                        className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="mci-input !w-auto !py-2"
+                      />
+                      <button
+                        onClick={() =>
+                          setSelectedDate(
+                            (d) =>
+                              new Date(
+                                new Date(d).setDate(new Date(d).getDate() + 1),
+                              )
+                                .toISOString()
+                                .split("T")[0],
+                          )
+                        }
+                        className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
+                        size={18}
+                      />
+                      <input
+                        type="text"
+                        placeholder={t("filter_search_placeholder")}
+                        value={planningSearch}
+                        onChange={(e) => setPlanningSearch(e.target.value)}
+                        className="mci-input !pl-10 !w-full !py-2"
+                      />
+                    </div>
                   </div>
+                  <div className="admin-menu-card overflow-x-auto">
+                    <div className="min-w-[900px]">
+                      <div className="flex border-b pb-3 mb-3">
+                        <div className="w-48 shrink-0 mci-sub-label text-left">
+                          {t("header_room")}
+                        </div>
+                        <div className="flex-1 relative h-5">
+                          {[7, 9, 11, 13, 15, 17, 19, 21, 23].map((h) => (
+                            <span
+                              key={h}
+                              className="absolute mci-sub-label border-l pl-2 h-full text-[10px]"
+                              style={{ left: `${getPositionX(h + ":00")}%` }}
+                            >
+                              {h}:00
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      {rooms
+                        .filter((r) =>
+                          r.name
+                            .toLowerCase()
+                            .includes(planningSearch.toLowerCase()),
+                        )
+                        .map((room) => (
+                          <div key={room.id} className="timeline-row">
+                            <div className="timeline-room-info text-left">
+                              <p className="mci-text-bold truncate">
+                                {room.name}
+                              </p>
+                              <p className="mci-sub-label">
+                                {
+                                  buildings.find(
+                                    (b) => b.id === room.building_id,
+                                  )?.name
+                                }
+                              </p>
+                            </div>
+                            <div className="timeline-bar-container">
+                              {bookings
+                                .filter(
+                                  (b) =>
+                                    b.room_id === room.id &&
+                                    b.booking_date === selectedDate &&
+                                    b.status === "active",
+                                )
+                                .map((b) => (
+                                  <div
+                                    key={b.id}
+                                    className={`absolute top-0 bottom-0 px-2 flex flex-col justify-center border-l-2 border-white/20 ${b.is_checked_in ? "bg-green-500" : "bg-[#004a87]"} text-white shadow-sm`}
+                                    style={{
+                                      left: `${getPositionX(b.start_time)}%`,
+                                      width: `${((b.duration * 60) / ((23.5 - 7) * 60)) * 100}%`,
+                                    }}
+                                  >
+                                    <span className="font-black text-[9px] truncate">
+                                      {
+                                        profiles.find((p) => p.id === b.user_id)
+                                          ?.last_name
+                                      }
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <select
+                    value={selectedRoomForCalendar}
+                    onChange={(e) => setSelectedRoomForCalendar(e.target.value)}
+                    className="mci-select max-w-md"
+                  >
+                    <option value="">{t("admin_planning_select_room")}</option>
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedRoomForCalendar && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+                      {calendarDays.map((day) => (
+                        <div
+                          key={day}
+                          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm min-h-[120px] text-left"
+                        >
+                          <p className="mci-sub-label border-b pb-2 mb-2 text-[var(--mci-orange)]">
+                            {new Date(day).toLocaleDateString(
+                              lang === "de" ? "de-DE" : "en-US",
+                              { weekday: "short", day: "2-digit" },
+                            )}
+                          </p>
+                          <div className="space-y-1">
+                            {bookings
+                              .filter(
+                                (b) =>
+                                  b.room_id === selectedRoomForCalendar &&
+                                  b.booking_date === day &&
+                                  b.status === "active",
+                              )
+                              .map((bk) => (
+                                <div
+                                  key={bk.id}
+                                  className="p-1 bg-blue-50 text-[9px] font-bold text-[#004a87] rounded border border-blue-100"
+                                >
+                                  {bk.start_time} ({bk.duration}h)
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: STATS */}
+          {activeTab === "stats" && (
+            <div className="space-y-8 mci-animate-fade text-left">
+              <div className="admin-stats-grid">
+                <div className="admin-menu-card !p-8 text-center">
+                  <p className="mci-stat-label">
+                    {t("admin_stats_checkin_rate")}
+                  </p>
+                  <p className="mci-stat-value mci-text-orange">
+                    {stats.checkInRate}%
+                  </p>
+                </div>
+                <div className="admin-menu-card !p-8 text-center">
+                  <p className="mci-stat-label">
+                    {t("admin_stats_avg_duration")}
+                  </p>
+                  <p className="mci-stat-value mci-text-blue">
+                    {stats.avgDuration}{" "}
+                    <span className="text-sm opacity-40">h</span>
+                  </p>
+                </div>
+                <div className="admin-menu-card !p-8 text-center">
+                  <p className="mci-stat-label">{t("admin_stats_total")}</p>
+                  <p className="mci-stat-value mci-text-blue">
+                    {stats.totalBookings}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => window.print()} className="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition hover:bg-slate-900 shadow-xl"><Printer size={18} /> PDF Druck ({filteredPlanningRooms.length} Räume)</button>
-            </div>
-
-            <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-x-auto p-8 print-container">
-              <div className="min-w-[1400px] lg:min-w-full relative timeline-wrapper"> 
-                <div className="flex border-b border-gray-100 pb-4 mb-4">
-                  <div className="w-48 shrink-0 font-black text-[10px] uppercase text-gray-400 room-label-column">Raum / Campus</div>
-                  <div className="flex-1 flex relative h-6">
-                    {hourLabels.map(hour => (
-                      <div key={hour} className="absolute text-[10px] font-bold text-gray-300 border-l border-gray-100 h-full pl-2" style={{ left: `${getPositionX(hour)}%` }}>{hour}</div>
-                    ))}
-                  </div>
+              <div className="admin-layout-grid !flex-row !gap-8">
+                <div className="admin-menu-card flex-1">
+                  <h3 className="mci-stat-label border-b pb-4 mb-6">
+                    {t("admin_stats_top_lifetime")}
+                  </h3>
+                  {stats.topLifetime.map((r, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center border-b border-slate-50 pb-3 mb-3 text-sm text-left"
+                    >
+                      <span className="mci-text-bold">
+                        {i + 1}. {r.name}
+                      </span>
+                      <span className="bg-slate-50 px-4 py-1 rounded-full mci-sub-label mci-text-blue">
+                        {r.count}x
+                      </span>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="space-y-1">
-                  {filteredPlanningRooms.map(room => (
-                    <div key={room.id} className="flex items-center group h-12 border-b border-gray-50 hover:bg-gray-50/50 transition room-row">
-                      <div className="w-48 shrink-0 pr-6 flex items-center gap-3 overflow-hidden room-label-column">
-                         <span className="text-2xl room-emoji">{room.image}</span>
-                         <div className="truncate text-left">
-                            <p className="font-bold text-xs text-slate-700 truncate leading-tight">{room.name}</p>
-                            <p className="text-[8px] text-gray-400 uppercase font-bold">{buildings.find(b => b.id === room.building_id)?.name || 'Campus'}</p>
-                         </div>
-                      </div>
-                      <div className="flex-1 h-full relative bg-gray-50/10 rounded-2xl">
-                        {hourLabels.map(hour => (
-                          <div key={hour} className="absolute top-0 bottom-0 border-l border-gray-200/30" style={{ left: `${getPositionX(hour)}%` }}></div>
-                        ))}
-                        {bookings
-                          .filter(b => b.room_id === room.id && b.booking_date === selectedDate && b.status === 'active')
-                          .map(b => {
-                            const owner = profiles.find(p => p.id === b.user_id);
-                            return (
-                              <div key={b.id} className={`absolute top-1 bottom-1 rounded-xl border px-3 flex flex-col justify-center overflow-hidden transition-all shadow-sm z-10 ${b.is_checked_in ? 'bg-green-500 text-white border-green-600' : 'bg-[#004a87] text-white border-blue-900'}`} style={{ left: `${getPositionX(b.start_time)}%`, width: `${getWidthX(b.duration || 1)}%` }}>
-                                <span className="text-[9px] font-black uppercase leading-tight truncate">{owner ? `${owner.first_name[0]}. ${owner.last_name}` : 'Belegt'}</span>
-                                <span className="text-[7px] opacity-90 font-bold">{b.start_time}</span>
-                              </div>
-                            );
-                          })
-                        }
-                      </div>
+                <div className="admin-menu-card flex-1 border-l-4 border-l-[var(--mci-orange)]">
+                  <h3 className="mci-stat-label border-b pb-4 mb-6 mci-text-orange">
+                    {t("admin_stats_top_last_week")}
+                  </h3>
+                  {stats.topLastWeek.map((r, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center border-b border-slate-50 pb-3 mb-3 text-sm text-left"
+                    >
+                      <span className="mci-text-bold">
+                        {i + 1}. {r.name}
+                      </span>
+                      <span className="bg-orange-50 px-4 py-1 rounded-full mci-sub-label mci-text-orange">
+                        {r.count}x
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 2: GEBÄUDE */}
-        {activeTab === "buildings" && (
-          <div className="space-y-10 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-bold text-[#004a87] tracking-tight uppercase italic">Gebäude-Management</h1>
-              <button onClick={() => { setCurrentBuilding({ name: "", distance: 0, floors: 1, latitude: 47.2, longitude: 11.3, accessible: true, mci_wifi_ip: "", image_url: "", is_active: true }); setShowBuildingModal(true); }} className="bg-[#549BB7] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:bg-[#438299] transition transform active:scale-95"><Plus size={18} /> Neues Gebäude</button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {buildings.map((b) => (
-                <div key={b.id} className={`bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm flex justify-between items-center group transition-all ${!b.is_active ? "opacity-40 grayscale bg-gray-50" : ""}`}>
-                  <div className="flex items-center gap-6">
-                    <div className="bg-gray-50 p-4 rounded-3xl text-[#004a87]">{b.image_url ? <img src={b.image_url} className="w-12 h-12 object-cover rounded-xl shadow-inner" /> : <Home size={32} />}</div>
-                    <div><h3 className="text-xl font-bold text-slate-800">{b.name}</h3><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{b.distance} Min • {b.floors} Etagen</p></div>
+          {/* TAB 3: BUILDINGS */}
+          {activeTab === "buildings" && (
+            <div className="space-y-6 mci-animate-fade">
+              <div className="admin-header-row">
+                <h2 className="res-page-title !text-2xl">
+                  {t("admin_title_buildings")}
+                </h2>
+                <button
+                  onClick={() => {
+                    setCurrentBuilding({
+                      name: "",
+                      distance: 0,
+                      floors: 1,
+                      latitude: 47.2,
+                      longitude: 11.3,
+                      accessible: true,
+                      mci_wifi_ip: "",
+                      image_url: "",
+                      is_active: true,
+                    });
+                    setShowBuildingModal(true);
+                  }}
+                  className="admin-action-btn"
+                >
+                  <Plus size={16} /> {t("admin_btn_add_building")}
+                </button>
+              </div>
+              <div className="admin-card-grid">
+                {buildings.map((b) => (
+                  <div
+                    key={b.id}
+                    className={`admin-menu-card flex justify-between items-center !p-5 ${!b.is_active && "opacity-40 grayscale"}`}
+                  >
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="mci-icon-box">
+                        {b.image_url ? (
+                          <img
+                            src={b.image_url}
+                            className="w-10 h-10 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <Home size={22} />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="mci-text-bold">{b.name}</h3>
+                        <p className="mci-sub-label">
+                          {b.distance} Min • {b.floors} OG
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          setCurrentBuilding(b);
+                          setShowBuildingModal(true);
+                        }}
+                        className="p-2 text-slate-300 hover:text-[#004a87] transition"
+                      >
+                        <Edit3 size={18} />
+                      </button>
+                      <button
+                        onClick={() => toggleStatus("buildings", b)}
+                        className={`p-2 transition ${b.is_active ? "text-slate-200 hover:text-red-500" : "text-red-500 hover:text-green-500"}`}
+                      >
+                        <Power size={18} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => { setCurrentBuilding({ ...b }); setShowBuildingModal(true); }} className="p-4 text-gray-300 hover:text-[#004a87] transition hover:bg-gray-100 rounded-2xl"><Edit3 /></button>
-                    <button onClick={() => toggleStatus("buildings", b)} className={`p-4 rounded-2xl transition ${b.is_active ? "text-gray-200 hover:text-red-500 hover:bg-red-50" : "text-red-500 hover:text-green-500 hover:bg-green-50"}`}><Power size={20} /></button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 3: RÄUME */}
-        {activeTab === "rooms" && (
-          <div className="space-y-10 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-bold text-[#004a87] tracking-tight uppercase italic">Raum-Pflege</h1>
-              <button onClick={() => { setCurrentRoom({ name: "", capacity: 4, floor: 0, is_active: true, equipment: [], seating_arrangement: SEATING_OPTIONS[0], building_id: buildings[0]?.id, image: "🏢", image_url: "", mci_wifi_ip: "", accessible: true }); setIsCombi(false); setCombiParts([]); setShowRoomModal(true); }} className="bg-[#549BB7] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:bg-[#438299] transition transform active:scale-95"><Plus size={18} /> Neuer Raum</button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {rooms.map((room) => (
-                <div key={room.id} className={`bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm flex justify-between items-center group transition-all ${!room.is_active ? "opacity-40 grayscale bg-gray-50" : ""}`}>
-                  <div className="flex items-center gap-6">
-                    <div className="bg-gray-50 p-4 rounded-3xl">{room.image_url ? <img src={room.image_url} className="w-12 h-12 object-cover rounded-xl shadow-inner" /> : <span className="text-4xl">{room.image}</span>}</div>
-                    <div className="text-left"><h3 className="text-xl font-bold text-slate-800 tracking-tight">{room.name}</h3><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{buildings.find((b) => b.id === room.building_id)?.name || "Ohne Gebäude"} | {room.floor}. OG</p></div>
+          {/* TAB 4: ROOMS */}
+          {activeTab === "rooms" && (
+            <div className="space-y-6 mci-animate-fade text-left">
+              <div className="admin-header-row">
+                <h2 className="res-page-title !text-2xl">
+                  {t("admin_title_rooms")}
+                </h2>
+                <button
+                  onClick={() => {
+                    setCurrentRoom({
+                      name: "",
+                      capacity: 4,
+                      floor: 0,
+                      is_active: true,
+                      equipment: [],
+                      seating_arrangement: SEATING_OPTIONS[0],
+                      building_id: buildings[0]?.id,
+                      image_url: "",
+                      accessible: true,
+                    });
+                    setIsCombi(false);
+                    setCombiParts([]);
+                    setShowRoomModal(true);
+                  }}
+                  className="admin-action-btn"
+                >
+                  <Plus size={16} /> {t("admin_btn_add_room")}
+                </button>
+              </div>
+              <div className="admin-card-grid">
+                {rooms.map((room) => (
+                  <div
+                    key={room.id}
+                    className={`admin-menu-card flex justify-between items-center !p-5 ${!room.is_active && "opacity-40 grayscale"}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="mci-icon-box">
+                        {room.image_url ? (
+                          <img
+                            src={room.image_url}
+                            className="w-10 h-10 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <Monitor size={22} />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="mci-text-bold">{room.name}</h3>
+                        <p className="mci-sub-label">
+                          {
+                            buildings.find((b) => b.id === room.building_id)
+                              ?.name
+                          }{" "}
+                          • {room.floor}. OG
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          setCurrentRoom(room);
+                          setIsCombi(!!room.room_combi_id);
+                          setShowRoomModal(true);
+                        }}
+                        className="p-2 text-slate-300 hover:text-[#004a87] transition"
+                      >
+                        <Edit3 size={18} />
+                      </button>
+                      <button
+                        onClick={() => toggleStatus("rooms", room)}
+                        className={`p-2 transition ${room.is_active ? "text-slate-200 hover:text-red-500" : "text-red-500 hover:text-green-500"}`}
+                      >
+                        <Power size={18} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => { setCurrentRoom({ ...room }); setIsCombi(!!room.room_combi_id); setCombiParts([]); setShowRoomModal(true); }} className="p-4 text-gray-300 hover:text-[#004a87] transition hover:bg-gray-100 rounded-2xl"><Edit3 /></button>
-                    <button onClick={() => toggleStatus("rooms", room)} className={`p-4 rounded-2xl transition ${room.is_active ? "text-gray-200 hover:text-red-500 hover:bg-red-50" : "text-red-500 hover:text-green-50 hover:bg-green-50"}`}><Power size={20} /></button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 4: MITARBEITER */}
-        {activeTab === "users" && (
-          <div className="space-y-10 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-bold text-[#004a87] tracking-tight uppercase italic mb-1">Mitarbeiter-Portal</h1>
-              <button onClick={() => setShowAddUserModal(true)} className="bg-[#549BB7] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:bg-[#438299] transition transform active:scale-95"><UserPlus size={18} /> Neu erfassen</button>
-            </div>
-            <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden text-left">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  <tr>
-                    <th className="p-8 text-left">Name</th>
-                    <th className="p-8 text-left">E-Mail</th>
-                    <th className="p-8 text-left">Rolle</th>
-                    <th className="p-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {profiles.map((p) => (
-                    <tr key={p.id} className="border-b hover:bg-gray-50 transition">
-                      <td className="p-8 font-bold text-slate-700">{p.first_name} {p.last_name}</td>
-                      <td className="p-8 text-gray-500 text-sm font-medium">{p.email}</td>
-                      <td className="p-8"><span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${p.is_admin ? "bg-[#004a87] text-white italic" : "bg-gray-100 text-gray-400"}`}>{p.is_admin ? "ADMIN" : "USER"}</span></td>
-                      <td className="p-8 text-right"><button onClick={() => { setEditUser({ ...p }); setShowUserEditModal(true); }} className="p-3 text-gray-300 hover:text-[#004a87] transition hover:bg-gray-100 rounded-xl"><Edit3 size={20} /></button></td>
+          {/* TAB 5: USERS */}
+          {activeTab === "users" && (
+            <div className="space-y-6 mci-animate-fade text-left">
+              <div className="admin-header-row">
+                <h2 className="res-page-title !text-2xl">
+                  {t("admin_sidebar_users")}
+                </h2>
+                <button
+                  onClick={() => setShowAddUserModal(true)}
+                  className="admin-action-btn"
+                >
+                  <UserPlus size={16} /> {t("admin_btn_add_user")}
+                </button>
+              </div>
+              <div className="admin-menu-card !p-0 overflow-hidden">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th className="mci-sub-label">Name</th>
+                      <th className="mci-sub-label">E-Mail</th>
+                      <th className="mci-sub-label">Rolle</th>
+                      <th className="p-5"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: STATISTIKEN */}
-        {activeTab === "stats" && (
-          <div className="space-y-12 animate-in fade-in text-left">
-            <h1 className="text-3xl font-bold text-[#004a87] tracking-tight uppercase italic">Kennzahlen</h1>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              <div className="bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-sm"><p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-6">Reservierungen</p><p className="text-6xl font-bold text-[#004a87] tracking-tighter">{bookings.filter((b) => b.status === "active").length}</p></div>
-              <div className="bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-sm"><p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-6">Mitarbeiter</p><p className="text-6xl font-bold text-[#004a87] tracking-tighter">{profiles.length}</p></div>
-              <div className="bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-sm"><p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-6">Check-In Quote</p><p className="text-6xl font-bold text-[#f7941d] tracking-tighter">{bookings.length > 0 ? Math.round((bookings.filter((b) => b.is_checked_in).length / bookings.length) * 100) : 0}%</p></div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* --- MODALS --- */}
-
-      {/* MODAL: GEBÄUDE */}
-      {showBuildingModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[500] p-6 animate-in fade-in">
-          <div className="bg-white rounded-[4rem] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="bg-[#004a87] p-10 text-white flex justify-between items-center shrink-0"><h3 className="text-2xl font-bold italic uppercase tracking-tight">Gebäude pflegen</h3><button onClick={() => setShowBuildingModal(false)}><X /></button></div>
-            <div className="p-12 space-y-6 overflow-y-auto max-h-[75vh] text-left">
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-widest">Feld: Gebäude Name</label><input type="text" value={currentBuilding.name} onChange={(e) => setCurrentBuilding({ ...currentBuilding, name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-100 font-bold focus:ring-2 focus:ring-[#004a87] outline-none transition-all" /></div>
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-widest">Feld: Bild URL (Außenansicht)</label><input type="text" value={currentBuilding.image_url} onChange={(e) => setCurrentBuilding({ ...currentBuilding, image_url: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl text-xs text-blue-600 font-medium" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Geh-Minuten (Zentrum)</label><input type="number" value={currentBuilding.distance} onChange={(e) => setCurrentBuilding({ ...currentBuilding, distance: parseInt(e.target.value) })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold" /></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Stockwerke gesamt</label><input type="number" value={currentBuilding.floors} onChange={(e) => setCurrentBuilding({ ...currentBuilding, floors: parseInt(e.target.value) })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 border-t pt-4 border-gray-50">
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2">GPS: Latitude</label><input type="number" step="any" value={currentBuilding.latitude} onChange={(e) => setCurrentBuilding({ ...currentBuilding, latitude: parseFloat(e.target.value) })} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold" /></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2">GPS: Longitude</label><input type="number" step="any" value={currentBuilding.longitude} onChange={(e) => setCurrentBuilding({ ...currentBuilding, longitude: parseFloat(e.target.value) })} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold" /></div>
-              </div>
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-widest">Feld: MCI WLAN IP Prefix</label><input type="text" placeholder="z.B. 138.22." value={currentBuilding.mci_wifi_ip} onChange={(e) => setCurrentBuilding({ ...currentBuilding, mci_wifi_ip: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl font-mono text-sm font-bold" /></div>
-              <label className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition"><span className="italic uppercase font-bold text-[#004a87] text-xs">Objekt ist Barrierefrei</span><input type="checkbox" checked={currentBuilding.accessible} onChange={(e) => setCurrentBuilding({ ...currentBuilding, accessible: e.target.checked })} className="w-6 h-6 accent-[#004a87]" /></label>
-              <button onClick={handleSaveBuilding} className="w-full bg-[#004a87] text-white py-5 rounded-[1.5rem] font-bold shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"><Save size={18} /> Stammdaten wegschreiben</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: RAUM */}
-      {showRoomModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[500] p-6 animate-in fade-in">
-          <div className="bg-white rounded-[4rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-[#004a87] p-10 text-white flex justify-between items-center shrink-0"><h3 className="text-2xl font-bold italic uppercase tracking-tight">Raum-Konfiguration</h3><button onClick={() => setShowRoomModal(false)}><X size={24} /></button></div>
-            <div className="p-10 space-y-6 overflow-y-auto max-h-[80vh] text-left">
-              <div className="grid grid-cols-3 gap-6">
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Emoji/Symbol</label><input type="text" value={currentRoom.image} onChange={(e) => setCurrentRoom({ ...currentRoom, image: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl text-center text-2xl font-bold" /></div>
-                <div className="col-span-2 space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2">Feld: Raumname</label><input type="text" value={currentRoom.name} onChange={(e) => setCurrentRoom({ ...currentRoom, name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold ring-1 ring-gray-100" /></div>
-              </div>
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-widest">Feld: Bild URL (Innenansicht)</label><input type="text" value={currentRoom.image_url} onChange={(e) => setCurrentRoom({ ...currentRoom, image_url: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl text-xs text-blue-600 font-medium" /></div>
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2">Feld: Gebäude zuweisen</label><select value={currentRoom.building_id} onChange={(e) => setCurrentRoom({ ...currentRoom, building_id: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold ring-1 ring-gray-100 outline-none">{buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Plätze (Capacity)</label><input type="number" value={currentRoom.capacity} onChange={(e) => setCurrentRoom({ ...currentRoom, capacity: parseInt(e.target.value) })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold" /></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Etage (Floor)</label><input type="number" value={currentRoom.floor} onChange={(e) => setCurrentRoom({ ...currentRoom, floor: parseInt(e.target.value) })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold" /></div>
-              </div>
-              <div className="space-y-1"><label className="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-widest">Feld: Bestuhlung / Seating Arrangement</label><select value={currentRoom.seating_arrangement} onChange={(e) => setCurrentRoom({ ...currentRoom, seating_arrangement: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none ring-1 ring-gray-100">{SEATING_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></div>
-              <div className="space-y-2"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2">Feld: Ausstattung (Equipment)</label><div className="grid grid-cols-2 gap-2 bg-gray-50 p-6 rounded-3xl border border-gray-100">{equipmentList.map((eq) => (<label key={eq.id} className="flex items-center gap-3 cursor-pointer text-[10px] font-bold uppercase italic"><input type="checkbox" checked={currentRoom.equipment?.includes(eq.id)} onChange={(e) => { const next = e.target.checked ? [...(currentRoom.equipment || []), eq.id] : currentRoom.equipment.filter((x: string) => x !== eq.id); setCurrentRoom({ ...currentRoom, equipment: next }); }} className="w-4 h-4 accent-[#004a87]" />{lang === "de" ? eq.name_de : eq.name_en}</label>))}</div></div>
-              <div className="border-t pt-6 space-y-4 border-gray-100">
-                <label className="flex items-center justify-between p-4 bg-blue-50/50 rounded-2xl cursor-pointer border border-blue-100"><span className="italic uppercase font-bold text-[#004a87] text-xs">Ist dies ein Kombinationsraum?</span><input type="checkbox" checked={isCombi} onChange={(e) => setIsCombi(e.target.checked)} className="w-6 h-6 accent-[#004a87]" /></label>
-                {isCombi && (
-                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="flex justify-between items-center px-2"><label className="text-[10px] font-bold text-gray-400 uppercase">Teilräume verknüpfen</label><button onClick={() => setCombiParts([...combiParts, ""])} className="text-[#549BB7] hover:text-[#004a87] transition"><PlusCircle size={20} /></button></div>
-                    {combiParts.map((p, idx) => (
-                      <div key={idx} className="flex gap-2"><select value={p} onChange={(e) => { const n = [...combiParts]; n[idx] = e.target.value; setCombiParts(n); }} className="flex-1 p-4 bg-white border border-blue-50 rounded-2xl text-xs font-bold ring-1 ring-blue-50 outline-none">{rooms.filter((r) => r.id !== currentRoom.id && !r.room_combi_id).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select><button onClick={() => setCombiParts(combiParts.filter((_, i) => i !== idx))} className="p-4 text-red-300 hover:text-red-500 transition"><Trash2 size={16} /></button></div>
+                  </thead>
+                  <tbody>
+                    {profiles.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50 transition">
+                        <td>
+                          <p className="mci-text-bold">
+                            {p.first_name} {p.last_name}
+                          </p>
+                        </td>
+                        <td className="text-slate-400 text-sm">{p.email}</td>
+                        <td>
+                          <span
+                            className={`mci-badge-pill ${p.is_admin ? "bg-[#004a87] text-white italic" : "bg-slate-100 text-slate-400"}`}
+                          >
+                            {p.is_admin ? "ADMIN" : "USER"}
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <button
+                            onClick={() => {
+                              setEditUser(p);
+                              setShowUserEditModal(true);
+                            }}
+                            className="text-slate-300 hover:text-[#004a87] p-2 transition"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                        </td>
+                      </tr>
                     ))}
-                    {combiParts.length === 0 && <div className="text-center p-6 bg-blue-50/10 rounded-2xl border-2 border-dashed border-blue-50 text-[10px] text-blue-300 italic uppercase font-bold">Keine Teilräume hinzugefügt</div>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* --- ALL MODALS --- */}
+
+      {/* MODAL BUILDING */}
+      {showBuildingModal && currentBuilding && (
+        <div className="mci-modal-overlay">
+          <div className="mci-modal-card max-w-xl">
+            <div className="mci-modal-header">
+              <h3>{t("admin_title_buildings")}</h3>
+              <button onClick={() => setShowBuildingModal(false)}>
+                <X />
+              </button>
+            </div>
+            <div className="mci-modal-body">
+              <div>
+                <label className="mci-label">{t("admin_field_name")}</label>
+                <input
+                  value={currentBuilding.name}
+                  onChange={(e) =>
+                    setCurrentBuilding({
+                      ...currentBuilding,
+                      name: e.target.value,
+                    })
+                  }
+                  className="mci-input"
+                />
+              </div>
+              <div>
+                <label className="mci-label">
+                  {t("admin_field_image_url")}
+                </label>
+                <input
+                  value={currentBuilding.image_url}
+                  onChange={(e) =>
+                    setCurrentBuilding({
+                      ...currentBuilding,
+                      image_url: e.target.value,
+                    })
+                  }
+                  className="mci-input"
+                />
+                {currentBuilding.image_url && (
+                  <div className="mci-image-preview-container">
+                    <img src={currentBuilding.image_url} alt="Preview" />
                   </div>
                 )}
               </div>
-              <button onClick={handleSaveRoom} className="w-full bg-[#004a87] text-white py-6 rounded-[2rem] font-bold shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"><Save size={20} /> Konfiguration sichern</button>
+              <div className="mci-grid-2">
+                <div>
+                  <label className="mci-label">{t("filter_dist")}</label>
+                  <input
+                    type="number"
+                    value={currentBuilding.distance}
+                    onChange={(e) =>
+                      setCurrentBuilding({
+                        ...currentBuilding,
+                        distance: parseInt(e.target.value),
+                      })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+                <div>
+                  <label className="mci-label">{t("admin_field_floor")}</label>
+                  <input
+                    type="number"
+                    value={currentBuilding.floors}
+                    onChange={(e) =>
+                      setCurrentBuilding({
+                        ...currentBuilding,
+                        floors: parseInt(e.target.value),
+                      })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+              </div>
+              <div className="mci-grid-2">
+                <div>
+                  <label className="mci-label">GPS Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={currentBuilding.latitude}
+                    onChange={(e) =>
+                      setCurrentBuilding({
+                        ...currentBuilding,
+                        latitude: parseFloat(e.target.value),
+                      })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+                <div>
+                  <label className="mci-label">GPS Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={currentBuilding.longitude}
+                    onChange={(e) =>
+                      setCurrentBuilding({
+                        ...currentBuilding,
+                        longitude: parseFloat(e.target.value),
+                      })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mci-label">{t("admin_label_wifi_ip")}</label>
+                <input
+                  value={currentBuilding.mci_wifi_ip}
+                  onChange={(e) =>
+                    setCurrentBuilding({
+                      ...currentBuilding,
+                      mci_wifi_ip: e.target.value,
+                    })
+                  }
+                  className="mci-input font-mono"
+                  placeholder="192.168"
+                />
+              </div>
+              <label className="admin-checkbox-row">
+                <div className="flex items-center gap-3">
+                  <Accessibility size={20} className="mci-text-blue" />
+                  <span className="mci-text-bold">{t("label_accessible")}</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={currentBuilding.accessible}
+                  onChange={(e) =>
+                    setCurrentBuilding({
+                      ...currentBuilding,
+                      accessible: e.target.checked,
+                    })
+                  }
+                  className="filter-checkbox"
+                />
+              </label>
+              <button onClick={handleSaveBuilding} className="btn-mci-main">
+                {t("admin_btn_save")}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: MITARBEITER EDIT */}
+      {/* MODAL ROOM */}
+      {showRoomModal && currentRoom && (
+        <div className="mci-modal-overlay">
+          <div className="mci-modal-card max-w-2xl">
+            <div className="mci-modal-header">
+              <h3>{t("admin_sidebar_rooms")}</h3>
+              <button onClick={() => setShowRoomModal(false)}>
+                <X />
+              </button>
+            </div>
+            <div className="mci-modal-body">
+              <div className="mci-grid-2">
+                <div>
+                  <label className="mci-label">
+                    {t("admin_label_roomname")}
+                  </label>
+                  <input
+                    value={currentRoom.name}
+                    onChange={(e) =>
+                      setCurrentRoom({ ...currentRoom, name: e.target.value })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+                <div>
+                  <label className="mci-label">
+                    {t("admin_label_building_select")}
+                  </label>
+                  <select
+                    value={currentRoom.building_id}
+                    onChange={(e) =>
+                      setCurrentRoom({
+                        ...currentRoom,
+                        building_id: e.target.value,
+                      })
+                    }
+                    className="mci-select"
+                  >
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="mci-label">
+                  {t("admin_field_image_url")}
+                </label>
+                <input
+                  value={currentRoom.image_url}
+                  onChange={(e) =>
+                    setCurrentRoom({
+                      ...currentRoom,
+                      image_url: e.target.value,
+                    })
+                  }
+                  className="mci-input"
+                />
+                {currentRoom.image_url && (
+                  <div className="mci-image-preview-container">
+                    <img src={currentRoom.image_url} alt="Preview" />
+                  </div>
+                )}
+              </div>
+              <div className="mci-grid-2">
+                <div>
+                  <label className="mci-label">
+                    {t("admin_label_capacity")}
+                  </label>
+                  <input
+                    type="number"
+                    value={currentRoom.capacity}
+                    onChange={(e) =>
+                      setCurrentRoom({
+                        ...currentRoom,
+                        capacity: parseInt(e.target.value),
+                      })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+                <div>
+                  <label className="mci-label">{t("admin_label_floor")}</label>
+                  <input
+                    type="number"
+                    value={currentRoom.floor}
+                    onChange={(e) =>
+                      setCurrentRoom({
+                        ...currentRoom,
+                        floor: parseInt(e.target.value),
+                      })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mci-label">{t("admin_label_seating")}</label>
+                <select
+                  value={currentRoom.seating_arrangement}
+                  onChange={(e) =>
+                    setCurrentRoom({
+                      ...currentRoom,
+                      seating_arrangement: e.target.value,
+                    })
+                  }
+                  className="mci-select"
+                >
+                  {SEATING_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {t(o)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mci-label">
+                  {t("admin_label_equip_select")}
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-6 bg-slate-50 rounded-[2rem] border border-gray-100">
+                  {equipmentList.map((eq) => (
+                    <label key={eq.id} className="mci-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={currentRoom.equipment?.includes(eq.id)}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...(currentRoom.equipment || []), eq.id]
+                            : currentRoom.equipment.filter(
+                                (x: any) => x !== eq.id,
+                              );
+                          setCurrentRoom({ ...currentRoom, equipment: next });
+                        }}
+                        className="filter-checkbox"
+                      />
+                      <span className="mci-sub-label !text-slate-600">
+                        {lang === "de" ? eq.name_de : eq.name_en}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <label className="admin-checkbox-row">
+                <div className="flex items-center gap-3">
+                  <Accessibility size={20} className="mci-text-blue" />
+                  <span className="mci-text-bold">{t("label_accessible")}</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={currentRoom.accessible}
+                  onChange={(e) =>
+                    setCurrentRoom({
+                      ...currentRoom,
+                      accessible: e.target.checked,
+                    })
+                  }
+                  className="filter-checkbox"
+                />
+              </label>
+              <div className="mci-admin-info-box">
+                <label className="flex items-center justify-between cursor-pointer mb-3">
+                  <span className="text-xs font-black uppercase italic mci-text-blue">
+                    {t("admin_label_is_combi")}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={isCombi}
+                    onChange={(e) => setIsCombi(e.target.checked)}
+                    className="filter-checkbox"
+                  />
+                </label>
+                {isCombi && (
+                  <div className="space-y-2">
+                    {[0, 1, 2].map((idx) => (
+                      <select
+                        key={idx}
+                        value={combiParts[idx] || ""}
+                        onChange={(e) => {
+                          const n = [...combiParts];
+                          n[idx] = e.target.value;
+                          setCombiParts(n);
+                        }}
+                        className="mci-select !bg-white"
+                      >
+                        <option value="">{t("admin_label_combi_parts")}</option>
+                        {rooms
+                          .filter((r) => r.id !== currentRoom.id)
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                      </select>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button onClick={handleSaveRoom} className="btn-mci-main">
+                {t("admin_btn_save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL USER EDIT */}
       {showUserEditModal && editUser && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[500] p-6 animate-in fade-in">
-          <div className="bg-white rounded-[3.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-[#004a87] p-10 text-white flex justify-between items-center shrink-0"><h3 className="text-2xl font-bold italic uppercase tracking-tight">Mitarbeiter pflegen</h3><button onClick={() => setShowUserEditModal(false)}><X size={24} /></button></div>
-            <div className="p-12 space-y-6 text-left font-bold text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase ml-2">Vorname</label><input type="text" value={editUser.first_name || ""} onChange={(e) => setEditUser({ ...editUser, first_name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold ring-1 ring-gray-100" /></div>
-                <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase ml-2">Nachname</label><input type="text" value={editUser.last_name || ""} onChange={(e) => setEditUser({ ...editUser, last_name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl font-bold ring-1 ring-gray-100" /></div>
+        <div className="mci-modal-overlay">
+          <div className="mci-modal-card max-w-xl mci-animate-pop">
+            <div className="mci-modal-header">
+              <h3>{t("admin_modal_user_title")}</h3>
+              <button onClick={() => setShowUserEditModal(false)}>
+                <X />
+              </button>
+            </div>
+            <div className="mci-modal-body space-y-6 text-left">
+              <div className="mci-admin-info-box">
+                <p className="mci-sub-label opacity-60">Account E-Mail</p>
+                <p className="mci-text-bold mci-text-blue">{editUser.email}</p>
               </div>
-              <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase ml-2 tracking-widest italic">Vollständiger Name [Display Only]</label><input type="text" value={editUser.full_name || ""} onChange={(e) => setEditUser({ ...editUser, full_name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-500" /></div>
-              <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase ml-2 tracking-widest">E-Mail Adresse (Read-Only)</label><input type="email" value={editUser.email || ""} className="w-full p-4 bg-gray-100 rounded-2xl cursor-not-allowed font-medium" disabled /></div>
-              <label className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition"><span className="italic uppercase font-bold text-[#004a87] text-xs tracking-tight">Admin-Berechtigungen</span><input type="checkbox" checked={editUser.is_admin} onChange={(e) => setEditUser({ ...editUser, is_admin: e.target.checked })} className="w-6 h-6 accent-[#004a87]" /></label>
-              <button onClick={async () => { await updateUserAdmin(editUser.id, editUser); setShowUserEditModal(false); loadAdminData(); }} className="w-full bg-[#004a87] text-white py-5 rounded-[1.5rem] font-bold shadow-xl active:scale-95 transition-all">Stammdaten sichern</button>
+              <div className="mci-grid-2">
+                <div>
+                  <label className="mci-label">{t("admin_label_fname")}</label>
+                  <input
+                    value={editUser.first_name}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, first_name: e.target.value })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+                <div>
+                  <label className="mci-label">{t("admin_label_lname")}</label>
+                  <input
+                    value={editUser.last_name}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, last_name: e.target.value })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mci-label">
+                  {t("admin_label_password")} ({t("label_new_password")})
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  onChange={(e) =>
+                    setEditUser({ ...editUser, password: e.target.value })
+                  }
+                  className="mci-input"
+                />
+              </div>
+              <label className="admin-checkbox-row">
+                <span className="mci-text-bold">{t("admin_label_admin")}</span>
+                <input
+                  type="checkbox"
+                  checked={editUser.is_admin}
+                  onChange={(e) =>
+                    setEditUser({ ...editUser, is_admin: e.target.checked })
+                  }
+                  className="filter-checkbox"
+                />
+              </label>
+              <button onClick={handleUpdateUser} className="btn-mci-main">
+                {t("admin_btn_save")}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: MITARBEITER NEU ANLEGEN */}
+      {/* MODAL USER ADD */}
       {showAddUserModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[500] p-6 animate-in fade-in">
-          <div className="bg-white rounded-[3.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-[#004a87] p-10 text-white flex justify-between items-center shrink-0"><h3 className="text-2xl font-bold italic uppercase tracking-tight">Mitarbeiter erstellen</h3><button onClick={() => setShowAddUserModal(false)}><X size={24} /></button></div>
-            <form onSubmit={handleCreateUser} className="p-12 space-y-6 font-bold text-sm text-left">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase tracking-widest ml-2">Vorname</label><input type="text" required value={newUser.first_name} onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-100 outline-none focus:ring-2 focus:ring-[#004a87] transition-all" /></div>
-                <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase tracking-widest ml-2">Nachname</label><input type="text" required value={newUser.last_name} onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-100 outline-none focus:ring-2 focus:ring-[#004a87] transition-all" /></div>
+        <div className="mci-modal-overlay">
+          <div className="mci-modal-card max-w-xl mci-animate-pop">
+            <div className="mci-modal-header">
+              <h3>{t("admin_modal_add_user_title")}</h3>
+              <button onClick={() => setShowAddUserModal(false)}>
+                <X />
+              </button>
+            </div>
+            <form
+              onSubmit={handleCreateUser}
+              className="mci-modal-body space-y-6 text-left"
+            >
+              <div className="mci-grid-2">
+                <div>
+                  <label className="mci-label">{t("admin_label_fname")}</label>
+                  <input
+                    required
+                    value={newUser.first_name}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, first_name: e.target.value })
+                    }
+                    className="mci-input"
+                  />
+                </div>
+                <div>
+                  <label className="mci-label">{t("admin_label_lname")}</label>
+                  <input
+                    required
+                    value={newUser.last_name}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, last_name: e.target.value })
+                    }
+                    className="mci-input"
+                  />
+                </div>
               </div>
-              <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase tracking-widest ml-2">E-Mail Adresse</label><input type="email" required value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-100 outline-none focus:ring-2 focus:ring-[#004a87] transition-all" /></div>
-              <div className="space-y-1"><label className="text-[10px] text-gray-400 uppercase tracking-widest ml-2">Init-Passwort</label><input type="password" required value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} className="w-full p-4 bg-gray-50 rounded-2xl ring-1 ring-gray-100 outline-none focus:ring-2 focus:ring-[#004a87] transition-all" /></div>
-              <label className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition"><span className="italic uppercase text-xs font-bold text-[#004a87]">System-Admin Status</span><input type="checkbox" checked={newUser.is_admin} onChange={(e) => setNewUser({ ...newUser, is_admin: e.target.checked })} className="w-6 h-6 accent-[#004a87]" /></label>
-              <button type="submit" className="w-full bg-[#004a87] text-white py-5 rounded-[1.5rem] font-bold shadow-xl transition hover:bg-[#549BB7] active:scale-95">Mitarbeiter erstellen</button>
+              <div>
+                <label className="mci-label">{t("admin_label_email")}</label>
+                <input
+                  type="email"
+                  required
+                  value={newUser.email}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, email: e.target.value })
+                  }
+                  className="mci-input"
+                />
+              </div>
+              <div>
+                <label className="mci-label">{t("admin_label_password")}</label>
+                <input
+                  type="password"
+                  required
+                  value={newUser.password}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, password: e.target.value })
+                  }
+                  className="mci-input"
+                />
+              </div>
+              <button type="submit" className="btn-mci-main">
+                {t("admin_btn_add_user")}
+              </button>
             </form>
           </div>
         </div>

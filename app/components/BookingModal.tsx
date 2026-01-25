@@ -14,6 +14,7 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import "./BookingModal.css";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -634,57 +635,69 @@ export default function BookingModal({
             {/* LISTE */}
             {((mode === "create" && isRecurring) || mode === "edit") && (
               <div className="series-list-container">
-                <div className="series-header-row">
-                  <div className="col-date">{t("header_date")}</div>
-                  <div className="col-status"></div>
-                  <div className="col-room">{t("header_room")}</div>
-                  <div className="col-floor">{t("header_floor")}</div>
-                  <div className="col-seats">{t("header_seats")}</div>
-                  <div className="col-extra">{t("header_features")}</div>
+                {/* HEADER: Nur auf Desktop sichtbar, nutzt das 5-Spalten-Grid */}
+                <div className="series-grid series-header-row hidden md:grid">
+                  <div>{t("header_date")}</div>
+                  <div>{t("header_room")} (+ Status)</div>
+                  <div>{t("header_floor")}</div>
+                  <div>{t("header_seats")}</div>
+                  <div>{t("header_features")}</div>
                 </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {/* BESTAND (Nur Edit) */}
-                  {mode === "edit" &&
-                    relatedBookings.map((b) => (
-                      <div
-                        key={b.id}
-                        className="series-data-row opacity-40 grayscale"
-                      >
-                        <div className="col-date">
-                          {new Date(b.booking_date).toLocaleDateString()}
-                        </div>
-                        <div className="col-status">
-                          <CheckCircle2 size={16} className="text-green-500" />
-                        </div>
-                        <div className="col-room">
-                          {rooms.find((r) => r.id === b.room_id)?.name}
-                        </div>
-                        <div className="col-floor">
-                          {rooms.find((r) => r.id === b.room_id)?.floor}.{" "}
-                          {t("label_floor_short") || "FL"}
-                        </div>
-                        <div className="col-seats">
-                          <Users size={12} />{" "}
-                          {rooms.find((r) => r.id === b.room_id)?.capacity}
-                        </div>
-                        <div className="col-extra">
-                          <span className="text-[8px] font-black uppercase">
-                            {t("label_existing")}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
 
-                  {/* 2. NEUE VORSCHAU ANZEIGEN */}
+                <div className="max-h-80 overflow-y-auto hide-scrollbar">
+                  {/* 1. BESTAND (Nur im Edit-Modus sichtbar) */}
+                  {mode === "edit" &&
+                    relatedBookings.map((b) => {
+                      const r = rooms.find((rm) => rm.id === b.room_id);
+                      return (
+                        <div
+                          key={b.id}
+                          className="series-grid series-data-row opacity-40 grayscale border-l-4 border-l-slate-300"
+                        >
+                          <div data-label={t("header_date")}>
+                            {new Date(b.booking_date).toLocaleDateString(
+                              lang === "de" ? "de-DE" : "en-US",
+                            )}
+                          </div>
+                          <div
+                            data-label={t("header_room")}
+                            className="flex items-center gap-2"
+                          >
+                            <CheckCircle2
+                              size={14}
+                              className="text-green-500"
+                            />
+                            <span className="font-bold">{r?.name}</span>
+                          </div>
+                          <div data-label={t("header_floor")}>
+                            {r?.floor}. OG
+                          </div>
+                          <div
+                            data-label={t("header_seats")}
+                            className="flex items-center gap-1"
+                          >
+                            <Users size={12} /> {r?.capacity}
+                          </div>
+                          <div data-label={t("header_features")}>
+                            <span className="text-[8px] font-black uppercase bg-slate-100 px-2 py-0.5 rounded">
+                              {t("label_existing")}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {/* 2. NEUE VORSCHAU (Create oder Edit-Erweiterung) */}
                   {((mode === "create" && isRecurring) ||
                     (mode === "edit" && isExtending)) &&
                     getSeriesPlan().map((p, i) => {
-                      // Equipment-Vergleich Logik
+                      // Equipment-Logik (Berechnung bleibt identisch)
                       const originalFeatures = [
                         ...(currentRoomContext?.equipment || []),
                       ];
                       if (currentRoomContext?.accessible)
                         originalFeatures.push("accessible-feat");
+
                       const currentFeatures = [...(p.room?.equipment || [])];
                       if (p.room?.accessible)
                         currentFeatures.push("accessible-feat");
@@ -699,9 +712,12 @@ export default function BookingModal({
                       return (
                         <div
                           key={`preview-${i}`}
-                          className={`series-data-row ${p.status === "conflict" ? "bg-red-50" : "bg-orange-50/20"} border-l-4 ${p.status === "conflict" ? "border-l-red-500" : "border-l-orange-400"}`}
+                          className={`series-grid series-data-row ${p.status === "conflict" ? "bg-red-50" : "bg-orange-50/20"} border-l-4 ${p.status === "conflict" ? "border-l-red-500" : "border-l-orange-400"}`}
                         >
-                          <div className="col-date">
+                          <div
+                            data-label={t("header_date")}
+                            className="font-bold"
+                          >
                             {new Date(p.date).toLocaleDateString(
                               lang === "de" ? "de-DE" : "en-US",
                               {
@@ -711,41 +727,59 @@ export default function BookingModal({
                               },
                             )}
                           </div>
-                          <div className="col-status">
-                            {p.status === "ok" ? (
+
+                          <div
+                            data-label={t("header_room")}
+                            className="flex items-center gap-2"
+                          >
+                            {p.status === "ok" || p.status === "alternative" ? (
                               <PlusCircle
-                                size={18}
-                                className="text-orange-500"
+                                size={16}
+                                className="text-orange-500 shrink-0"
                               />
                             ) : (
-                              <XCircle size={18} className="text-red-500" />
+                              <XCircle
+                                size={16}
+                                className="text-red-500 shrink-0"
+                              />
                             )}
+                            <span
+                              className={`font-bold ${p.status === "conflict" ? "text-red-600" : "text-slate-700"}`}
+                            >
+                              {p.room?.name || "KEIN RAUM FREI"}
+                            </span>
                           </div>
-                          <div className="col-room font-bold">
-                            {p.room?.name || "KEIN RAUM FREI"}
-                          </div>
-                          <div className="col-floor">
+
+                          <div data-label={t("header_floor")}>
                             {p.room ? `${p.room.floor}. OG` : "-"}
                           </div>
-                          <div className="col-seats">
+
+                          <div
+                            data-label={t("header_seats")}
+                            className="flex items-center gap-1"
+                          >
                             <Users size={12} /> {p.room?.capacity || 0}
                           </div>
-                          <div className="col-extra">
+
+                          <div
+                            data-label={t("header_features")}
+                            className="flex flex-wrap gap-1"
+                          >
                             {p.status === "conflict" ? (
-                              <span className="badge-feature badge-missing !no-underline font-black text-red-600">
+                              <span className="badge-feature badge-missing font-black text-red-600 uppercase text-[8px]">
                                 KONFLIKT
                               </span>
                             ) : (
                               <>
                                 {p.status === "alternative" && (
-                                  <span className="badge-best-match mr-1">
+                                  <span className="bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase">
                                     Best Match
                                   </span>
                                 )}
                                 {extra.map((id) => (
                                   <span
                                     key={id}
-                                    className="badge-feature badge-extra"
+                                    className="bg-green-100 text-green-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase"
                                   >
                                     +{" "}
                                     {id === "accessible-feat"
@@ -760,7 +794,7 @@ export default function BookingModal({
                                 {missing.map((id) => (
                                   <span
                                     key={id}
-                                    className="badge-feature badge-missing"
+                                    className="bg-red-100 text-red-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase line-through"
                                   >
                                     -{" "}
                                     {id === "accessible-feat"

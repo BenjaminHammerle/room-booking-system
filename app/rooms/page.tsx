@@ -70,22 +70,22 @@ interface Booking {
 
 export default function RoomBookingPage() {
   const router = useRouter();
-const [lang, setLang] = useState<"de" | "en">("de");
+  const [lang, setLang] = useState<"de" | "en">("de");
 
-// 1. Einmaliges Laden beim Öffnen der Seite
-useEffect(() => {
-  const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
-  if (savedLang === "de" || savedLang === "en") {
-    setLang(savedLang);
-  }
-}, []);
+  // 1. Einmaliges Laden beim Öffnen der Seite
+  useEffect(() => {
+    const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
+    if (savedLang === "de" || savedLang === "en") {
+      setLang(savedLang);
+    }
+  }, []);
 
-// 2. Die neue Toggle-Funktion (Speichert aktiv beim Klick)
-const handleLangToggle = () => {
-  const newLang = lang === "de" ? "en" : "de";
-  setLang(newLang);
-  localStorage.setItem("mci_lang", newLang);
-};
+  // 2. Die neue Toggle-Funktion (Speichert aktiv beim Klick)
+  const handleLangToggle = () => {
+    const newLang = lang === "de" ? "en" : "de";
+    setLang(newLang);
+    localStorage.setItem("mci_lang", newLang);
+  };
 
   // --- DATA STATES ---
   const [dbTrans, setDbTrans] = useState<any>({});
@@ -347,7 +347,7 @@ const handleLangToggle = () => {
         if (currentTimeMin > startMin + 15) {
           await supabase
             .from("bookings")
-            .update({ status: "cancelled" }) // oder 'released', je nach DB-Logik
+            .update({ status: "released" }) // oder 'released', je nach DB-Logik
             .eq("id", b.id);
         }
       }
@@ -518,27 +518,28 @@ const handleLangToggle = () => {
   return (
     <div className="room-page-wrapper">
       <nav className="room-navbar">
-        <div className="flex items-center gap-4 md:gap-12">
+        <div className="flex items-center gap-2 md:gap-8">
           <img
             src="/MCI.png"
             alt="MCI"
-            className="h-10 md:h-16 cursor-pointer"
+            className="h-8 md:h-12 cursor-pointer"
             onClick={() => router.push("/rooms")}
           />
           <button
             onClick={() => router.push("/reservations")}
-            className="nav-link flex items-center gap-2"
+            className="nav-link !text-[10px] md:!text-xs"
           >
-            <Calendar size={20} />{" "}
-            <span className="hidden sm:inline">{t("nav_bookings")}</span>
+            <Calendar size={16} />{" "}
+            <span className="hidden xs:inline">{t("nav_bookings")}</span>
           </button>
         </div>
-        <div className="flex flex-row items-center gap-8">
+        <div className="flex items-center gap-3 md:gap-6">
           <button
             onClick={handleLangToggle}
-            className="nav-link text-xs uppercase"
+            className="lang-toggle-btn !py-1.5 !px-3"
           >
-            <Globe size={18} /> {lang}
+            <Globe size={14} />{" "}
+            <span className="text-[10px]">{lang.toUpperCase()}</span>
           </button>
           <div className="relative">
             <button
@@ -591,28 +592,27 @@ const handleLangToggle = () => {
           {/* MOBILE FILTER TOGGLE (Nur sichtbar auf kleinen Screens) */}
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-[#004a87] font-black uppercase italic tracking-tighter"
+            className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm"
           >
             <div className="flex items-center gap-3">
               <Filter size={20} className="text-[#f7941d]" />
-              <span>
-                {t("filter_title")}{" "}
-                {selectedEquipment.length > 0 &&
-                  `(${selectedEquipment.length})`}
+              {/* Styling identisch zu Desktop-Header: normal, nicht fett, mci-blue */}
+              <span className="text-[#004a87] italic uppercase text-sm tracking-widest">
+                {t("filter_title")}
               </span>
             </div>
             <ChevronDown
-              size={20}
-              className={`transition-transform duration-300 ${showMobileFilters ? "rotate-180" : ""}`}
+              className={`text-[#004a87] transition-transform ${showMobileFilters ? "rotate-180" : ""}`}
             />
           </button>
 
-          {/* DIE EIGENTLICHE FILTER CARD */}
+          {/* FILTER CARD */}
           <div
-            className={`filter-card ${showMobileFilters ? "block" : "hidden lg:block"} mci-animate-fade`}
+            className={`filter-card hide-scrollbar ${showMobileFilters ? "block" : "hidden lg:block"} max-h-[85vh] overflow-y-auto`}
           >
-            <div className="filter-title-row hidden lg:flex">
-              <Filter size={20} className="text-[#f7941d]" />
+            {/* Desktop Title: Auf Mobile jetzt ausgeblendet */}
+            <div className="hidden lg:flex items-center gap-2 mb-8 text-[#004a87] italic uppercase text-sm tracking-widest">
+              <Filter size={20} className="text-[#f7941d]" />{" "}
               {t("filter_title")}
             </div>
 
@@ -724,6 +724,7 @@ const handleLangToggle = () => {
                   onChange={(e) => setMinCapacity(e.target.value)}
                   className="filter-capacity-bar"
                 />
+                {/* Schmale Input Box */}
                 <input
                   type="number"
                   min="0"
@@ -771,7 +772,7 @@ const handleLangToggle = () => {
 
             <div className="mci-field-group">
               <label className="mci-label">{t("filter_equip")}</label>
-              <div className="mci-filter-list">
+              <div className="flex flex-col gap-1 mt-2">
                 <label className="mci-filter-item">
                   <input
                     type="checkbox"
@@ -779,9 +780,7 @@ const handleLangToggle = () => {
                     onChange={() => setOnlyAccessible(!onlyAccessible)}
                     className="filter-checkbox"
                   />
-                  <span
-                    className={`mci-filter-text ${onlyAccessible ? "mci-filter-text-accessible-active" : "mci-filter-text-inactive"}`}
-                  >
+                  <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
                     <Accessibility size={16} /> {t("label_accessible")}
                   </span>
                 </label>
@@ -800,7 +799,7 @@ const handleLangToggle = () => {
                       className="filter-checkbox"
                     />
                     <span
-                      className={`mci-filter-text ${selectedEquipment.includes(eq.id) ? "mci-filter-text-active" : "mci-filter-text-inactive"}`}
+                      className={`text-sm font-bold ${selectedEquipment.includes(eq.id) ? "text-[var(--mci-blue)]" : "text-slate-500"}`}
                     >
                       {lang === "de" ? eq.name_de : eq.name_en}
                     </span>
@@ -823,15 +822,6 @@ const handleLangToggle = () => {
               <XCircle size={14} className="inline mr-2" />{" "}
               {t("filter_reset_btn")}
             </button>
-            {/* KLEINER OPTIONALER FIX: "Filter anwenden" Button am Handy */}
-            {showMobileFilters && (
-              <button
-                onClick={() => setShowMobileFilters(false)}
-                className="lg:hidden btn-mci-main !py-4 !text-sm mt-4"
-              >
-                {t("apply_filters") || "Filter anwenden"}
-              </button>
-            )}
           </div>
         </aside>
 
@@ -906,24 +896,38 @@ const handleLangToggle = () => {
                     </div>
                     <div className="room-info-container">
                       <span className="mci-info-tag">
-                        <Users size={20} className="text-[#f7941d]" />{" "}
-                        {room.capacity} {t("admin_label_capacity")}
+                        <Users size={20} />{" "}
+                        <span className="mci-info-tag-text">
+                          {room.capacity} {t("admin_label_capacity")}
+                        </span>
                       </span>
                       <span className="mci-info-tag">
-                        <MapPin size={20} className="text-[#f7941d]" />{" "}
-                        {room.building?.name}
+                        <MapPin size={20} />{" "}
+                        <span className="mci-info-tag-text">
+                          {room.building?.name}
+                        </span>
                       </span>
                       <span className="mci-info-tag">
-                        <Layers size={20} className="text-[#f7941d]" />{" "}
-                        {room.floor}. OG
+                        <Layers size={20} />{" "}
+                        <span className="mci-info-tag-text">
+                          {room.floor}. OG
+                        </span>
                       </span>
                       {room.seating_arrangement && (
-                        <span className="mci-info-tag">
-                          <List size={20} className="text-[#f7941d]" />{" "}
-                          {t(room.seating_arrangement)}
+                        <span
+                          className="mci-info-tag"
+                          title={t(
+                            room.seating_arrangement,
+                          )} /* <--- Erzeugt den Hover-Effekt */
+                        >
+                          <List size={20} />
+                          <span className="mci-info-tag-text">
+                            {t(room.seating_arrangement)}
+                          </span>
                         </span>
                       )}
                     </div>
+
                     <button
                       disabled={occ.isOccupied || !room.is_active}
                       onClick={() => {

@@ -1,5 +1,61 @@
 @import "tailwindcss";
 
+/* --- RESERVATIONS LAYOUT REFINEMENT (V8.3) --- */
+
+.res-image-wrapper {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .res-image-wrapper {
+    width: 300px;
+  }
+}
+
+.res-content-block {
+  flex: 1;
+  padding: 1.5rem;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .res-content-block {
+    padding: 2.5rem;
+  }
+}
+
+.res-action-bar {
+  width: 100%;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .res-action-bar {
+    width: 220px;
+    border-left: 1px solid #f1f5f9;
+  }
+}
+
+/* Die Info-Box (Grid) */
+.res-info-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 2rem;
+  border: 1px solid #f1f5f9;
+}
+
+@media (min-width: 640px) {
+  .res-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+
+
 /* --- LAYOUT WRAPPER --- */
 .res-page-wrapper {
   background-color: var(--mci-bg);
@@ -119,3 +175,5 @@
     @apply flex-1 justify-center py-4;
   }
 }
+
+

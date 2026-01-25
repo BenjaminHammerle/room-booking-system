@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* Header Spacing */
+.admin-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Sidebar Bubble & Desktop Logic */
+.admin-sidebar-container { width: 100%; }
+@media (min-width: 1024px) {
+  .admin-sidebar-container { width: 18rem; flex-shrink: 0; position: sticky; top: 2rem; }
+}
+
+
+/* Export/Print Button Responsive */
+.print-btn-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+@media (max-width: 640px) {
+  .print-btn-container { justify-content: center; width: 100%; }
+  .admin-action-btn { width: 100% !important; }
+}
+
+/* --- EXTENSION BOX (RESPONSIVE FIX) --- */
+.res-extension-box {
+  @apply mb-8 mt-2 p-6 md:p-8 bg-white rounded-[1.5rem] md:rounded-[1.5rem] 
+         border-2 border-orange-100 flex flex-col md:flex-row items-center 
+         gap-6 md:gap-10 shadow-xl shadow-orange-900/5;
+  animation: mciPop 0.3s ease-out;
+}
+
+/* Das Zahlenfeld schrumpft am Handy leicht */
+.mci-number-input-lg {
+  @apply w-24 h-20 md:w-32 md:h-24 bg-orange-50 border-none rounded-2xl md:rounded-3xl 
+         text-4xl md:text-5xl font-black text-[var(--mci-blue)] text-center 
+         outline-none ring-2 ring-orange-100 focus:ring-4 focus:ring-[var(--mci-orange)] 
+         shadow-inner transition-all;
+}
+
+.res-extension-text-group {
+  @apply flex flex-col gap-1 border-t-2 md:border-t-0 md:border-l-2 
+         border-orange-100 pt-4 md:pt-0 md:pl-8 py-2 text-center md:text-left min-w-0 flex-1;
+}
+
+/* --- MOBILE LISTEN-ANSICHT FÜR SERIEN --- */
+/* Spalten: Datum | Raum+Status | Stock | Sitze | Features */
+.series-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.8fr 0.6fr 0.8fr 1.5fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+}
+
+.series-header-row {
+  @apply bg-slate-50 text-[9px] font-black uppercase text-slate-400 border-b border-gray-100;
+  display: grid !important; /* Fix für Desktop */
+}
+
+/* Mobil-Anpassung: Von Horizontal auf Block-Stapel */
+@media (max-width: 768px) {
+  .series-grid {
+    display: block;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 1.5rem;
+  }
+  .series-header-row { display: none !important; }
+  .series-data-row > div { margin-bottom: 0.5rem; display: flex; justify-content: space-between; }
+  .series-data-row > div::before { content: attr(data-label); font-weight: 900; font-size: 8px; text-transform: uppercase; color: #94a3b8; }
+}
+
+.mci-label {
+  /* FALSCH: @apply ml-0 !important; */
+  /* RICHTIG: */
+  @apply !ml-0 !mb-0;
+}
+

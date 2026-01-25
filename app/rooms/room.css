@@ -18,7 +18,7 @@
 }
 
 .filter-card {
-  @apply bg-white rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 border border-gray-100 shadow-sm md:sticky md:top-32 space-y-6;
+  @apply bg-white rounded-[1.5rem] md:rounded-[1.5rem] p-8 md:p-10 border border-gray-100 shadow-sm md:sticky md:top-32 space-y-6;
 }
 
 .filter-title-row {
@@ -31,7 +31,7 @@
 }
 
 .room-card {
-  @apply bg-white rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1;
+  @apply bg-white rounded-[1.5rem] md:rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1;
 }
 
 .room-card-image-wrapper {
@@ -81,6 +81,29 @@
 
 /* Den Toggle-Button am Handy etwas hervorheben */
 @media (max-width: 1024px) {
+  .room-sidebar {
+    @apply sticky top-24 z-[40];
+  }
+}
+
+/* --- BEST MATCH TAG (In room.css für Cards) --- */
+.best-match {
+  @apply bg-blue-50 text-[var(--mci-light-blue)] px-3 py-1.5 rounded-xl 
+         border border-blue-100 flex items-center gap-2 font-black 
+         uppercase text-[9px] italic shadow-sm;
+}
+
+/* --- MOBILE FILTER SCROLL FIX --- */
+@media (max-width: 1024px) {
+  .filter-card {
+    /* Begrenzt die Höhe auf den Viewport minus Navbar-Abstand */
+    max-height: calc(100vh - 160px); 
+    overflow-y: auto;
+    /* Verhindert das Scrollen des Hintergrunds, wenn man im Filter scrollt */
+    -webkit-overflow-scrolling: touch; 
+    @apply shadow-2xl border-t-4 border-t-[var(--mci-orange)];
+  }
+  
   .room-sidebar {
     @apply sticky top-24 z-[40];
   }

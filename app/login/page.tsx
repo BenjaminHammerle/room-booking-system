@@ -1,24 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
-import { ShieldAlert } from 'lucide-react';
-import './login.css';
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { ShieldAlert } from "lucide-react";
+import { Globe } from "lucide-react";
+import "./login.css";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dbTrans, setDbTrans] = useState<any>({});
-  const [lang, setLang] = useState<'de' | 'en'>('de');
+  const [lang, setLang] = useState<"de" | "en">("de");
   const router = useRouter();
 
   // Texte aus DB laden
   useEffect(() => {
     async function fetchTranslations() {
-      const { data } = await supabase.from('translations').select('*');
+      const { data } = await supabase.from("translations").select("*");
       if (data) {
         const tMap: any = {};
         data.forEach((item) => {
@@ -43,50 +44,62 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(t('login_error_prefix') + error.message);
+      setError(t("login_error_prefix") + error.message);
       setLoading(false);
     } else {
       router.refresh();
       setTimeout(() => {
-        router.push('/rooms');
+        router.push("/rooms");
       }, 100);
     }
+  };
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
+    if (savedLang) setLang(savedLang);
+  }, []);
+
+  const handleLangToggle = () => {
+    const newLang = lang === "de" ? "en" : "de";
+    setLang(newLang);
+    localStorage.setItem("mci_lang", newLang);
   };
 
   return (
     <div className="mci-login-container">
       <div className="mci-login-card">
-        
         {/* Header Bereich */}
         <div className="mci-login-header">
           <img src="/MCI.png" alt="MCI Logo" className="mci-login-logo" />
-          <h1 className="mci-login-title">{t('login_title')}</h1>
-          <p className="mci-login-subtitle">{t('login_subtitle')}</p>
+          <h1 className="mci-login-title">{t("login_title")}</h1>
+          <p className="mci-login-subtitle">{t("login_subtitle")}</p>
         </div>
 
         {/* Formular Bereich */}
         <form onSubmit={handleLogin} className="mci-login-form">
           <div>
-            <label className="mci-login-label">{t('login_email_label')}</label>
-            <input 
-              type="email" 
+            <label className="mci-login-label">{t("login_email_label")}</label>
+            <input
+              type="email"
               className="mci-login-input"
-              required 
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('login_email_placeholder')}
+              placeholder={t("login_email_placeholder")}
             />
           </div>
 
           <div>
-            <label className="mci-login-label">{t('login_password_label')}</label>
-            <input 
-              type="password" 
+            <label className="mci-login-label">
+              {t("login_password_label")}
+            </label>
+            <input
+              type="password"
               className="mci-login-input"
-              required 
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={t('login_password_placeholder')}
+              placeholder={t("login_password_placeholder")}
             />
           </div>
 
@@ -97,23 +110,21 @@ export default function LoginPage() {
           )}
 
           <button type="submit" disabled={loading} className="mci-login-button">
-            {loading ? t('login_loading') : t('login_button')}
+            {loading ? t("login_loading") : t("login_button")}
           </button>
         </form>
 
         {/* Sprachen Footer */}
-        <div className="mci-login-footer">
-          <button 
-            onClick={() => setLang('de')} 
-            className={`text-[10px] font-bold uppercase tracking-widest ${lang === 'de' ? 'text-[#004a87]' : 'text-gray-300'}`}
+        <div className="absolute top-8 right-8">
+          <button
+            onClick={() => {
+              const newLang = lang === "de" ? "en" : "de";
+              setLang(newLang);
+              localStorage.setItem("mci_lang", newLang);
+            }}
+            className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-white font-black text-xs uppercase hover:bg-white/20 transition-all"
           >
-            DE
-          </button>
-          <button 
-            onClick={() => setLang('en')} 
-            className={`text-[10px] font-bold uppercase tracking-widest ${lang === 'en' ? 'text-[#004a87]' : 'text-gray-300'}`}
-          >
-            EN
+            <Globe size={14} /> {lang}
           </button>
         </div>
       </div>
