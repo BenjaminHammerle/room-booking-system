@@ -5,6 +5,19 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { updateUserAdmin, createNewUserAdmin } from "./actions";
 import "./admin.css";
+
+// integration der zentralen lib-architektur für einheitliche daten und helfer
+import {
+  APP_CONFIG,
+  BOOKING_STATUS,
+  SUPPORTED_LANGS,
+  Language,
+  SEATING_OPTIONS,
+} from "@/lib/constants";
+import { getEquipmentIcon } from "@/lib/icons";
+import { timeToMinutes, getTrans } from "@/lib/utils";
+
+// alle icons einzeln importiert
 import {
   Users,
   Calendar,
@@ -29,39 +42,37 @@ import {
   Accessibility,
   Repeat,
   Info,
+  ShieldCheck,
+  Trash2,
+  MapPin,
+  Clock,
+  Save,
 } from "lucide-react";
 
-const SEATING_OPTIONS = [
-  "school with a central corridor",
-  "edv room",
-  "wow room",
-  "exam room",
-  "parliament",
-  "meeting room",
-  "conference room",
-];
-
+// hauptkomponente für die administratoren-konsole
 export default function AdminPage() {
   const router = useRouter();
+
+  // zustandsverwaltung für navigation und sprache
   const [activeTab, setActiveTab] = useState("planning");
-  const [lang, setLang] = useState<"de" | "en">("de");
+  const [lang, setLang] = useState<Language>(APP_CONFIG.DEFAULT_LANG);
   const [dbTrans, setDbTrans] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
-  // --- DATA STATES ---
+  // daten-zustände für alle verwalteten entitäten
   const [profiles, setProfiles] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
 
-  // --- MODAL STATES ---
+  // modal-zustände für die verwaltung von objekten
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showBuildingModal, setShowBuildingModal] = useState(false);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
 
-  // --- OBJECT STATES ---
+  // zustände für selektierte objekte
   const [currentRoom, setCurrentRoom] = useState<any>(null);
   const [currentBuilding, setCurrentBuilding] = useState<any>(null);
   const [editUser, setEditUser] = useState<any>(null);
@@ -72,10 +83,12 @@ export default function AdminPage() {
     last_name: "",
     is_admin: false,
   });
+
+  // spezial-zustände für die kombiraum-konfiguration
   const [isCombi, setIsCombi] = useState(false);
   const [combiParts, setCombiParts] = useState<string[]>([]);
 
-  // --- UI STATES ---
+  // ui-steuerung für interaktive elemente
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
@@ -85,21 +98,25 @@ export default function AdminPage() {
   const [selectedRoomForCalendar, setSelectedRoomForCalendar] =
     useState<string>("");
 
+  // übersetzungs-helper für dynamische inhalte
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
-  // --- INITIAL LOAD ---
+  // initialisierung: sprache laden und daten-fetch auslösen
   useEffect(() => {
-    const savedLang = localStorage.getItem("mci_lang") as "de" | "en";
-    if (savedLang) setLang(savedLang);
+    const savedLang = localStorage.getItem("mci_lang") as Language;
+    if (SUPPORTED_LANGS.includes(savedLang)) setLang(savedLang);
     loadAdminData();
   }, []);
 
   const handleLangToggle = () => {
-    const newLang = lang === "de" ? "en" : "de";
-    setLang(newLang);
-    localStorage.setItem("mci_lang", newLang);
+    const currentIndex = SUPPORTED_LANGS.indexOf(lang);
+    const nextIndex = (currentIndex + 1) % SUPPORTED_LANGS.length;
+    const nextLang = SUPPORTED_LANGS[nextIndex];
+    setLang(nextLang);
+    localStorage.setItem("mci_lang", nextLang);
   };
 
+  // zentrales laden aller administrativen tabellen aus supabase inkl. SICHERHEITSCHECK
   async function loadAdminData() {
     setLoading(true);
     const {
@@ -120,11 +137,18 @@ export default function AdminPage() {
         supabase.from("equipment").select("*"),
       ]);
 
+    // SICHERHEITS-CHECK: Ist der Nutzer Admin?
+    const currentUserProfile = profRes.data?.find(
+      (p) => p.id === session.user.id,
+    );
+    if (!currentUserProfile || !currentUserProfile.is_admin) {
+      router.push("/rooms");
+      return;
+    }
+
     if (transRes.data) {
       const tMap: any = {};
-      transRes.data.forEach(
-        (i) => (tMap[i.key.toLowerCase()] = { de: i.de, en: i.en }),
-      );
+      transRes.data.forEach((i) => (tMap[i.key.toLowerCase()] = i));
       setDbTrans(tMap);
     }
     setProfiles(profRes.data || []);
@@ -135,19 +159,19 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  // --- LOGIC HELPER ---
+  // berechnung der statistischen kennzahlen
   const stats = useMemo(() => {
-    const activeB = bookings.filter((b) => b.status === "active");
+    const activeB = bookings.filter((b) => b.status === BOOKING_STATUS.ACTIVE);
     const now = new Date();
-    const oneWeekAgoStr = new Date(now.setDate(now.getDate() - 7))
-      .toISOString()
-      .split("T")[0];
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(now.getDate() - 7);
+    const oneWeekAgoStr = oneWeekAgo.toISOString().split("T")[0];
 
     const topLifetime = rooms
       .map((r) => ({
         name: r.name,
         count: bookings.filter(
-          (b) => b.room_id === r.id && b.status !== "cancelled",
+          (b) => b.room_id === r.id && b.status !== BOOKING_STATUS.CANCELLED,
         ).length,
       }))
       .sort((a, b) => b.count - a.count)
@@ -159,7 +183,7 @@ export default function AdminPage() {
         count: bookings.filter(
           (b) =>
             b.room_id === r.id &&
-            b.status !== "cancelled" &&
+            b.status !== BOOKING_STATUS.CANCELLED &&
             b.booking_date >= oneWeekAgoStr,
         ).length,
       }))
@@ -200,7 +224,6 @@ export default function AdminPage() {
     return Math.max(0, ((h * 60 + m - 7 * 60) / ((23.5 - 7) * 60)) * 100);
   };
 
-  // --- ACTIONS ---
   const handleSaveBuilding = async () => {
     setLoading(true);
     const { error } = currentBuilding.id
@@ -213,7 +236,7 @@ export default function AdminPage() {
       setShowBuildingModal(false);
       loadAdminData();
     } else {
-      alert("Error: " + error.message);
+      alert(error.message);
       setLoading(false);
     }
   };
@@ -250,7 +273,7 @@ export default function AdminPage() {
       setShowRoomModal(false);
       loadAdminData();
     } else {
-      alert("Error: " + error?.message);
+      alert(error?.message);
       setLoading(false);
     }
   };
@@ -297,8 +320,9 @@ export default function AdminPage() {
 
   if (loading)
     return (
-      <div className="h-screen flex items-center justify-center font-black italic text-[#004a87] uppercase animate-pulse">
-        Lade Konsole...
+      <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-[#004a87] font-black italic animate-pulse">
+        <ShieldCheck size={80} className="mb-6 text-[#549BB7]" />
+        <span>mci system check...</span>
       </div>
     );
 
@@ -308,18 +332,24 @@ export default function AdminPage() {
         <div className="flex flex-col items-start text-left">
           <button
             onClick={() => router.push("/rooms")}
-            className="nav-link group"
+            className="nav-link group mb-2"
           >
             <ArrowLeft
               size={16}
               className="group-hover:-translate-x-1 transition-transform"
-            />{" "}
+            />
             <span>{t("archiv_back")}</span>
           </button>
           <h1 className="res-page-title">{t("nav_admin")}</h1>
         </div>
-        <button onClick={handleLangToggle} className="lang-toggle-btn">
-          <Globe size={16} /> {lang.toUpperCase()}
+        <button
+          onClick={handleLangToggle}
+          className="lang-toggle-btn !py-1.5 !px-3 shadow-sm border border-gray-100 bg-white rounded-2xl"
+        >
+          <Globe size={14} className="text-[#004a87]" />{" "}
+          <span className="text-[10px] font-black text-[#004a87] ml-1">
+            {lang.toUpperCase()}
+          </span>
         </button>
       </header>
 
@@ -327,21 +357,22 @@ export default function AdminPage() {
         <aside className="admin-sidebar-container no-print">
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm"
+            className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm text-[#004a87] font-black italic uppercase"
           >
             <div className="flex items-center gap-3">
               <Menu size={20} className="text-[#f7941d]" />
-              <span className="text-[#004a87] italic uppercase text-sm tracking-widest">
-                {t("filter_title")}
-              </span>
+              <span>{t("admin_menu_title")}</span>
             </div>
-            <ChevronDown
-              className={`text-[#004a87] transition-transform ${showMobileMenu ? "rotate-180" : ""}`}
-            />
+            <ChevronDown className={showMobileMenu ? "rotate-180" : ""} />
           </button>
+
           <div
             className={`admin-menu-card hide-scrollbar ${showMobileMenu ? "block" : "hidden lg:block"}`}
           >
+            <div className="hidden lg:flex items-center gap-3 mb-8 text-[#004a87] font-black italic uppercase text-sm tracking-widest">
+              <Menu size={20} className="text-[#f7941d]" />{" "}
+              {t("admin_menu_title")}
+            </div>
             <nav className="space-y-1">
               <button
                 onClick={() => {
@@ -350,7 +381,7 @@ export default function AdminPage() {
                 }}
                 className={`admin-tab-btn ${activeTab === "planning" ? "active" : ""}`}
               >
-                <Calendar size={18} />{" "}
+                <Calendar size={18} />
                 <span>{t("admin_sidebar_planning")}</span>
               </button>
               <button
@@ -360,7 +391,8 @@ export default function AdminPage() {
                 }}
                 className={`admin-tab-btn ${activeTab === "buildings" ? "active" : ""}`}
               >
-                <Home size={18} /> <span>{t("admin_tab_buildings")}</span>
+                <Home size={18} />
+                <span>{t("admin_tab_buildings")}</span>
               </button>
               <button
                 onClick={() => {
@@ -369,7 +401,8 @@ export default function AdminPage() {
                 }}
                 className={`admin-tab-btn ${activeTab === "rooms" ? "active" : ""}`}
               >
-                <Layers size={18} /> <span>{t("admin_sidebar_rooms")}</span>
+                <Layers size={18} />
+                <span>{t("admin_sidebar_rooms")}</span>
               </button>
               <button
                 onClick={() => {
@@ -378,7 +411,8 @@ export default function AdminPage() {
                 }}
                 className={`admin-tab-btn ${activeTab === "users" ? "active" : ""}`}
               >
-                <Users size={18} /> <span>{t("admin_sidebar_users")}</span>
+                <Users size={18} />
+                <span>{t("admin_sidebar_users")}</span>
               </button>
               <button
                 onClick={() => {
@@ -387,14 +421,15 @@ export default function AdminPage() {
                 }}
                 className={`admin-tab-btn ${activeTab === "stats" ? "active" : ""}`}
               >
-                <BarChart3 size={18} /> <span>{t("admin_sidebar_stats")}</span>
+                <BarChart3 size={18} />
+                <span>{t("admin_sidebar_stats")}</span>
               </button>
             </nav>
           </div>
         </aside>
 
         <main className="flex-1 w-full min-w-0">
-          {/* TAB 1: PLANNING */}
+          {/* TAB: PLANNING */}
           {activeTab === "planning" && (
             <div className="space-y-6 mci-animate-fade">
               <div className="admin-header-row">
@@ -414,7 +449,7 @@ export default function AdminPage() {
                 </div>
                 <button
                   onClick={() => window.print()}
-                  className="admin-action-btn !bg-slate-800"
+                  className="mci-action-btn-unified !w-auto px-6 !bg-slate-800 text-white shadow-lg"
                 >
                   <Printer size={16} /> {t("admin_btn_print")}
                 </button>
@@ -524,7 +559,7 @@ export default function AdminPage() {
                                 .map((b) => (
                                   <div
                                     key={b.id}
-                                    className={`absolute top-0 bottom-0 px-2 flex flex-col justify-center border-l-2 border-white/20 ${b.is_checked_in ? "bg-green-500" : "bg-[#004a87]"} text-white shadow-sm`}
+                                    className={`absolute top-0 bottom-0 px-2 flex flex-col justify-center border-l-2 border-white/20 ${b.is_checked_in ? "bg-green-500" : "bg-[#004a87]"} text-white shadow-sm overflow-hidden`}
                                     style={{
                                       left: `${getPositionX(b.start_time)}%`,
                                       width: `${((b.duration * 60) / ((23.5 - 7) * 60)) * 100}%`,
@@ -545,7 +580,7 @@ export default function AdminPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 text-left">
                   <select
                     value={selectedRoomForCalendar}
                     onChange={(e) => setSelectedRoomForCalendar(e.target.value)}
@@ -597,10 +632,10 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 2: STATS */}
+          {/* TAB: STATS */}
           {activeTab === "stats" && (
             <div className="space-y-8 mci-animate-fade text-left">
-              <div className="admin-stats-grid">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="admin-menu-card !p-8 text-center">
                   <p className="mci-stat-label">
                     {t("admin_stats_checkin_rate")}
@@ -625,8 +660,8 @@ export default function AdminPage() {
                   </p>
                 </div>
               </div>
-              <div className="admin-layout-grid !flex-row !gap-8">
-                <div className="admin-menu-card flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="admin-menu-card">
                   <h3 className="mci-stat-label border-b pb-4 mb-6">
                     {t("admin_stats_top_lifetime")}
                   </h3>
@@ -644,7 +679,7 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
-                <div className="admin-menu-card flex-1 border-l-4 border-l-[var(--mci-orange)]">
+                <div className="admin-menu-card border-l-4 border-l-[var(--mci-orange)]">
                   <h3 className="mci-stat-label border-b pb-4 mb-6 mci-text-orange">
                     {t("admin_stats_top_last_week")}
                   </h3>
@@ -666,9 +701,9 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 3: BUILDINGS */}
+          {/* TAB: BUILDINGS */}
           {activeTab === "buildings" && (
-            <div className="space-y-6 mci-animate-fade">
+            <div className="space-y-6 mci-animate-fade text-left">
               <div className="admin-header-row">
                 <h2 className="res-page-title !text-2xl">
                   {t("admin_title_buildings")}
@@ -679,8 +714,8 @@ export default function AdminPage() {
                       name: "",
                       distance: 0,
                       floors: 1,
-                      latitude: 47.2,
-                      longitude: 11.3,
+                      latitude: 47.26,
+                      longitude: 11.39,
                       accessible: true,
                       mci_wifi_ip: "",
                       image_url: "",
@@ -688,7 +723,7 @@ export default function AdminPage() {
                     });
                     setShowBuildingModal(true);
                   }}
-                  className="admin-action-btn"
+                  className="mci-action-btn-unified !w-auto px-6 !bg-[var(--mci-blue)] text-white shadow-md"
                 >
                   <Plus size={16} /> {t("admin_btn_add_building")}
                 </button>
@@ -705,6 +740,7 @@ export default function AdminPage() {
                           <img
                             src={b.image_url}
                             className="w-10 h-10 object-cover rounded-lg"
+                            alt=""
                           />
                         ) : (
                           <Home size={22} />
@@ -717,7 +753,7 @@ export default function AdminPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => {
                           setCurrentBuilding(b);
@@ -740,7 +776,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 4: ROOMS */}
+          {/* TAB: ROOMS */}
           {activeTab === "rooms" && (
             <div className="space-y-6 mci-animate-fade text-left">
               <div className="admin-header-row">
@@ -764,7 +800,7 @@ export default function AdminPage() {
                     setCombiParts([]);
                     setShowRoomModal(true);
                   }}
-                  className="admin-action-btn"
+                  className="mci-action-btn-unified !w-auto px-6 !bg-[var(--mci-blue)] text-white shadow-md"
                 >
                   <Plus size={16} /> {t("admin_btn_add_room")}
                 </button>
@@ -781,6 +817,7 @@ export default function AdminPage() {
                           <img
                             src={room.image_url}
                             className="w-10 h-10 object-cover rounded-lg"
+                            alt=""
                           />
                         ) : (
                           <Monitor size={22} />
@@ -797,7 +834,7 @@ export default function AdminPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => {
                           setCurrentRoom(room);
@@ -821,7 +858,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 5: USERS */}
+          {/* TAB: USERS */}
           {activeTab === "users" && (
             <div className="space-y-6 mci-animate-fade text-left">
               <div className="admin-header-row">
@@ -830,71 +867,96 @@ export default function AdminPage() {
                 </h2>
                 <button
                   onClick={() => setShowAddUserModal(true)}
-                  className="admin-action-btn"
+                  className="mci-action-btn-unified !w-auto px-6 !bg-[var(--mci-blue)] text-white shadow-md"
                 >
                   <UserPlus size={16} /> {t("admin_btn_add_user")}
                 </button>
               </div>
               <div className="admin-menu-card !p-0 overflow-hidden">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th className="mci-sub-label">Name</th>
-                      <th className="mci-sub-label">E-Mail</th>
-                      <th className="mci-sub-label">Rolle</th>
-                      <th className="p-5"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profiles.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50 transition">
-                        <td>
-                          <p className="mci-text-bold">
-                            {p.first_name} {p.last_name}
-                          </p>
-                        </td>
-                        <td className="text-slate-400 text-sm">{p.email}</td>
-                        <td>
-                          <span
-                            className={`mci-badge-pill ${p.is_admin ? "bg-[#004a87] text-white italic" : "bg-slate-100 text-slate-400"}`}
-                          >
-                            {p.is_admin ? "ADMIN" : "USER"}
-                          </span>
-                        </td>
-                        <td className="text-right">
-                          <button
-                            onClick={() => {
-                              setEditUser(p);
-                              setShowUserEditModal(true);
-                            }}
-                            className="text-slate-300 hover:text-[#004a87] p-2 transition"
-                          >
-                            <Edit3 size={18} />
-                          </button>
-                        </td>
+                <div className="overflow-x-auto w-full">
+                  <table className="admin-table w-full min-w-[600px]">
+                    <thead>
+                      <tr>
+                        <th className="mci-sub-label p-6 text-left">Name</th>
+                        <th className="mci-sub-label p-6 text-left">E-Mail</th>
+                        <th className="mci-sub-label p-6 text-left">Rolle</th>
+                        <th className="p-6"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {profiles.map((p) => (
+                        <tr
+                          key={p.id}
+                          className="hover:bg-slate-50 transition border-b border-slate-50 last:border-0"
+                        >
+                          <td>
+                            <p className="mci-text-bold px-6">
+                              {p.first_name} {p.last_name}
+                            </p>
+                          </td>
+                          <td className="text-slate-400 text-sm px-6">
+                            {p.email}
+                          </td>
+                          <td className="px-6">
+                            <span
+                              className={`px-4 py-1 rounded-full text-[10px] font-black italic ${p.is_admin ? "bg-[#004a87] text-white" : "bg-slate-100 text-slate-400"}`}
+                            >
+                              {p.is_admin ? "ADMIN" : "USER"}
+                            </span>
+                          </td>
+                          <td className="text-right px-6">
+                            <button
+                              onClick={() => {
+                                setEditUser(p);
+                                setShowUserEditModal(true);
+                              }}
+                              className="text-slate-300 hover:text-[#004a87] p-2 transition"
+                            >
+                              <Edit3 size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
         </main>
       </div>
 
-      {/* --- ALL MODALS --- */}
+      {/* --- MODALS --- */}
 
-      {/* MODAL BUILDING */}
       {showBuildingModal && currentBuilding && (
         <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-xl">
-            <div className="mci-modal-header">
-              <h3>{t("admin_title_buildings")}</h3>
-              <button onClick={() => setShowBuildingModal(false)}>
-                <X />
+          <div className="mci-modal-card max-w-xl animate-in zoom-in-95">
+            <div className="mci-modal-header text-white">
+              <div className="flex flex-col text-left">
+                <p className="text-xs font-black opacity-70 uppercase italic">
+                  Building Management
+                </p>
+                <h3 className="text-4xl font-black uppercase italic tracking-tighter">
+                  {currentBuilding.name || "New Building"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowBuildingModal(false)}
+                className="bg-white/10 p-3 rounded-full hover:rotate-90 transition-all"
+              >
+                <X size={24} />
               </button>
             </div>
-            <div className="mci-modal-body">
+            <div className="mci-modal-body p-10 space-y-6 text-left">
+              {currentBuilding.image_url && (
+                <div className="mci-image-preview-frame">
+                  <img
+                    src={currentBuilding.image_url}
+                    alt="Building Preview"
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                </div>
+              )}
               <div>
                 <label className="mci-label">{t("admin_field_name")}</label>
                 <input
@@ -922,11 +984,6 @@ export default function AdminPage() {
                   }
                   className="mci-input"
                 />
-                {currentBuilding.image_url && (
-                  <div className="mci-image-preview-container">
-                    <img src={currentBuilding.image_url} alt="Preview" />
-                  </div>
-                )}
               </div>
               <div className="mci-grid-2">
                 <div>
@@ -960,10 +1017,9 @@ export default function AdminPage() {
               </div>
               <div className="mci-grid-2">
                 <div>
-                  <label className="mci-label">GPS Latitude</label>
+                  <label className="mci-label">Lat</label>
                   <input
                     type="number"
-                    step="any"
                     value={currentBuilding.latitude}
                     onChange={(e) =>
                       setCurrentBuilding({
@@ -975,10 +1031,9 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="mci-label">GPS Longitude</label>
+                  <label className="mci-label">Long</label>
                   <input
                     type="number"
-                    step="any"
                     value={currentBuilding.longitude}
                     onChange={(e) =>
                       setCurrentBuilding({
@@ -1004,11 +1059,8 @@ export default function AdminPage() {
                   placeholder="192.168"
                 />
               </div>
-              <label className="admin-checkbox-row">
-                <div className="flex items-center gap-3">
-                  <Accessibility size={20} className="mci-text-blue" />
-                  <span className="mci-text-bold">{t("label_accessible")}</span>
-                </div>
+
+              <label className="mci-filter-item mt-4">
                 <input
                   type="checkbox"
                   checked={currentBuilding.accessible}
@@ -1020,26 +1072,51 @@ export default function AdminPage() {
                   }
                   className="filter-checkbox"
                 />
+                <span className="font-bold text-slate-600 flex items-center gap-2">
+                  <Accessibility size={16} /> {t("label_accessible")}
+                </span>
               </label>
-              <button onClick={handleSaveBuilding} className="btn-mci-main">
-                {t("admin_btn_save")}
-              </button>
+<div>
+              <button
+                onClick={handleSaveBuilding}
+                className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
+              >
+                <Save size={20} /> {t("admin_btn_save")}
+              </button></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL ROOM */}
       {showRoomModal && currentRoom && (
         <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-2xl">
-            <div className="mci-modal-header">
-              <h3>{t("admin_sidebar_rooms")}</h3>
-              <button onClick={() => setShowRoomModal(false)}>
-                <X />
+          <div className="mci-modal-card max-w-2xl animate-in zoom-in-95">
+            <div className="mci-modal-header text-white">
+              <div className="flex flex-col text-left">
+                <p className="text-xs font-black opacity-70 uppercase italic">
+                  Room Configuration
+                </p>
+                <h3 className="text-4xl font-black uppercase italic tracking-tighter">
+                  {currentRoom.name || "New Room"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowRoomModal(false)}
+                className="bg-white/10 p-3 rounded-full hover:rotate-90 transition-all"
+              >
+                <X size={24} />
               </button>
             </div>
-            <div className="mci-modal-body">
+            <div className="mci-modal-body p-10 space-y-6 text-left">
+              {currentRoom.image_url && (
+                <div className="mci-image-preview-frame">
+                  <img
+                    src={currentRoom.image_url}
+                    alt="Room Preview"
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                </div>
+              )}
               <div className="mci-grid-2">
                 <div>
                   <label className="mci-label">
@@ -1089,11 +1166,6 @@ export default function AdminPage() {
                   }
                   className="mci-input"
                 />
-                {currentRoom.image_url && (
-                  <div className="mci-image-preview-container">
-                    <img src={currentRoom.image_url} alt="Preview" />
-                  </div>
-                )}
               </div>
               <div className="mci-grid-2">
                 <div>
@@ -1150,7 +1222,7 @@ export default function AdminPage() {
                 <label className="mci-label">
                   {t("admin_label_equip_select")}
                 </label>
-                <div className="grid grid-cols-2 gap-2 p-6 bg-slate-50 rounded-[2rem] border border-gray-100">
+                <div className="grid grid-cols-2 gap-3 p-6 bg-slate-50 rounded-[2rem] border border-gray-100">
                   {equipmentList.map((eq) => (
                     <label key={eq.id} className="mci-filter-item">
                       <input
@@ -1166,18 +1238,15 @@ export default function AdminPage() {
                         }}
                         className="filter-checkbox"
                       />
-                      <span className="mci-sub-label !text-slate-600">
-                        {lang === "de" ? eq.name_de : eq.name_en}
+                      <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                        {getEquipmentIcon(eq.id)} {getTrans(eq, "name", lang)}
                       </span>
                     </label>
                   ))}
                 </div>
               </div>
-              <label className="admin-checkbox-row">
-                <div className="flex items-center gap-3">
-                  <Accessibility size={20} className="mci-text-blue" />
-                  <span className="mci-text-bold">{t("label_accessible")}</span>
-                </div>
+
+              <label className="mci-filter-item mt-4">
                 <input
                   type="checkbox"
                   checked={currentRoom.accessible}
@@ -1189,10 +1258,14 @@ export default function AdminPage() {
                   }
                   className="filter-checkbox"
                 />
+                <span className="font-bold text-slate-600 flex items-center gap-2">
+                  <Accessibility size={16} /> {t("label_accessible")}
+                </span>
               </label>
-              <div className="mci-admin-info-box">
+
+              <div className="p-6 bg-blue-50/50 rounded-[2rem] border border-blue-100 text-left mt-4">
                 <label className="flex items-center justify-between cursor-pointer mb-3">
-                  <span className="text-xs font-black uppercase italic mci-text-blue">
+                  <span className="text-xs font-black uppercase italic text-[#004a87]">
                     {t("admin_label_is_combi")}
                   </span>
                   <input
@@ -1228,29 +1301,37 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
-              <button onClick={handleSaveRoom} className="btn-mci-main">
-                {t("admin_btn_save")}
-              </button>
+              <div><button
+                onClick={handleSaveRoom}
+                className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
+              >
+                <Save size={20} /> {t("admin_btn_save")}
+              </button></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL USER EDIT */}
       {showUserEditModal && editUser && (
         <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-xl mci-animate-pop">
-            <div className="mci-modal-header">
-              <h3>{t("admin_modal_user_title")}</h3>
-              <button onClick={() => setShowUserEditModal(false)}>
-                <X />
+          <div className="mci-modal-card max-w-xl animate-in zoom-in-95">
+            <div className="mci-modal-header text-white">
+              <div className="flex flex-col text-left">
+                <p className="text-xs font-black opacity-70 uppercase italic">
+                  User Profile
+                </p>
+                <h3 className="text-4xl font-black uppercase italic tracking-tighter">
+                  {editUser.email}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowUserEditModal(false)}
+                className="bg-white/10 p-3 rounded-full hover:rotate-90 transition-all"
+              >
+                <X size={24} />
               </button>
             </div>
-            <div className="mci-modal-body space-y-6 text-left">
-              <div className="mci-admin-info-box">
-                <p className="mci-sub-label opacity-60">Account E-Mail</p>
-                <p className="mci-text-bold mci-text-blue">{editUser.email}</p>
-              </div>
+            <div className="mci-modal-body p-10 space-y-6 text-left">
               <div className="mci-grid-2">
                 <div>
                   <label className="mci-label">{t("admin_label_fname")}</label>
@@ -1286,8 +1367,7 @@ export default function AdminPage() {
                   className="mci-input"
                 />
               </div>
-              <label className="admin-checkbox-row">
-                <span className="mci-text-bold">{t("admin_label_admin")}</span>
+              <label className="mci-filter-item">
                 <input
                   type="checkbox"
                   checked={editUser.is_admin}
@@ -1296,28 +1376,43 @@ export default function AdminPage() {
                   }
                   className="filter-checkbox"
                 />
+                <span className="font-bold text-slate-600">
+                  {t("admin_label_admin")}
+                </span>
               </label>
-              <button onClick={handleUpdateUser} className="btn-mci-main">
-                {t("admin_btn_save")}
-              </button>
+              <div><button
+                onClick={handleUpdateUser}
+                className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
+              >
+                <Save size={20} /> {t("admin_btn_save")}
+              </button></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL USER ADD */}
       {showAddUserModal && (
         <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-xl mci-animate-pop">
-            <div className="mci-modal-header">
-              <h3>{t("admin_modal_add_user_title")}</h3>
-              <button onClick={() => setShowAddUserModal(false)}>
-                <X />
+          <div className="mci-modal-card max-w-xl animate-in zoom-in-95">
+            <div className="mci-modal-header text-white">
+              <div className="flex flex-col text-left">
+                <p className="text-xs font-black opacity-70 uppercase italic">
+                  Identity Management
+                </p>
+                <h3 className="text-4xl font-black uppercase italic tracking-tighter">
+                  {t("admin_modal_add_user_title")}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowAddUserModal(false)}
+                className="bg-white/10 p-3 rounded-full hover:rotate-90 transition-all"
+              >
+                <X size={24} />
               </button>
             </div>
             <form
               onSubmit={handleCreateUser}
-              className="mci-modal-body space-y-6 text-left"
+              className="mci-modal-body p-10 space-y-6 text-left"
             >
               <div className="mci-grid-2">
                 <div>
@@ -1367,9 +1462,27 @@ export default function AdminPage() {
                   className="mci-input"
                 />
               </div>
-              <button type="submit" className="btn-mci-main">
-                {t("admin_btn_add_user")}
+              <label className="mci-filter-item">
+                <input
+                  type="checkbox"
+                  checked={newUser.is_admin}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, is_admin: e.target.checked })
+                  }
+                  className="filter-checkbox"
+                />
+                <span className="font-bold text-slate-600">
+                  {t("admin_label_admin")}
+                </span>
+              </label>
+              <div>
+              <button
+                type="submit"
+                className="mci-action-btn-unified !bg-[var(--mci-blue)] text-white mt-8 shadow-xl"
+              >
+                <UserPlus size={20} /> {t("admin_btn_add_user")}
               </button>
+              </div>
             </form>
           </div>
         </div>

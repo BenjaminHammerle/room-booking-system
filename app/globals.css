@@ -130,10 +130,10 @@
   @apply bg-white rounded-[3rem] border border-gray-100 shadow-sm transition-all overflow-hidden flex flex-col lg:flex-row items-stretch mb-8;
 }
 .res-image-wrapper {
-  @apply shrink-0 bg-slate-100 overflow-hidden w-full lg:w-[320px];
+  @apply shrink-0 bg-slate-100 overflow-hidden mt-3 w-full lg:w-[320px];
 }
 .res-content-block {
-  @apply flex-1 flex flex-col justify-center p-8 lg:p-12 min-w-0;
+  @apply flex-1 flex flex-col justify-center p-8 lg:p-2 min-w-0;
 }
 .res-action-bar {
   @apply flex flex-col items-center justify-between w-full lg:w-[260px] shrink-0 p-8 lg:border-l border-gray-50 bg-slate-50/30 gap-4;
@@ -200,4 +200,40 @@
   .no-print {
     display: none !important;
   }
+}
+
+
+/* einheitliches styling für toggles und buttons (lektoren-vorgabe) */
+.mci-ui-toggle {
+    font-family: inherit;
+    font-weight: 900 !important;
+    font-style: italic !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em;
+}
+
+.mci-action-btn-unified {
+    width: 100%;
+    height: 3.5rem; /* fixierte höhe für alle buttons in spalte 3 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    border-radius: 1.25rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: none;
+}
+
+.mci-action-btn-unified:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+.mci-action-btn-unified:active {
+    transform: translateY(0);
 }
