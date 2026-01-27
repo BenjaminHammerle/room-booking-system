@@ -16,6 +16,7 @@ import {
 import { getEquipmentIcon } from "@/lib/icons";
 import { timeToMinutes, getEndTimeParts, getTrans } from "@/lib/utils";
 
+// heiliges gebot: alle icons explizit importieren um referenceerrors zu vermeiden
 import {
   Calendar,
   Users,
@@ -42,6 +43,7 @@ import {
   Ban,
   History,
   Save,
+  Armchair,
 } from "lucide-react";
 
 export default function RoomBookingPage() {
@@ -102,7 +104,7 @@ export default function RoomBookingPage() {
 
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
-  // zeit-helfer für vergangenheitssperre im gesamten komponenten-scope verfügbar
+  // ZEIT-HELFER: Definition direkt im Body für fehlerfreien Render-Zugriff
   const nowComp = new Date();
   const currentHour = nowComp.getHours();
   const currentMin = nowComp.getMinutes();
@@ -150,7 +152,7 @@ export default function RoomBookingPage() {
           .single(),
       ]);
 
-    // auto-release logik mit präzisions-check
+    // auto-release logik mit präzisions-check (v14 matrix)
     const todayStr = nowComp.toISOString().split("T")[0];
     const overdue = bookingsRes.data?.filter(
       (b) =>
@@ -195,8 +197,8 @@ export default function RoomBookingPage() {
     }
     if (profileRes.data) {
       setIsAdmin(profileRes.data.is_admin);
-      setFirstName(profileRes.data.first_name || "");
-      setLastName(profileRes.data.last_name || "");
+      setFirstName(profileRes.data.first_name || "MCI");
+      setLastName(profileRes.data.last_name || "User");
     }
     setLoading(false);
   }
@@ -379,7 +381,7 @@ export default function RoomBookingPage() {
                 <UserIcon size={22} />
               </div>
               <span className="font-bold text-slate-700">
-                {firstName || "User"}
+                {firstName || "MCI User"}
               </span>
               <ChevronDown size={14} className="text-gray-400" />
             </button>
@@ -541,7 +543,7 @@ export default function RoomBookingPage() {
                 <input
                   type="range"
                   min="0"
-                  max={Math.max(...rooms.map((r) => r.capacity), 100)}
+                  max={100}
                   value={minCapacity}
                   onChange={(e) => setMinCapacity(e.target.value)}
                   className="filter-capacity-bar"
@@ -713,7 +715,7 @@ export default function RoomBookingPage() {
                         </div>
                       )}
                     </div>
-                    <div className="room-info-container">
+                    <div className="room-info-container text-left">
                       <span className="mci-info-tag">
                         <Users size={20} />
                         <span className="mci-info-tag-text">
@@ -732,6 +734,17 @@ export default function RoomBookingPage() {
                           {room.floor}. OG
                         </span>
                       </span>
+                      {room.seating_arrangement && (
+                        <span
+                          className="mci-info-tag"
+                          title={t(room.seating_arrangement)}
+                        >
+                          <Armchair size={20} />
+                          <span className="mci-info-tag-text truncate max-w-[80px] md:max-w-none">
+                            {t(room.seating_arrangement)}
+                          </span>
+                        </span>
+                      )}
                     </div>
                     <button
                       disabled={status.isOccupiedNow}

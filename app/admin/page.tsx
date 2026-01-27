@@ -344,12 +344,10 @@ export default function AdminPage() {
         </div>
         <button
           onClick={handleLangToggle}
-          className="lang-toggle-btn !py-1.5 !px-3 shadow-sm border border-gray-100 bg-white rounded-2xl"
+          className="lang-toggle-btn !py-1.5 !px-3"
         >
-          <Globe size={14} className="text-[#004a87]" />{" "}
-          <span className="text-[10px] font-black text-[#004a87] ml-1">
-            {lang.toUpperCase()}
-          </span>
+          <Globe size={14} />{" "}
+          <span className="text-[10px]">{lang.toUpperCase()}</span>
         </button>
       </header>
 
@@ -1076,13 +1074,14 @@ export default function AdminPage() {
                   <Accessibility size={16} /> {t("label_accessible")}
                 </span>
               </label>
-<div>
-              <button
-                onClick={handleSaveBuilding}
-                className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
-              >
-                <Save size={20} /> {t("admin_btn_save")}
-              </button></div>
+              <div>
+                <button
+                  onClick={handleSaveBuilding}
+                  className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
+                >
+                  <Save size={20} /> {t("admin_btn_save")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1301,12 +1300,14 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
-              <div><button
-                onClick={handleSaveRoom}
-                className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
-              >
-                <Save size={20} /> {t("admin_btn_save")}
-              </button></div>
+              <div>
+                <button
+                  onClick={handleSaveRoom}
+                  className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
+                >
+                  <Save size={20} /> {t("admin_btn_save")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1380,12 +1381,14 @@ export default function AdminPage() {
                   {t("admin_label_admin")}
                 </span>
               </label>
-              <div><button
-                onClick={handleUpdateUser}
-                className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
-              >
-                <Save size={20} /> {t("admin_btn_save")}
-              </button></div>
+              <div>
+                <button
+                  onClick={handleUpdateUser}
+                  className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
+                >
+                  <Save size={20} /> {t("admin_btn_save")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1476,12 +1479,12 @@ export default function AdminPage() {
                 </span>
               </label>
               <div>
-              <button
-                type="submit"
-                className="mci-action-btn-unified !bg-[var(--mci-blue)] text-white mt-8 shadow-xl"
-              >
-                <UserPlus size={20} /> {t("admin_btn_add_user")}
-              </button>
+                <button
+                  type="submit"
+                  className="mci-action-btn-unified !bg-[var(--mci-blue)] text-white mt-8 shadow-xl"
+                >
+                  <UserPlus size={20} /> {t("admin_btn_add_user")}
+                </button>
               </div>
             </form>
           </div>

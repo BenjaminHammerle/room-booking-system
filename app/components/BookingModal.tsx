@@ -75,7 +75,7 @@ export default function BookingModal({
   const [isExtending, setIsExtending] = useState(false);
   const [weeksToAdd, setWeeksToAdd] = useState(1);
   const [loading, setLoading] = useState(false);
-
+  
   // zustand für visuelles feedback (erfolg/fehler) nach datenbank-aktionen
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";

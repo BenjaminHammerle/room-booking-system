@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import "./reservations.css";
 import BookingModal from "@/app/components/BookingModal";
 
-// Integration der zentralen lib-Architektur
+// Integration der zentralen lib-Architektur für einheitliche Konstanten und Helfer
 import {
   APP_CONFIG,
   BOOKING_STATUS,
@@ -21,7 +21,7 @@ import {
   getDistance,
 } from "@/lib/utils";
 
-// Heiliges Gebot: Alle Icons explizit importieren
+// Heiliges Gebot: Alle Icons explizit importieren um Fehler zu vermeiden
 import {
   ArrowLeft,
   Calendar,
@@ -46,9 +46,11 @@ import {
   Save,
 } from "lucide-react";
 
+// Hauptkomponente für das Buchungsarchiv und Management der Nutzer-Reservierungen
 export default function ReservationsPage() {
   const router = useRouter();
 
+  // Zustandsverwaltung für Sprache, Daten und Ladezustand
   const [lang, setLang] = useState<Language>(APP_CONFIG.DEFAULT_LANG);
   const [dbTrans, setDbTrans] = useState<any>({});
   const [user, setUser] = useState<any>(null);
@@ -60,29 +62,36 @@ export default function ReservationsPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Zustände für die Filter-Steuerung (identisch zu rooms page)
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState("open");
   const [filterRoom, setFilterRoom] = useState("all");
   const [filterUser, setFilterUser] = useState("all");
   const [filterBuilding, setFilterBuilding] = useState("all");
 
+  // Zustände für das BookingModal und dessen Initialisierung
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<any>(null);
   const [minCapacity, setMinCapacity] = useState("0");
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+
+  // Feedback-Zustand für Check-in Vorgang (Punkt 3.B der Logik-Matrix)
   const [checkinFeedback, setCheckinFeedback] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
 
+  // Übersetzungs-Helper (Zugriff auf DB-Tabelle translations)
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
+  // Initialisierung beim Laden der Seite
   useEffect(() => {
     const savedLang = localStorage.getItem("mci_lang") as Language;
     if (SUPPORTED_LANGS.includes(savedLang)) setLang(savedLang);
     loadAllData();
   }, []);
 
+  // Sprachen-Toggle rotiert generisch (V14 Multi-Language Logic)
   const handleLangToggle = () => {
     const currentIndex = SUPPORTED_LANGS.indexOf(lang);
     const nextIndex = (currentIndex + 1) % SUPPORTED_LANGS.length;
@@ -91,6 +100,7 @@ export default function ReservationsPage() {
     localStorage.setItem("mci_lang", nextLang);
   };
 
+  // Zentraler Daten-Fetch und mathematische Prüfung für Auto-Release
   async function loadAllData() {
     setLoading(true);
     const {
@@ -122,6 +132,7 @@ export default function ReservationsPage() {
       supabase.from("equipment").select("*"),
     ]);
 
+    // Auto-Release Prüfung: Buchungen exakt nach Ablauf der Karenzzeit freigeben (Punkt 3.A)
     const nowComp = new Date();
     const todayStr = nowComp.toISOString().split("T")[0];
     const currentMin = nowComp.getHours() * 60 + nowComp.getMinutes();
@@ -158,27 +169,40 @@ export default function ReservationsPage() {
     setProfiles(profilesRes.data || []);
     setBuildings(buildRes.data || []);
     setEquipmentList(equipRes.data || []);
+
     setLoading(false);
   }
 
+  // Standort-Validierung und Check-in Prozess (Punkt 3.B)
   const handleSecureCheckIn = async (booking: any) => {
     setLoading(true);
     const room = rooms.find((r) => r.id === booking.room_id);
     const building = buildings.find((b) => b.id === room?.building_id);
+
+    // Bypass für Entwickler auf Localhost
     if (window.location.hostname === "localhost") {
       await performCheckIn(booking.id);
       return;
     }
 
     try {
-      const ipRes = await fetch("https://api64.ipify.org?format=json");
+      // 1. WiFi-IP Prüfung: Nutzt api.ipify.org (IPv4), da DB-Präfixe IPv4 sind
+      const ipRes = await fetch("https://api.ipify.org?format=json");
       const { ip } = await ipRes.json();
-      const ipMatch =
-        building?.mci_wifi_ip && ip.startsWith(building.mci_wifi_ip);
+
+      // Logik für kommagetrennte Präfixe (z.B. "138.22., 85.127.")
+      const allowedPrefixes = (building?.mci_wifi_ip || "").split(",");
+      const ipMatch = allowedPrefixes.some((prefix: string) => {
+        const p = prefix.trim();
+        return p !== "" && ip.startsWith(p);
+      });
+
+      // 2. GPS Prüfung (Radius Match < 250m)
       let gpsMatch = false;
       const pos: any = await new Promise((res, rej) => {
         navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 });
       });
+
       if (pos && building?.latitude && building?.longitude) {
         const dist = getDistance(
           pos.coords.latitude,
@@ -188,6 +212,8 @@ export default function ReservationsPage() {
         );
         if (dist <= APP_CONFIG.CHECKIN_RADIUS_METERS) gpsMatch = true;
       }
+
+      // Erfolgreicher Check-in bei IP-Match ODER GPS-Match
       if (ipMatch || gpsMatch) {
         await performCheckIn(booking.id);
       } else {
@@ -274,6 +300,7 @@ export default function ReservationsPage() {
           b.booking_date < todayStr ||
           (b.booking_date === todayStr &&
             timeToMinutes(b.start_time) + b.duration * 60 <= currentMin);
+
         if (
           filterStatus === "open" &&
           (isPast || b.status !== BOOKING_STATUS.ACTIVE)
@@ -304,6 +331,7 @@ export default function ReservationsPage() {
     user,
   ]);
 
+  // Einheitlicher Ladezustand (V14 Design-Rules)
   if (loading && !checkinFeedback)
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-[#004a87] font-black italic animate-pulse">
@@ -314,8 +342,11 @@ export default function ReservationsPage() {
 
   return (
     <div className="res-page-wrapper">
+      {/* Globales Feedback-Overlay für Check-in */}
       {checkinFeedback && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-white/90 animate-in fade-in">
+        <div
+          className={`fixed inset-0 z-[200] flex items-center justify-center p-6 bg-white/90 animate-in fade-in`}
+        >
           <div
             className={`p-10 rounded-[3rem] shadow-2xl text-center max-w-sm ${checkinFeedback.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}
           >
@@ -343,7 +374,7 @@ export default function ReservationsPage() {
             </button>
             <h1 className="res-page-title">{t("archiv_title")}</h1>
 
-            {/* MOBILE BADGE: Nur sichtbar wenn Bildschirm < 768px. Nutzt kein .res-stats-badge im CSS für display */}
+            {/* MOBILE Badge: md:hidden */}
             <div className="md:hidden mt-3">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#004a87] text-white rounded-xl shadow-md border-none">
                 <History size={14} />
@@ -355,7 +386,7 @@ export default function ReservationsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* DESKTOP BADGE: Nur sichtbar wenn Bildschirm >= 768px */}
+            {/* DESKTOP Badge: hidden md:flex */}
             <div className="hidden md:flex items-center gap-2 px-6 py-3 bg-[#004a87] text-white rounded-2xl shadow-lg border-none">
               <History size={16} />
               <span className="font-bold">
@@ -365,12 +396,10 @@ export default function ReservationsPage() {
 
             <button
               onClick={handleLangToggle}
-              className="lang-toggle-btn mci-ui-toggle !py-2 !px-4 shadow-sm border border-gray-100 bg-white rounded-2xl hover:bg-gray-50 transition-colors shrink-0"
+              className="lang-toggle-btn !py-1.5 !px-3"
             >
-              <Globe size={14} className="text-[#004a87]" />
-              <span className="text-xs font-black text-[#004a87] ml-2">
-                {lang.toUpperCase()}
-              </span>
+              <Globe size={14} />{" "}
+              <span className="text-[10px]">{lang.toUpperCase()}</span>
             </button>
           </div>
         </div>
@@ -378,6 +407,7 @@ export default function ReservationsPage() {
 
       <div className="res-layout">
         <aside className="res-sidebar">
+          {/* Mobile Filter Toggle */}
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
             className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm text-[#004a87] font-black italic uppercase mci-ui-toggle"
@@ -396,7 +426,7 @@ export default function ReservationsPage() {
               <FilterIcon size={20} className="text-[#f7941d]" />{" "}
               {t("filter_title")}
             </div>
-            <div className="space-y-6">
+            <div className="space-y-6 text-left">
               <div>
                 <label className="mci-label">{t("archiv_filter_status")}</label>
                 <select
@@ -476,6 +506,7 @@ export default function ReservationsPage() {
             const todayStr = now.toISOString().split("T")[0];
             const currentMin = now.getHours() * 60 + now.getMinutes();
             const startMin = timeToMinutes(b.start_time);
+
             const isCancelled = b.status === BOOKING_STATUS.CANCELLED;
             const isReleased =
               b.status === BOOKING_STATUS.RELEASED ||
@@ -523,7 +554,7 @@ export default function ReservationsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="mci-sub-label mb-6">
+                  <p className="mci-sub-label mb-3">
                     {room?.building?.name} • {room?.floor}.{" "}
                     {t("label_floor_short")}
                   </p>

@@ -60,8 +60,8 @@
   @apply font-bold text-sm text-slate-700;
 }
 .mci-sub-label {
-  @apply font-black uppercase tracking-widest;
-  font-size: 9px;
+  @apply font-black uppercase ;
+  font-size: 14px;
   color: #94a3b8;
 }
 .mci-stat-label {
