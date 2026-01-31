@@ -160,7 +160,7 @@
 
 /* --- 8. MODAL SPLITS (zusätzlich zu globals) --- */
 .modal-split-container {
-  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300;
+  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col;
   max-width: 64rem;
 }
 
@@ -171,7 +171,7 @@
 }
 
 .modal-split-container-room {
-  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300;
+  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col;
   max-width: 80rem;
 }
 
