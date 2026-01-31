@@ -5,8 +5,6 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import "./room.css";
 import BookingModal from "@/app/components/BookingModal";
-
-// import der zentralen architektur für konsistente konstanten und helfer
 import {
   APP_CONFIG,
   BOOKING_STATUS,
@@ -15,8 +13,6 @@ import {
 } from "@/lib/constants";
 import { getEquipmentIcon } from "@/lib/icons";
 import { timeToMinutes, getEndTimeParts, getTrans } from "@/lib/utils";
-
-// heiliges gebot: alle icons explizit importieren um referenceerrors zu vermeiden
 import {
   Calendar,
   Users,
@@ -40,7 +36,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Accessibility,
-  Ban,
   History,
   Save,
   Armchair,
@@ -57,18 +52,25 @@ export default function RoomBookingPage() {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // profil daten states für den editor
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [newPassword, setNewPassword] = useState("");
-
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  // filter-initialisierung basierend auf smart-time vorgaben
+  // Track Desktop Breakpoint (≥1410px)
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1410);
+    };
+    checkDesktop(); // Initial check
+    window.addEventListener("resize", checkDesktop);
+    return () => window.removeEventListener("resize", checkDesktop);
+  }, []);
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     if (now.getHours() >= APP_CONFIG.SMART_TIME_THRESHOLD_HOUR) {
@@ -103,8 +105,6 @@ export default function RoomBookingPage() {
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
 
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
-
-  // ZEIT-HELFER: Definition direkt im Body für fehlerfreien Render-Zugriff
   const nowComp = new Date();
   const currentHour = nowComp.getHours();
   const currentMin = nowComp.getMinutes();
@@ -152,17 +152,17 @@ export default function RoomBookingPage() {
           .single(),
       ]);
 
-    // auto-release logik mit präzisions-check (v14 matrix)
-    const todayStr = nowComp.toISOString().split("T")[0];
+    // HEILIGES GEBOT: AUTO-RELEASE FEATURE
+    const todayStr = new Date().toISOString().split("T")[0];
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
     const overdue = bookingsRes.data?.filter(
       (b) =>
         b.booking_date === todayStr &&
         b.status === BOOKING_STATUS.ACTIVE &&
         !b.is_checked_in &&
-        currentHour * 60 + currentMin >=
+        nowMinutes >=
           timeToMinutes(b.start_time) + APP_CONFIG.AUTO_RELEASE_MINUTES,
     );
-
     if (overdue?.length) {
       for (const b of overdue)
         await supabase
@@ -177,12 +177,10 @@ export default function RoomBookingPage() {
 
     if (transRes.data) {
       const tMap: any = {};
-      transRes.data.forEach((i) => {
-        tMap[i.key.toLowerCase()] = i;
-      });
+      transRes.data.forEach((i) => (tMap[i.key.toLowerCase()] = i));
       setDbTrans(tMap);
     }
-    if (equipRes.data) setEquipmentList(equipRes.data);
+    setEquipmentList(equipRes.data || []);
     if (roomsRes.data) {
       setRooms(roomsRes.data);
       setBuildings(
@@ -197,34 +195,29 @@ export default function RoomBookingPage() {
     }
     if (profileRes.data) {
       setIsAdmin(profileRes.data.is_admin);
-      setFirstName(profileRes.data.first_name || "MCI");
-      setLastName(profileRes.data.last_name || "User");
+      setFirstName(profileRes.data.first_name || "");
+      setLastName(profileRes.data.last_name || "");
     }
     setLoading(false);
   }
 
-  // funktion zur profil-aktualisierung
   const handleUpdateProfile = async () => {
     setLoading(true);
     const { error: profileError } = await supabase
       .from("profiles")
       .update({ first_name: firstName, last_name: lastName })
       .eq("id", user.id);
-
     if (newPassword) {
       const { error: pwdError } = await supabase.auth.updateUser({
         password: newPassword,
       });
       if (pwdError) alert(pwdError.message);
     }
-
     if (!profileError) {
       setShowSettingsModal(false);
       setNewPassword("");
       await initApp();
-    } else {
-      alert(profileError.message);
-    }
+    } else alert(profileError.message);
     setLoading(false);
   };
 
@@ -242,13 +235,11 @@ export default function RoomBookingPage() {
       .sort(
         (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time),
       );
-
     const current = dayBookings.find((b) => {
       const start = timeToMinutes(b.start_time);
-      const end = start + (b.duration || 1) * 60;
+      const end = start + b.duration * 60;
       return refMin >= start && refMin < end;
     });
-
     if (current) {
       const endT = getEndTimeParts(current.start_time, current.duration).full;
       return {
@@ -364,13 +355,15 @@ export default function RoomBookingPage() {
             <span className="hidden md:inline">{t("nav_bookings")}</span>
           </button>
         </div>
-        <div className="flex items-center gap-3 md:gap-6">
+        <div className="flex items-center gap-3 md:gap-6 ml-auto">
           <button
             onClick={handleLangToggle}
-            className="lang-toggle-btn !py-1.5 !px-3"
+            className="lang-toggle-btn shadow-sm"
           >
-            <Globe size={14} />{" "}
-            <span className="text-[10px]">{lang.toUpperCase()}</span>
+            <Globe size={14} className="text-[#004a87]" />{" "}
+            <span className="text-[10px] font-black text-[#004a87] ml-1">
+              {lang.toUpperCase()}
+            </span>
           </button>
           <div className="relative">
             <button
@@ -380,10 +373,13 @@ export default function RoomBookingPage() {
               <div className="bg-gray-100 w-11 h-11 rounded-full flex items-center justify-center text-[#004a87] border group-hover:border-[#549BB7] transition-all">
                 <UserIcon size={22} />
               </div>
-              <span className="font-bold text-slate-700">
+              <span className="hidden md:inline font-bold text-slate-700">
                 {firstName || "MCI User"}
               </span>
-              <ChevronDown size={14} className="text-gray-400" />
+              <ChevronDown
+                size={14}
+                className="hidden md:inline text-gray-400"
+              />
             </button>
             {showUserMenu && (
               <div className="absolute right-0 mt-4 w-64 bg-white rounded-[2rem] shadow-2xl border p-2 z-[60] animate-in fade-in slide-in-from-top-2">
@@ -422,245 +418,251 @@ export default function RoomBookingPage() {
 
       <main className="room-main-layout">
         <aside className="room-sidebar">
-          <button
-            onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm"
-          >
-            <div className="flex items-center gap-3">
-              <Filter size={20} className="text-[#f7941d]" />
-              <span className="text-[#004a87] italic uppercase text-sm tracking-widest">
-                {t("filter_title")}
-              </span>
-            </div>
-            <ChevronDown
-              className={`text-[#004a87] transition-transform ${showMobileFilters ? "rotate-180" : ""}`}
-            />
-          </button>
-
-          <div
-            className={`filter-card hide-scrollbar ${showMobileFilters ? "block" : "hidden lg:block"} max-h-[85vh] overflow-y-auto`}
-          >
-            <div className="hidden lg:flex items-center gap-2 mb-8 text-[#004a87] italic uppercase text-sm tracking-widest">
-              <Filter size={20} className="text-[#f7941d]" />{" "}
-              {t("filter_title")}
-            </div>
-            <div className="mci-field-group">
-              <label className="mci-label">{t("filter_search_label")}</label>
-              <input
-                type="text"
-                placeholder={t("filter_search_placeholder")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="mci-input"
+          {/* Unitary Pattern Filter Container */}
+          <div className="filter-unit-container">
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="filter-toggle-header"
+            >
+              <div className="flex items-center gap-3">
+                <Filter size={20} className="text-[#f7941d]" />
+                <span>{t("filter_title")}</span>
+              </div>
+              <ChevronDown
+                size={24}
+                className={`transition-transform duration-200 ${showMobileFilters ? "rotate-180" : ""}`}
               />
-            </div>
-            <div className="mci-field-group">
-              <label className="mci-label">{t("filter_time_label")}</label>
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  onClick={() => {
-                    const d = new Date(selectedDate);
-                    d.setDate(d.getDate() - 1);
-                    if (
-                      d.toISOString().split("T")[0] >=
-                      nowComp.toISOString().split("T")[0]
-                    )
-                      setSelectedDate(d.toISOString().split("T")[0]);
-                  }}
-                  className="p-3 bg-gray-50 rounded-xl border border-gray-100"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  min={nowComp.toISOString().split("T")[0]}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="mci-input !text-center flex-1 min-w-0 !px-2"
-                />
-                <button
-                  onClick={() => {
-                    const d = new Date(selectedDate);
-                    d.setDate(d.getDate() + 1);
-                    setSelectedDate(d.toISOString().split("T")[0]);
-                  }}
-                  className="p-3 bg-gray-50 rounded-xl border border-gray-100"
-                >
-                  <ChevronRight size={20} />
-                </button>
+            </button>
+
+            <div
+              className={`filter-card-content ${
+                isDesktop ? "block" : showMobileFilters ? "block" : "hidden"
+              }`}
+            >
+              <div className="filter-desktop-title mci-filter-title hidden lg:flex">
+                <Filter size={20} /> {t("filter_title")}
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                <select
-                  value={selectedTime.split(":")[0]}
-                  onChange={(e) =>
-                    setSelectedTime(
-                      `${e.target.value}:${selectedTime.split(":")[1]}`,
-                    )
-                  }
-                  className="mci-select text-center flex-1"
-                >
-                  {Array.from({ length: 17 }, (_, i) =>
-                    (i + 7).toString().padStart(2, "0"),
-                  ).map((h) => (
-                    <option
-                      key={h}
-                      value={h}
-                      disabled={isToday && parseInt(h) < currentHour}
-                    >
-                      {h}
-                    </option>
-                  ))}
-                </select>
-                <span className="font-bold">:</span>
-                <select
-                  value={selectedTime.split(":")[1]}
-                  onChange={(e) =>
-                    setSelectedTime(
-                      `${selectedTime.split(":")[0]}:${e.target.value}`,
-                    )
-                  }
-                  className="mci-select text-center flex-1"
-                >
-                  {["00", "15", "30", "45"].map((m) => (
-                    <option
-                      key={m}
-                      value={m}
-                      disabled={
-                        isToday &&
-                        parseInt(selectedTime.split(":")[0]) === currentHour &&
-                        parseInt(m) <= currentMin
-                      }
-                    >
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="mci-field-group">
-              <label className="mci-label">{t("filter_cap")}</label>
-              <div className="flex items-center gap-4">
+              <div className="mci-field-group">
+                <label className="mci-label">{t("filter_search_label")}</label>
                 <input
-                  type="range"
-                  min="0"
-                  max={100}
-                  value={minCapacity}
-                  onChange={(e) => setMinCapacity(e.target.value)}
-                  className="filter-capacity-bar"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  value={minCapacity}
-                  onChange={(e) =>
-                    setMinCapacity(
-                      Math.max(0, parseInt(e.target.value) || 0).toString(),
-                    )
-                  }
-                  className="filter-capacity-number"
-                  style={{ width: "60px" }}
+                  type="text"
+                  placeholder={t("filter_search_placeholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="mci-input"
                 />
               </div>
-            </div>
-            <div className="mci-field-group">
-              <label className="mci-label">{t("filter_location")}</label>
-              <select
-                value={selectedBuildingId}
-                onChange={(e) => setSelectedBuildingId(e.target.value)}
-                className="mci-select"
-              >
-                <option value="all">{t("filter_all")}</option>
-                {buildings.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mci-field-group">
-              <label className="mci-label">{t("filter_seating")}</label>
-              <select
-                value={selectedSeating}
-                onChange={(e) => setSelectedSeating(e.target.value)}
-                className="mci-select"
-              >
-                <option value="all">{t("filter_all")}</option>
-                {Array.from(
-                  new Set(
-                    rooms.map((r) => r.seating_arrangement).filter(Boolean),
-                  ),
-                ).map((s: any) => (
-                  <option key={s} value={s}>
-                    {t(s)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mci-field-group">
-              <label className="mci-label">{t("filter_equip")}</label>
-              <div className="flex flex-col gap-1 mt-2">
-                <label className="mci-filter-item">
+              <div className="mci-field-group">
+                <label className="mci-label">{t("filter_time_label")}</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() - 1);
+                      if (
+                        d.toISOString().split("T")[0] >=
+                        nowComp.toISOString().split("T")[0]
+                      )
+                        setSelectedDate(d.toISOString().split("T")[0]);
+                    }}
+                    className="mci-step-btn"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
                   <input
-                    type="checkbox"
-                    checked={onlyAccessible}
-                    onChange={() => setOnlyAccessible(!onlyAccessible)}
-                    className="filter-checkbox"
+                    type="date"
+                    value={selectedDate}
+                    min={nowComp.toISOString().split("T")[0]}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="mci-input !text-center flex-1 min-w-0 !px-2"
                   />
-                  <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                    <Accessibility size={16} /> {t("label_accessible")}
-                  </span>
-                </label>
-                {equipmentList.map((eq) => (
-                  <label key={eq.id} className="mci-filter-item">
+                  <button
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() + 1);
+                      setSelectedDate(d.toISOString().split("T")[0]);
+                    }}
+                    className="mci-step-btn"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <select
+                    value={selectedTime.split(":")[0]}
+                    onChange={(e) =>
+                      setSelectedTime(
+                        `${e.target.value}:${selectedTime.split(":")[1]}`,
+                      )
+                    }
+                    className="mci-select text-center flex-1"
+                  >
+                    {Array.from({ length: 17 }, (_, i) =>
+                      (i + 7).toString().padStart(2, "0"),
+                    ).map((h) => (
+                      <option
+                        key={h}
+                        value={h}
+                        disabled={isToday && parseInt(h) < currentHour}
+                      >
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="font-bold">:</span>
+                  <select
+                    value={selectedTime.split(":")[1]}
+                    onChange={(e) =>
+                      setSelectedTime(
+                        `${selectedTime.split(":")[0]}:${e.target.value}`,
+                      )
+                    }
+                    className="mci-select text-center flex-1"
+                  >
+                    {["00", "15", "30", "45"].map((m) => (
+                      <option
+                        key={m}
+                        value={m}
+                        disabled={
+                          isToday &&
+                          parseInt(selectedTime.split(":")[0]) ===
+                            currentHour &&
+                          parseInt(m) <= currentMin
+                        }
+                      >
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="mci-field-group">
+                <label className="mci-label">{t("filter_cap")}</label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max={999}
+                    value={minCapacity}
+                    onChange={(e) => setMinCapacity(e.target.value)}
+                    className="filter-capacity-bar"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="999"
+                    maxLength={3}
+                    value={minCapacity}
+                    onChange={(e) => {
+                      const val = Math.max(
+                        0,
+                        Math.min(999, parseInt(e.target.value) || 0),
+                      );
+                      setMinCapacity(val.toString());
+                    }}
+                    className="filter-capacity-number"
+                    style={{ width: "50px" }}
+                  />
+                </div>
+              </div>
+              <div className="mci-field-group">
+                <label className="mci-label">{t("filter_location")}</label>
+                <select
+                  value={selectedBuildingId}
+                  onChange={(e) => setSelectedBuildingId(e.target.value)}
+                  className="mci-select"
+                >
+                  <option value="all">{t("filter_all")}</option>
+                  {buildings.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mci-field-group">
+                <label className="mci-label">{t("filter_seating")}</label>
+                <select
+                  value={selectedSeating}
+                  onChange={(e) => setSelectedSeating(e.target.value)}
+                  className="mci-select"
+                >
+                  <option value="all">{t("filter_all")}</option>
+                  {Array.from(
+                    new Set(
+                      rooms.map((r) => r.seating_arrangement).filter(Boolean),
+                    ),
+                  ).map((s: any) => (
+                    <option key={s} value={s}>
+                      {t(s)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mci-field-group">
+                <label className="mci-label">{t("filter_equip")}</label>
+                <div className="flex flex-col gap-1 mt-2">
+                  <label className="mci-filter-item">
                     <input
                       type="checkbox"
-                      checked={selectedEquipment.includes(eq.id)}
-                      onChange={() =>
-                        setSelectedEquipment((prev) =>
-                          prev.includes(eq.id)
-                            ? prev.filter((id) => id !== eq.id)
-                            : [...prev, eq.id],
-                        )
-                      }
+                      checked={onlyAccessible}
+                      onChange={() => setOnlyAccessible(!onlyAccessible)}
                       className="filter-checkbox"
                     />
-                    <span className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                      {getEquipmentIcon(eq.id)} {t("equip_" + eq.id)}
+                    <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
+                      <Accessibility size={16} /> {t("label_accessible")}
                     </span>
                   </label>
-                ))}
+                  {equipmentList.map((eq) => (
+                    <label key={eq.id} className="mci-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={selectedEquipment.includes(eq.id)}
+                        onChange={() =>
+                          setSelectedEquipment((prev) =>
+                            prev.includes(eq.id)
+                              ? prev.filter((id) => id !== eq.id)
+                              : [...prev, eq.id],
+                          )
+                        }
+                        className="filter-checkbox"
+                      />
+                      <span className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                        {getEquipmentIcon(eq.id)}{" "}
+                        {t("equip_" + eq.id).toUpperCase()}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setMinCapacity("0");
+                  setSelectedEquipment([]);
+                  setOnlyAccessible(false);
+                  setSelectedBuildingId("all");
+                  setSelectedSeating("all");
+                }}
+                className="filter-reset-btn"
+              >
+                <XCircle size={14} className="inline mr-2" />{" "}
+                {t("filter_reset_btn")}
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setMinCapacity("0");
-                setSelectedEquipment([]);
-                setOnlyAccessible(false);
-                setSelectedBuildingId("all");
-                setSelectedSeating("all");
-              }}
-              className="w-full py-4 text-[9px] font-black text-gray-300 uppercase hover:text-red-400 transition border-t border-dashed mt-4"
-            >
-              <XCircle size={14} className="inline mr-2" />{" "}
-              {t("filter_reset_btn")}
-            </button>
           </div>
         </aside>
 
         <div className="flex-1 space-y-16">
-          <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mci-animate-fade">
+          <section className="room-header-section">
             <div className="text-left">
               <h1 className="room-page-title">{t("title")}</h1>
-              <div className="md:hidden mt-2">
-                <div className="bg-[#004a87] text-white px-4 py-2 rounded-xl font-bold text-xs inline-flex items-center gap-2 shadow-md">
+              <div className="mt-2">
+                <div className="active-count-badge">
                   <History size={16} className="text-[#f7941d]" /> {activeCount}{" "}
                   {t("label_active_rooms")}
                 </div>
               </div>
-              <p className="hidden md:block text-gray-600 font-bold text-lg md:text-2xl italic">
-                {activeCount} {t("label_active_rooms")}
-              </p>
             </div>
           </section>
 
@@ -670,14 +672,15 @@ export default function RoomBookingPage() {
               return (
                 <div
                   key={room.id}
-                  className={`room-card group ${status.isOccupiedNow ? "opacity-70" : ""}`}
+                  className={`room-card group ${status.isOccupiedNow ? "is-occupied" : ""}`}
                 >
                   <div className="room-card-image-wrapper">
                     <img
                       src={room.image_url}
-                      className={`room-card-image group-hover:scale-105 transition-all duration-1000 ${status.isOccupiedNow ? "grayscale shadow-inner" : ""}`}
+                      className={`room-card-image ${status.isOccupiedNow ? "grayscale shadow-inner" : ""}`}
                       alt={room.name}
                     />
+                    {/* HEILIGES GEBOT: EQUIPMENT BADGES RENDERED ON IMAGE */}
                     <div className="room-badge-container">
                       {room.accessible && (
                         <div className="accessible-badge">
@@ -688,48 +691,50 @@ export default function RoomBookingPage() {
                         <div
                           key={eqId}
                           className="mci-badge flex items-center gap-1"
+                          title={t("equip_" + eqId).toUpperCase()}
                         >
-                          {getEquipmentIcon(eqId)} {t("equip_" + eqId)}
+                          {getEquipmentIcon(eqId)}{" "}
+                          {t("equip_" + eqId).toUpperCase()}
                         </div>
                       ))}
                     </div>
                     <div
-                      className={`${status.className} flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-500`}
+                      className={`${status.className} room-status-overlay animate-in fade-in slide-in-from-left-4 duration-500`}
                     >
                       {status.type === "occupied" ? (
                         <XCircle size={18} />
                       ) : (
                         <CheckCircle2 size={18} />
-                      )}
+                      )}{" "}
                       {status.label}
                     </div>
                   </div>
                   <div className="room-card-content text-left">
-                    <div className="flex flex-row justify-between items-start mb-6">
-                      <h3 className="font-bold text-3xl md:text-4xl tracking-tighter leading-none">
+                    <div className="room-card-header">
+                      <h3 className="room-card-name mci-card-title">
                         {room.name}
                       </h3>
                       {idx === 0 && !status.isOccupiedNow && (
                         <div className="best-match">
-                          <Info size={18} /> {t("label_best_match")}
+                          <Info size={14} /> {t("label_best_match")}
                         </div>
                       )}
                     </div>
-                    <div className="room-info-container text-left">
+                    <div className="room-info-container">
                       <span className="mci-info-tag">
-                        <Users size={20} />
+                        <Users size={20} />{" "}
                         <span className="mci-info-tag-text">
                           {room.capacity} {t("admin_label_capacity")}
                         </span>
                       </span>
                       <span className="mci-info-tag">
-                        <MapPin size={20} />
+                        <MapPin size={20} />{" "}
                         <span className="mci-info-tag-text">
                           {room.building?.name}
                         </span>
                       </span>
                       <span className="mci-info-tag">
-                        <Layers size={20} />
+                        <Layers size={20} />{" "}
                         <span className="mci-info-tag-text">
                           {room.floor}. OG
                         </span>
@@ -737,10 +742,10 @@ export default function RoomBookingPage() {
                       {room.seating_arrangement && (
                         <span
                           className="mci-info-tag"
-                          title={t(room.seating_arrangement)}
+                          title={t(room.seating_arrangement).toUpperCase()}
                         >
-                          <Armchair size={20} />
-                          <span className="mci-info-tag-text truncate max-w-[80px] md:max-w-none">
+                          <Armchair size={20} />{" "}
+                          <span className="mci-info-tag-text truncate">
                             {t(room.seating_arrangement)}
                           </span>
                         </span>
@@ -752,7 +757,7 @@ export default function RoomBookingPage() {
                         setSelectedRoom(room);
                         setShowBookingModal(true);
                       }}
-                      className={`btn-mci-main ${status.isOccupiedNow ? "bg-gray-300 shadow-none" : ""}`}
+                      className={`btn-mci-main ${status.isOccupiedNow ? "is-disabled" : ""}`}
                     >
                       {status.isOccupiedNow
                         ? t("btn_occupied")
@@ -766,7 +771,7 @@ export default function RoomBookingPage() {
         </div>
       </main>
 
-      {/* Profile Settings Modal */}
+      {/* Settings Modal */}
       {showSettingsModal && (
         <div className="mci-modal-overlay">
           <div className="mci-modal-card max-w-xl animate-in zoom-in-95">
@@ -787,6 +792,17 @@ export default function RoomBookingPage() {
               </button>
             </div>
             <div className="mci-modal-body p-10 space-y-6 text-left">
+              {/* Email ReadOnly ganz oben */}
+              <div>
+                <label className="mci-label">E-MAIL</label>
+                <input
+                  value={user?.email || ""}
+                  readOnly
+                  disabled
+                  className="mci-input !bg-gray-100 !cursor-not-allowed opacity-60"
+                  title="E-Mail kann nicht geändert werden"
+                />
+              </div>
               <div className="mci-grid-2">
                 <div>
                   <label className="mci-label">{t("admin_label_fname")}</label>

@@ -1,171 +1,344 @@
-/* --- ADMIN LAYOUT V9.5 (BUILD-SAFE) --- */
+@import "tailwindcss";
 
+/* ========================================
+   ADMIN PAGE - MINIMAL CSS
+   Nutzt globals.css maximal, nur Spezifika hier
+   ======================================== */
+
+/* --- 1. ADMIN LAYOUT --- */
 .admin-page-wrapper {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: #f8f9fb;
-  padding: 1.5rem;
+  background-color: var(--mci-bg);
+  @apply min-h-screen text-slate-900 font-sans;
+  min-width: 300px;
+  padding: 0.75rem 1.5rem 3rem 1.5rem;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .admin-page-wrapper {
-    padding: 3rem 5rem;
+    padding: 2rem 1.5rem 3rem 1.5rem;
   }
 }
 
-.admin-header-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 2.5rem;
-  width: 100%;
+.admin-navbar {
+  @apply sticky top-0 z-50 bg-white/80 backdrop-blur-md h-20 md:h-24 flex flex-row items-center justify-between border-b border-gray-100 shadow-sm px-4 md:px-6;
+}
+
+.admin-main-content {
+  margin-top: 2rem;
+}
+
+.admin-header-section {
+  margin-bottom: 2rem;
 }
 
 .admin-layout-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+  @apply flex flex-col gap-8 md:gap-12;
+  margin-top: 2rem;
 }
 
 @media (min-width: 1024px) {
   .admin-layout-grid {
-    flex-direction: row;
-    align-items: flex-start;
+    @apply flex-row items-start;
   }
+}
+
+/* --- 2. SIDEBAR --- */
+.admin-sidebar-container {
+  @apply w-full;
+}
+
+@media (min-width: 1024px) {
   .admin-sidebar-container {
-    width: 18rem;
-    flex-shrink: 0;
-    position: sticky;
+    @apply w-80 shrink-0 sticky self-start;
     top: 2rem;
   }
 }
 
+/* Mobile Menu Toggle - nutzt globals Styles */
+.admin-mobile-menu-toggle {
+  @apply lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm font-black italic uppercase cursor-pointer;
+  color: var(--mci-blue);
+}
+
+.admin-mobile-menu-toggle svg:last-child {
+  @apply transition-transform;
+}
+
+/* Menu Card - nutzt globals */
 .admin-menu-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 2rem;
-  border: 1px solid #e2e8e0;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6;
 }
 
+/* Tab Buttons */
 .admin-tab-btn {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  border-radius: 1.25rem;
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #64748b;
-  background: transparent;
-  border: none;
-  cursor: pointer;
+  @apply flex items-center w-full gap-4 px-5 py-4 rounded-2xl font-bold text-sm text-slate-600 bg-transparent border-none cursor-pointer transition-all;
 }
+
+.admin-tab-btn:hover {
+  @apply bg-slate-50;
+}
+
 .admin-tab-btn.active {
-  background-color: var(--mci-light-blue);
-  color: white;
+  background-color: var(--mci-blue);
+  @apply text-white shadow-md;
 }
 
-.admin-action-btn {
-  background-color: #004a87;
-  color: white;
-  padding: 0.75rem 1.25rem;
-  border-radius: 1rem;
-  font-weight: 900;
-  font-size: 10px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border: none;
-  cursor: pointer;
+.admin-tab-btn svg {
+  @apply shrink-0;
 }
 
+/* --- 3. CONTENT CARDS - nutzt globals */
 .admin-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  width: 100%;
+  @apply flex justify-between items-center gap-4 mb-6 flex-wrap;
 }
 
 .admin-card-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
+  @apply grid grid-cols-1 gap-5;
 }
+
 @media (min-width: 1200px) {
   .admin-card-grid {
-    grid-template-columns: repeat(2, 1fr);
+    @apply grid-cols-2;
   }
 }
 
+/* --- 4. TABLE - nutzt globals mci-input/select */
 .admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
+  @apply w-full border-collapse text-left;
 }
+
 .admin-table th {
-  padding: 1.25rem;
-  background-color: #f8fafc;
-  border-bottom: 1px solid #f1f5f9;
+  @apply px-5 py-4 bg-slate-50 border-b border-gray-100 text-xs font-black uppercase text-slate-500 tracking-wider;
 }
+
 .admin-table td {
-  padding: 1.25rem;
-  border-bottom: 1px solid #f1f5f9;
+  @apply px-5 py-4 border-b border-gray-100 text-sm;
 }
 
+.admin-table tr:hover {
+  @apply bg-slate-50 transition-colors;
+}
+
+/* --- 5. EQUIPMENT GRID --- */
+.equipment-checkbox-grid {
+  @apply grid gap-3;
+  grid-template-columns: 1fr;
+}
+
+.equipment-checkbox-item {
+  @apply flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors;
+}
+
+.equipment-checkbox-item input[type="checkbox"] {
+  @apply w-5 h-5 rounded cursor-pointer;
+}
+
+/* --- 6. TIMELINE VIEW (Planning) --- */
 .timeline-row {
-  display: flex;
-  align-items: center;
+  @apply flex items-center border-b border-gray-100;
   height: 4.5rem;
-  border-bottom: 1px solid #f1f5f9;
 }
+
 .timeline-room-info {
+  @apply shrink-0 pr-4 text-left;
   width: 12rem;
-  flex-shrink: 0;
-  padding-right: 1rem;
-  text-align: left;
 }
+
 .timeline-bar-container {
-  flex: 1;
+  @apply flex-1 relative bg-slate-50 rounded-xl overflow-hidden;
   height: 2.5rem;
-  position: relative;
-  background: #f8fafc;
-  border-radius: 0.75rem;
-  overflow: hidden;
 }
 
-.admin-checkbox-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem;
-  background-color: #f8fafc;
-  border-radius: 1.5rem;
-  border: 1px solid #f1f5f9;
+/* --- 7. STATS CARDS - nutzt globals */
+.admin-stat-card {
+  @apply bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4;
 }
 
-.mci-admin-info-box {
-  padding: 1.25rem;
-  background-color: #eff6ff;
-  border-radius: 1.5rem;
-  border: 1px solid #dbeafe;
+.admin-stat-icon {
+  @apply w-14 h-14 rounded-2xl flex items-center justify-center;
 }
 
-.mci-image-preview-container {
-  margin-top: 0.75rem;
-  border-radius: 1.5rem;
-  overflow: hidden;
-  border: 2px solid #f1f5f9;
-  height: 180px;
-  width: 100%;
-  background-color: #f8fafc;
+/* --- 8. MODAL SPLITS (zusätzlich zu globals) --- */
+.modal-split-container {
+  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300;
+  max-width: 64rem;
 }
-.mci-image-preview-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+
+@media (min-width: 768px) {
+  .modal-split-container {
+    @apply flex-row;
+  }
 }
+
+.modal-split-container-room {
+  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300;
+  max-width: 80rem;
+}
+
+@media (min-width: 768px) {
+  .modal-split-container-room {
+    @apply flex-row;
+  }
+}
+
+/* --- 9. MODAL IMAGE SIDEBARS --- */
+.modal-image-full {
+  @apply relative bg-slate-100;
+  min-height: 300px;
+}
+
+@media (min-width: 768px) {
+  .modal-image-full {
+    width: 41.666667%;
+  }
+}
+
+.modal-image-full img {
+  @apply w-full h-full object-cover transition-opacity duration-500;
+}
+
+.modal-image-compact {
+  @apply relative bg-slate-100 overflow-hidden;
+  height: 280px;
+}
+
+@media (min-width: 768px) {
+  .modal-image-compact {
+    width: 33.333333%;
+    height: auto;
+  }
+}
+
+.modal-image-compact img {
+  @apply w-full h-full object-cover transition-opacity duration-500;
+}
+
+.modal-image-placeholder {
+  @apply w-full h-full flex flex-col items-center justify-center text-slate-300 p-8 text-center;
+  background-color: rgba(0, 74, 135, 0.05);
+}
+
+.modal-image-placeholder svg {
+  @apply mb-4 opacity-20;
+}
+
+.modal-image-placeholder-text {
+  @apply text-xs font-black uppercase italic tracking-widest opacity-40;
+}
+
+.modal-image-overlay {
+  @apply absolute inset-0 flex flex-col justify-end p-8;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.8), transparent, transparent);
+}
+
+.modal-image-overlay-title {
+  @apply text-white text-3xl font-black italic uppercase tracking-tighter leading-none;
+}
+
+.modal-image-overlay-subtitle {
+  @apply text-white/60 text-xs font-bold uppercase mt-2 flex items-center gap-2;
+}
+
+/* --- 10. MODAL FORMS --- */
+.modal-form-wide {
+  @apply p-6 md:p-8 flex flex-col bg-white;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .modal-form-wide {
+    width: 58.333333%;
+  }
+}
+
+.modal-form-standard {
+  @apply p-6 md:p-8 flex flex-col bg-white;
+  max-height: 90vh;
+}
+
+@media (min-width: 768px) {
+  .modal-form-standard {
+    width: 66.666667%;
+  }
+}
+
+/* Scrollable Content */
+.modal-body-scroll {
+  @apply flex-1 overflow-y-auto overflow-x-hidden space-y-6;
+  padding-right: 0.5rem;
+  max-height: 60vh;
+}
+
+.modal-body-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-body-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* --- 11. MODAL UTILITIES --- */
+.modal-header-flex {
+  @apply flex justify-between items-start mb-6;
+}
+
+.modal-header-title {
+  color: var(--mci-blue);
+  @apply text-xl font-black italic uppercase tracking-tight leading-none mb-1;
+}
+
+.modal-header-id {
+  @apply text-slate-400 text-xs font-black uppercase italic tracking-widest;
+}
+
+.modal-close-btn {
+  @apply p-2 hover:bg-slate-50 rounded-full transition-all text-slate-300 hover:text-red-500;
+}
+
+/* --- 12. LOADING SCREEN --- */
+.admin-loading-screen {
+  @apply h-screen flex flex-col items-center justify-center font-black italic animate-pulse;
+  background-color: var(--mci-bg);
+  color: var(--mci-blue);
+}
+
+.admin-loading-icon {
+  color: var(--mci-light-blue);
+  @apply mb-6;
+}
+
+/* --- 13. CHECKBOXES --- */
+input[type="checkbox"] {
+  accent-color: var(--mci-blue);
+}
+
+input[type="radio"] {
+  accent-color: var(--mci-blue);
+}
+
+/* --- 14. UTILITIES --- */
+.grayscale {
+  filter: grayscale(100%);
+}
+
+/* --- 15. RESPONSIVE --- */
+@media (max-width: 768px) {
+  .admin-table {
+    @apply text-xs;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    @apply px-3 py-3;
+  }
+}
+
+/* ========================================
+   ENDE ADMIN PAGE
+   ======================================== */

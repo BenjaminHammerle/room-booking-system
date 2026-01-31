@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* --- 1. CORE VARIABLES --- */
+/* --- 1. CORE VARIABLES & BRANDING --- */
 :root {
   --mci-blue: #004a87;
   --mci-orange: #f7941d;
@@ -8,16 +8,149 @@
   --mci-bg: #f8f9fb;
 }
 
-/* --- 2. GLOBAL BRANDING --- */
-.res-page-title {
-  display: block !important;
-  font-size: clamp(1.8rem, 5vw, 2.5rem) !important;
-  font-weight: 900 !important;
-  color: var(--mci-blue) !important;
-  font-style: italic !important;
-  text-transform: uppercase !important;
-  letter-spacing: -0.05em !important;
-  line-height: 0.95 !important;
+/* GLOBAL PAGE TITLE - Wiederverwendbar für alle Seiten */
+.res-page-title,
+.room-page-title {
+  @apply block font-black uppercase italic leading-none m-0 tracking-tighter;
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  color: var(--mci-blue);
+}
+
+/* GLOBAL ACTIVE COUNT BADGE - Wiederverwendbar für alle Seiten */
+.mci-active-count-badge,
+.res-stats-badge,
+.active-count-badge {
+  @apply inline-flex items-center gap-3 bg-[var(--mci-blue)] text-white px-6 py-3 rounded-2xl font-bold uppercase shadow-lg;
+  font-size: 13px;
+  margin-top: 0.75rem;
+  display: inline-flex !important; /* Überall sichtbar */
+}
+
+/* --- 3. MODAL SYSTEM (Modern & Schlicht) --- */
+
+/* Modal Overlay */
+.mci-modal-overlay {
+  @apply fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4;
+}
+
+/* Modal Card */
+.mci-modal-card {
+  @apply bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col;
+}
+
+/* Modal Header */
+.mci-modal-header {
+  @apply flex justify-between items-center p-6 md:p-8 border-b border-gray-100;
+  background: linear-gradient(
+    135deg,
+    var(--mci-blue) 0%,
+    var(--mci-light-blue) 100%
+  );
+}
+
+/* Modal Body */
+.mci-modal-body {
+  @apply p-6 md:p-8 overflow-y-auto flex-1;
+  max-height: 80vh;
+}
+
+/* Modal Footer (für Action Buttons) */
+.mci-modal-footer {
+  @apply flex flex-col md:flex-row gap-3 p-6 md:p-8 border-t border-gray-100 bg-slate-50;
+}
+
+.mci-modal-footer > button {
+  @apply flex-1;
+}
+
+/* Modal Title */
+.mci-modal-title {
+  @apply text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white;
+}
+
+.mci-modal-subtitle {
+  @apply text-xs font-bold uppercase tracking-wide text-white/70;
+}
+
+/* Modal Close Button */
+.mci-modal-close {
+  @apply w-12 h-12 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all text-white;
+}
+
+/* Form Grid im Modal */
+.mci-modal-form-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+}
+
+.mci-modal-form-group {
+  @apply flex flex-col gap-2;
+}
+
+/* Modal Input/Select Overrides (moderner) */
+.mci-modal-body .mci-input,
+.mci-modal-body .mci-select {
+  @apply bg-slate-50 border-2 border-slate-200 rounded-2xl px-5 py-3 text-base font-medium;
+  transition: all 0.2s;
+}
+
+.mci-modal-body .mci-input:focus,
+.mci-modal-body .mci-select:focus {
+  @apply bg-white border-[var(--mci-blue)] ring-4 ring-blue-100;
+}
+
+/* Modal Label */
+.mci-modal-body .mci-label {
+  @apply text-xs font-black uppercase tracking-wide text-slate-600 mb-1;
+}
+
+/* Modal Buttons */
+.mci-modal-btn-primary {
+  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all shadow-lg;
+  background-color: var(--mci-blue);
+  color: white;
+}
+
+.mci-modal-btn-primary:hover:not(:disabled) {
+  @apply brightness-110 shadow-xl scale-[1.02];
+}
+
+.mci-modal-btn-primary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.mci-modal-btn-secondary {
+  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all;
+  background-color: transparent;
+  border: 2px solid var(--mci-blue);
+  color: var(--mci-blue);
+}
+
+.mci-modal-btn-secondary:hover {
+  @apply bg-blue-50;
+}
+
+.mci-modal-btn-danger {
+  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all;
+  background-color: #ef4444;
+  color: white;
+}
+
+/* Modal Section Title */
+.mci-modal-section-title {
+  @apply text-lg font-black uppercase italic text-[var(--mci-blue)] mb-4 pb-2 border-b-2 border-slate-100;
+}
+
+/* Modal Info Box */
+.mci-modal-info {
+  @apply p-4 bg-blue-50 rounded-2xl border-2 border-blue-100 text-sm;
+}
+
+.mci-modal-warning {
+  @apply p-4 bg-orange-50 rounded-2xl border-2 border-orange-100 text-sm;
+}
+
+.mci-modal-error {
+  @apply p-4 bg-red-50 rounded-2xl border-2 border-red-100 text-sm;
 }
 
 .nav-link {
@@ -29,24 +162,117 @@
   border: none;
   cursor: pointer;
 }
-.nav-link:hover {
-  opacity: 0.7;
+
+/* --- 2. GLOBAL UI COMPONENTS (Language, Stats, Badges) --- */
+
+/* ========================================
+   GLOBAL PAGE COMPONENTS (Seiten-übergreifend)
+   ======================================== */
+
+/* GLOBAL FILTER TITLE - Wiederverwendbar für alle Subpages */
+.mci-filter-title {
+  @apply flex items-center gap-2 font-black italic uppercase text-sm tracking-widest;
+  color: var(--mci-blue);
+  padding: 1.25rem 2rem; /* 20px top/bottom, 32px left/right */
+  margin: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* --- 3. CHECKBOX ALIGNMENT (Rooms & Admin) --- */
-.mci-filter-item {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.75rem !important;
-  padding: 0.5rem 0;
-  cursor: pointer;
+.mci-filter-title svg {
+  color: var(--mci-orange);
 }
+
+/* GLOBAL CARD TITLE - Für Room/Reservation Cards */
+.mci-card-title {
+  @apply font-black text-2xl md:text-3xl tracking-tighter leading-none uppercase italic truncate;
+  color: var(--mci-blue);
+}
+
+/* GLOBAL INFO TAG - Für Card Details (Capacity, Location, etc.) */
+.mci-info-tag {
+  @apply flex items-center gap-3 bg-gray-50 px-4 py-3 rounded-xl text-[13px] font-bold uppercase text-slate-500 tracking-wide border border-gray-100/50 min-w-0;
+  width: 100%;
+}
+
+.mci-info-tag-text {
+  @apply truncate block flex-1 text-[11px] font-black uppercase italic;
+}
+
+/* GLOBAL BADGE (Equipment, Features, etc.) */
+.mci-badge {
+  @apply bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase border border-white/50 flex items-center gap-1.5;
+  color: var(--mci-blue);
+}
+
+.accessible-badge {
+  @apply !bg-green-50 !text-green-700 px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase flex items-center gap-1.5 border border-green-100;
+}
+
+/* EQUIPMENT ITEM BADGE - Für Equipment Listen */
+.mci-equip-badge {
+  @apply bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center transition-all hover:bg-white hover:shadow-md text-[11px];
+  color: var(--mci-blue);
+}
+
+.lang-toggle-btn {
+  @apply flex items-center gap-2 p-2 px-4 bg-white rounded-2xl shadow-sm border border-gray-100 text-[10px] font-black text-[var(--mci-blue)] hover:bg-gray-50 transition-all cursor-pointer shrink-0 uppercase;
+}
+
+.res-stats-badge {
+  @apply inline-flex items-center gap-2 px-6 py-3 bg-[var(--mci-blue)] text-white rounded-2xl shadow-lg border-none font-bold;
+}
+
+.mci-ui-toggle {
+  @apply font-black italic uppercase tracking-wider transition-all;
+}
+
+/* --- 3. GLOBAL FORM & MODAL SYSTEM (FIXED) --- */
+.mci-modal-overlay {
+  @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[1000];
+  animation: mciFade 0.3s ease-out forwards;
+}
+
+.mci-modal-card {
+  @apply bg-white rounded-[2.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col;
+  animation: mciPop 0.4s ease-out forwards;
+}
+
+.mci-modal-header {
+  @apply bg-[var(--mci-blue)] p-8 text-white flex flex-row justify-between items-center shrink-0;
+}
+
+.mci-modal-body {
+  @apply p-10 overflow-y-auto flex flex-col gap-6;
+  max-height: 80vh; /* Explizit ohne Tailwind damit es garantiert funktioniert */
+}
+
+.mci-grid-2 {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-6 w-full;
+}
+
+.mci-label {
+  @apply block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2;
+}
+
+.mci-input,
+.mci-select {
+  @apply w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-gray-100 transition-all border-none text-base shadow-inner focus:ring-2 focus:ring-[var(--mci-orange)];
+}
+
+.mci-action-btn-unified {
+  @apply w-full h-[3.5rem] flex items-center justify-center gap-3 rounded-[1.25rem] font-black italic uppercase text-[0.7rem] transition-all duration-200 cursor-pointer border-none shadow-md;
+}
+
+.btn-mci-main {
+  @apply w-full bg-[var(--mci-blue)] text-white py-4 rounded-2xl font-black uppercase italic tracking-widest shadow-lg hover:bg-[var(--mci-light-blue)] transition active:scale-95 flex items-center justify-center gap-3 disabled:bg-gray-200 cursor-pointer;
+}
+
 .filter-checkbox {
-  width: 1.25rem;
-  height: 1.25rem;
-  accent-color: var(--mci-blue);
-  cursor: pointer;
-  flex-shrink: 0;
+  @apply w-5 h-5 accent-[var(--mci-blue)] cursor-pointer shrink-0;
+}
+
+.mci-filter-item {
+  @apply flex items-center gap-3 py-2 cursor-pointer;
 }
 
 /* --- 4. SEMANTISCHE TEXT-KLASSEN --- */
@@ -60,115 +286,16 @@
   @apply font-bold text-sm text-slate-700;
 }
 .mci-sub-label {
-  @apply font-black uppercase ;
-  font-size: 14px;
-  color: #94a3b8;
+  @apply font-black uppercase text-[14px] text-slate-400;
 }
 .mci-stat-label {
-  @apply font-bold uppercase tracking-widest mb-3;
-  font-size: 10px;
-  color: #94a3b8;
+  @apply font-bold uppercase tracking-widest mb-3 text-[10px] text-slate-400;
 }
 .mci-stat-value {
-  @apply font-black tracking-tighter;
-  font-size: 3.5rem;
-  line-height: 1;
+  @apply font-black tracking-tighter text-[3.5rem] leading-none;
 }
 
-/* --- 5. FILTER KOMPONENTEN --- */
-.filter-capacity-bar {
-  @apply flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
-  accent-color: var(--mci-orange) !important;
-}
-.filter-capacity-number {
-  @apply p-2 bg-gray-50 rounded-xl font-bold text-center text-sm shadow-inner border border-gray-100;
-  width: 60px !important;
-}
-
-/* --- 6. GLOBAL MODAL SYSTEM (FIX FÜR ABSTÄNDE) --- */
-.mci-modal-overlay {
-  @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[1000];
-  animation: mciFade 0.3s ease-out forwards;
-}
-.mci-modal-card {
-  @apply bg-white rounded-[2.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col;
-  animation: mciPop 0.4s ease-out forwards;
-}
-.mci-modal-header {
-  @apply bg-[#004a87] p-8 text-white flex flex-row justify-between items-center shrink-0;
-}
-.mci-modal-header h3 {
-  @apply text-xl font-black italic uppercase tracking-tight m-0;
-}
-
-.mci-modal-body {
-  @apply p-10 overflow-y-auto flex flex-col;
-  gap: 1.5rem; /* KEIN KLEBEN MEHR */
-  max-height: 80vh;
-  text-align: left;
-}
-.mci-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  width: 100%;
-}
-
-.mci-label {
-  @apply block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2;
-}
-.mci-input,
-.mci-select {
-  @apply w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-gray-100 transition-all border-none text-base shadow-inner focus:ring-2 focus:ring-[var(--mci-orange)];
-}
-.btn-mci-main {
-  @apply w-full bg-[var(--mci-blue)] text-white py-4 rounded-2xl font-black uppercase italic tracking-widest shadow-lg hover:bg-[var(--mci-light-blue)] transition active:scale-95 flex items-center justify-center gap-3 disabled:bg-gray-200 cursor-pointer;
-}
-
-/* --- 7. CARDS (RESERVATIONS / ROOMS) --- */
-.res-card {
-  @apply bg-white rounded-[3rem] border border-gray-100 shadow-sm transition-all overflow-hidden flex flex-col lg:flex-row items-stretch mb-8;
-}
-.res-image-wrapper {
-  @apply shrink-0 bg-slate-100 overflow-hidden mt-3 w-full lg:w-[320px];
-}
-.res-content-block {
-  @apply flex-1 flex flex-col justify-center p-8 lg:p-2 min-w-0;
-}
-.res-action-bar {
-  @apply flex flex-col items-center justify-between w-full lg:w-[260px] shrink-0 p-8 lg:border-l border-gray-50 bg-slate-50/30 gap-4;
-}
-.res-status-indicator {
-  @apply flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase w-full border;
-}
-.mci-badge {
-  @apply bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-md text-[var(--mci-blue)] text-[10px] font-black uppercase border border-white/50 flex items-center gap-1.5;
-}
-.accessible-badge {
-  @apply !bg-green-50 !text-green-700 px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase flex items-center gap-1.5 border border-green-100;
-}
-.mci-info-tag {
-  @apply flex items-center gap-2.5 bg-gray-50 px-4 py-2.5 rounded-2xl text-[10px] font-bold uppercase text-slate-500 tracking-wider border border-gray-100/50 overflow-hidden;
-  min-width: 0;
-  width: 100%;
-}
-.mci-info-tag-text {
-  @apply truncate block flex-1;
-}
-
-/* --- 8. SERIEN-TABELLE (Datum | Raum+Status | Stock | Sitze | Features) --- */
-.series-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1.8fr 0.6fr 0.8fr 1.5fr;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-}
-.series-header-row {
-  @apply bg-slate-50 text-[9px] font-black uppercase text-slate-400 border-b border-gray-100;
-}
-
-/* --- 9. UTILS & ANIMATIONEN --- */
+/* --- 5. ANIMATIONEN --- */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -194,46 +321,9 @@
     opacity: 1;
   }
 }
-.no-print {
-}
+
 @media print {
   .no-print {
     display: none !important;
   }
-}
-
-
-/* einheitliches styling für toggles und buttons (lektoren-vorgabe) */
-.mci-ui-toggle {
-    font-family: inherit;
-    font-weight: 900 !important;
-    font-style: italic !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em;
-}
-
-.mci-action-btn-unified {
-    width: 100%;
-    height: 3.5rem; /* fixierte höhe für alle buttons in spalte 3 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    border-radius: 1.25rem;
-    font-weight: 900;
-    font-style: italic;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    border: none;
-}
-
-.mci-action-btn-unified:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.1);
-}
-
-.mci-action-btn-unified:active {
-    transform: translateY(0);
 }

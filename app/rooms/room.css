@@ -1,132 +1,413 @@
 @import "tailwindcss";
 
-/* --- LAYOUT STRUCTURE --- */
+/* --- 1. LAYOUT STRUCTURE --- */
 .room-page-wrapper {
-  @apply min-h-screen bg-[var(--mci-bg)] pb-12 text-slate-900 font-sans;
+  background-color: var(--mci-bg);
+  @apply min-h-screen text-slate-900 font-sans;
+  min-width: 300px;
+  padding: 0.75rem 1.5rem 3rem 1.5rem; /* 12px top, 24px sides, 48px bottom */
+}
+
+/* Ab 768px: Mehr Abstand oben */
+@media (min-width: 768px) {
+  .room-page-wrapper {
+    padding: 2rem 1.5rem 3rem 1.5rem; /* 32px top, 24px sides, 48px bottom */
+  }
 }
 
 .room-navbar {
-  @apply sticky top-0 z-50 bg-white/80 backdrop-blur-md px-6 md:px-12 h-20 md:h-24 flex flex-row items-center justify-between border-b border-gray-100 shadow-sm;
+  @apply sticky top-0 z-50 bg-white/80 backdrop-blur-md h-20 md:h-24 flex flex-row items-center justify-between border-b border-gray-100 shadow-sm;
+  padding-left: 1rem; /* 16px */
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  .room-navbar {
+    padding-left: 1.5rem; /* 24px - matcht wrapper padding */
+    padding-right: 1.5rem;
+  }
 }
 
 .room-main-layout {
-  @apply max-w-[1700px] mx-auto p-6 md:p-12 flex flex-col lg:flex-row gap-8 md:gap-16;
+  @apply max-w-[1850px] mx-auto flex flex-col lg:flex-row gap-8 md:gap-16 items-start;
+  margin-top: 2rem; /* Konsistenter Abstand zum Navbar (32px) */
 }
 
+/* --- 2. SIDEBAR & UNITARY FILTER (ROOMS PATTERN) --- */
 .room-sidebar {
-  @apply w-full lg:w-80 shrink-0;
+  @apply w-full lg:w-80 shrink-0 lg:sticky lg:top-32 self-start;
 }
 
-.filter-card {
-  @apply bg-white rounded-[1.5rem] md:rounded-[1.5rem] p-8 md:p-10 border border-gray-100 shadow-sm md:sticky md:top-32 space-y-6;
+.filter-unit-container {
+  @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden;
 }
 
-.filter-title-row {
-  @apply flex flex-row items-center gap-2 text-slate-900 font-bold text-lg mb-2 pb-4 border-b border-gray-50 uppercase tracking-tighter italic;
+.filter-toggle-header {
+  display: flex; /* Immer als Flex-Container */
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem; /* 20px top/bottom, 24px left/right (reduziert) */
+  color: #004a87;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* --- ROOM GRID & CARDS --- */
+/* Desktop (≥1410px): Button ausblenden, da Filter links in Sidebar */
+@media (min-width: 1410px) {
+  .filter-toggle-header {
+    display: none !important;
+  }
+  .filter-card-content {
+    display: block !important; /* Filter immer sichtbar auf Desktop */
+  }
+  .filter-desktop-title {
+    display: flex !important; /* Desktop-Title anzeigen */
+  }
+}
+
+/* Tablet/Mobile (<1410px): Button anzeigen, Filter ZUGEKLAPPT, Desktop-Title verstecken */
+@media (max-width: 1409px) {
+  .filter-toggle-header {
+    display: flex !important;
+  }
+  .filter-card-content {
+    /* KEIN display: block hier! Wird von React gesteuert (hidden/block) */
+  }
+  .filter-desktop-title {
+    display: none !important; /* Desktop-Title verstecken = nur 1x "Filter" */
+  }
+}
+
+.filter-card-content {
+  @apply bg-white space-y-6 transition-all duration-300;
+  padding: 0 1.5rem 1.5rem 1.5rem; /* 0 top, 24px sides/bottom */
+}
+
+/* Desktop: Etwas mehr Padding */
+@media (min-width: 1410px) {
+  .filter-card-content {
+    padding: 0 2rem 2rem 2rem; /* 0 top, 32px sides/bottom */
+  }
+}
+
+.filter-desktop-title {
+  /* Nutzt globale .mci-filter-title aus globals.css */
+  /* Hier nur spezifische Overrides falls nötig */
+}
+
+/* Desktop (≥1410px): Filter sticky mit top-spacing */
+@media (min-width: 1410px) {
+  .filter-unit-container {
+    position: sticky;
+    top: 7rem; /* 112px - Abstand zum Navbar damit nicht ganz oben klebt */
+  }
+}
+
+.filter-capacity-bar {
+  @apply flex-1 accent-[#f7941d] cursor-pointer h-2 bg-gray-100 rounded-lg appearance-none;
+}
+
+.filter-capacity-number {
+  @apply bg-gray-50 border border-gray-100 rounded-xl text-center font-bold text-slate-700;
+  padding: 0.5rem;
+  width: 50px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.filter-capacity-number:focus {
+  @apply border-[#f7941d] ring-2 ring-[#f7941d]/20;
+}
+
+/* Pfeile in Number Input verstecken */
+.filter-capacity-number::-webkit-inner-spin-button,
+.filter-capacity-number::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.filter-capacity-number {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+.mci-step-btn {
+  @apply p-3 bg-gray-50 rounded-xl border border-gray-100 transition-colors hover:bg-gray-100;
+}
+
+.filter-reset-btn {
+  @apply w-full py-4 text-[9px] font-black text-gray-300 uppercase hover:text-red-400 transition border-t border-dashed mt-4;
+}
+
+/* --- 3. MATHEMATISCHE BREAKPOINTS (CARD WIDTH: 440px) --- */
 .room-grid {
-  @apply flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-12;
+  @apply flex-1 grid gap-8 auto-rows-max;
+  grid-template-columns: 1fr;
 }
 
+/* 
+   BREAKPOINT-BERECHNUNG:
+   - Card: 440px
+   - Gap zwischen Cards: 32px (gap-8)
+   - Filter: 320px (w-80)
+   - Gap Filter-Cards: 64px (gap-16)
+   
+   1) > 1880px: Filter links + 3 Cards
+      320 + 64 + (440+32+440+32+440) = 1768px → mit Padding ~1880px
+   
+   2) 1410-1880px: Filter links + 2 Cards  
+      320 + 64 + (440+32+440) = 1296px → mit Padding ~1410px
+   
+   3) 1024-1410px: Filter oben + 2 Cards
+      440+32+440 = 912px
+   
+   4) < 1024px: Filter oben + 1 Card
+      440px
+*/
+
+/* 1) DESKTOP XL: Filter links + 3 Cards (> 1880px) */
+@media (min-width: 1880px) {
+  .room-grid {
+    grid-template-columns: repeat(3, 440px);
+  }
+  .room-main-layout {
+    @apply flex-row;
+  }
+  .room-sidebar {
+    @apply w-80 order-first; /* Filter links */
+  }
+}
+
+/* 2) DESKTOP: Filter links + 2 Cards (1410px - 1880px) */
+@media (min-width: 1410px) and (max-width: 1879px) {
+  .room-grid {
+    grid-template-columns: repeat(2, 440px);
+  }
+  .room-main-layout {
+    @apply flex-row;
+  }
+  .room-sidebar {
+    @apply w-80 order-first; /* Filter links */
+  }
+}
+
+/* 3) TABLET: Filter oben + 2 Cards (1024px - 1410px) */
+@media (min-width: 1024px) and (max-width: 1409px) {
+  .room-grid {
+    grid-template-columns: repeat(2, 440px);
+  }
+  .room-main-layout {
+    @apply flex-col;
+  }
+  .room-sidebar {
+    @apply w-full order-first mb-0 sticky top-24 z-30;
+  }
+  .filter-unit-container {
+    max-width: 912px; /* Breite = 2 Cards + Gap */
+  }
+  .room-grid {
+    @apply mt-6;
+  }
+}
+
+/* 4) MOBILE: Filter oben + 1 Card (< 1024px) */
+@media (max-width: 1023px) {
+  .room-grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+  }
+  .room-main-layout {
+    @apply flex-col;
+  }
+  .room-sidebar {
+    @apply w-full order-first mb-0 sticky top-24 z-30;
+  }
+  .filter-unit-container {
+    max-width: 100%;
+  }
+  .room-grid {
+    @apply mt-6;
+  }
+}
+
+/* --- 4. ROOM CARD STYLING --- */
+
+/* ROOM PAGE HEADER & SUBTITLE */
+.room-page-title {
+  @apply block font-black uppercase italic leading-none m-0 tracking-tighter text-[#004a87];
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+}
+
+.room-page-subtitle {
+  @apply hidden; /* Komplett versteckt, Badge ersetzt es */
+}
+
+.active-count-badge {
+  @apply inline-flex items-center gap-3 bg-[#004a87] text-white px-6 py-3 rounded-2xl font-bold uppercase shadow-lg;
+  font-size: 13px;
+  margin-top: 0.75rem; /* Abstand zum Titel */
+}
+
+/* Badge auf ALLEN Breakpoints anzeigen */
+.active-count-badge {
+  display: inline-flex !important; /* Überschreibt md:hidden */
+}
+
+/* Header Section und Grid Spacing */
+.room-header-section {
+  margin-bottom: 0; /* Kein extra Abstand */
+}
+
+/* Space zwischen Sections reduzieren */
+.flex-1.space-y-16 > * + * {
+  margin-top: 2rem !important; /* 32px statt 64px (space-y-16) */
+}
+
+/* ROOM CARDS */
 .room-card {
-  @apply bg-white rounded-[1.5rem] md:rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1;
+  @apply bg-white rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1;
+  width: 440px;
+  min-width: 400px;
+  height: fit-content;
+}
+
+/* Skalierung bis minimal 300px Display */
+@media (max-width: 600px) {
+  .room-card {
+    width: 100%;
+    min-width: 290px; /* 300px Display - 8px Padding = 292px verfügbar */
+  }
+}
+
+@media (max-width: 500px) {
+  .room-card {
+    width: 100%;
+    min-width: 290px;
+    max-width: 500px;
+  }
 }
 
 .room-card-image-wrapper {
   @apply relative h-60 md:h-72 w-full overflow-hidden shrink-0 bg-slate-100;
+  position: relative;
 }
 
 .room-card-image {
-  @apply w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105;
+  @apply w-full h-full object-cover transition-transform duration-1000;
+  position: relative;
+  z-index: 1;
 }
 
-/* Status Overlays auf dem Bild */
-.room-occupied-until, .room-inactive {
-  @apply absolute top-6 right-6 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 shadow-xl z-20;
-}
-.room-occupied-until { @apply bg-red-500 text-white animate-pulse; }
-.room-inactive { @apply bg-gray-900 text-white; }
-
-/* Badges auf dem Bild */
+/* FIX: BADGE CONTAINER VISIBILITY ON IMAGE */
 .room-badge-container {
-  @apply absolute bottom-4 left-6 flex flex-wrap gap-2 pr-6 z-10;
+  position: absolute !important;
+  bottom: 1rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  z-index: 20 !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  pointer-events: none;
 }
 
-/* Card Content Area */
-.room-card-content {
-  @apply p-8 md:p-10 flex flex-col flex-1;
+.room-badge-container > * {
+  pointer-events: auto;
 }
 
-.room-info-container {
-  @apply grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4 mb-8;
-}
-
-/* --- MOBILE OPTIMIZATIONS --- */
+/* MOBILE: Equipment Badges als Icon-Leiste am unteren Bildrand */
 @media (max-width: 768px) {
-  .room-navbar img { @apply h-10; }
-  .room-page-title { @apply text-3xl; }
-  .room-card-content { @apply p-6; }
-  .room-card-content h3 { @apply text-3xl; }
-  .room-card-image-wrapper { @apply h-48; }
-  .room-info-container { @apply grid-cols-1 gap-2; }
-}
-
-/* Animation für das Einblenden der Filter am Handy */
-
-.filter-card.block {
-  animation: mciFade 0.4s ease-out forwards;
-}
-
-/* Den Toggle-Button am Handy etwas hervorheben */
-@media (max-width: 1024px) {
-  .room-sidebar {
-    @apply sticky top-24 z-[40];
-  }
-}
-
-/* --- BEST MATCH TAG (In room.css für Cards) --- */
-.best-match {
-  @apply bg-blue-50 text-[var(--mci-light-blue)] px-3 py-1.5 rounded-xl 
-         border border-blue-100 flex items-center gap-2 font-black 
-         uppercase text-[9px] italic shadow-sm;
-}
-
-/* --- MOBILE FILTER SCROLL FIX --- */
-@media (max-width: 1024px) {
-  .filter-card {
-    /* Begrenzt die Höhe auf den Viewport minus Navbar-Abstand */
-    max-height: calc(100vh - 160px); 
-    overflow-y: auto;
-    /* Verhindert das Scrollen des Hintergrunds, wenn man im Filter scrollt */
-    -webkit-overflow-scrolling: touch; 
-    @apply shadow-2xl border-t-4 border-t-[var(--mci-orange)];
+  .room-badge-container {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+    backdrop-filter: blur(4px);
+    border-radius: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.5rem;
+    justify-content: flex-start;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   
-  .room-sidebar {
-    @apply sticky top-24 z-[40];
+  .room-badge-container::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .room-badge-container .mci-badge,
+  .room-badge-container .accessible-badge {
+    padding: 0.5rem;
+    min-width: 2.5rem;
+    justify-content: center;
+    font-size: 0 !important;
+    gap: 0;
+  }
+  
+  .room-badge-container .mci-badge svg,
+  .room-badge-container .accessible-badge svg {
+    margin: 0;
+    width: 18px;
+    height: 18px;
   }
 }
 
+.room-status-overlay {
+  @apply absolute top-6 right-6 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 shadow-xl backdrop-blur-md;
+  z-index: 25; /* Unter Filter-Sidebar (z-30) aber über Badge-Container (z-20) */
+}
+
+.room-occupied-until {
+  @apply bg-red-500/90 text-white animate-pulse;
+}
 .room-available-until {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  background-color: lab(86.64% -36.84 17.73 / 0.9); /* Kräftiges Grün mit Deckkraft */
-  backdrop-filter: blur(8px);
-  color: lab(36.5% -16.9 7.72 / 0.9)
-  ;
-  padding: 0.75rem 1.25rem;
-  border-radius: 1.25rem;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-  z-index: 10;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  @apply bg-[#D1FAE5]/90 text-[#065F46] border border-white/20;
+}
+
+.room-card-content {
+  @apply flex flex-col flex-1;
+  padding: 2rem 2.5rem; /* 32px top/bottom, 40px left/right (erhöht) */
+}
+
+@media (min-width: 768px) {
+  .room-card-content {
+    padding: 2.5rem 3rem; /* 40px top/bottom, 48px left/right */
+  }
+}
+.room-card-header {
+  @apply flex flex-row justify-between items-start mb-6 gap-2;
+}
+.room-card-name {
+  /* Nutzt globale .mci-card-title aus globals.css */
+  @apply pr-4; /* Nur lokales Override für padding-right */
+}
+
+/* Internal Card Fields Columns */
+.room-info-container {
+  @apply grid gap-3 md:gap-4 mb-8;
+  grid-template-columns: 1fr; /* Default: 1 Spalte */
+}
+
+/* 2 Spalten nur bei genug Platz (Card ist 440px breit) */
+@media (min-width: 500px) {
+  .room-info-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.mci-info-tag {
+  @apply flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100/50 min-w-0;
+}
+.mci-info-tag-text {
+  @apply text-[11px] font-black text-slate-500 truncate uppercase italic;
+}
+
+.best-match {
+  @apply bg-blue-50 text-[var(--mci-light-blue)] px-3 py-1.5 rounded-xl border border-blue-100 flex items-center gap-2 font-black uppercase text-[10px] italic shadow-sm whitespace-nowrap;
 }

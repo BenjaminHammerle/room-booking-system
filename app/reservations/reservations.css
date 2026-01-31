@@ -1,186 +1,376 @@
 @import "tailwindcss";
 
-/* --- RESERVATIONS LAYOUT REFINEMENT (V8.3) --- */
+/* ========================================
+   RESERVATIONS LAYOUT - OPTIMIZED V16.0
+   ======================================== */
 
-.res-image-wrapper {
-  width: 100%;
-}
-
-@media (min-width: 1380) {
-  .res-image-wrapper {
-    width: 300px;
-  }
-}
-
-.res-content-block {
-  flex: 1;
-  /*padding: 1.5rem;*/
-  min-width: 0;
-}
-
-@media (min-width: 1380) {
-  .res-content-block {
-    /*padding: 2.5rem;*/
-  }
-}
-
-.res-action-bar {
-  width: 100%;
-  gap: 1rem;
-}
-
-@media (min-width: 1380) {
-  .res-action-bar {
-    width: 220px;
-    border-left: 1px solid #f1f5f9;
-  }
-}
-
-/* Die Info-Box (Grid) */
-.res-info-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  background-color: #f8fafc;
-  padding: 1.25rem;
-  border-radius: 2rem;
-  border: 1px solid #f1f5f9;
-}
-
-@media (min-width: 640px) {
-  .res-info-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-  }
-}
-
-
-
-/* --- LAYOUT WRAPPER --- */
+/* --- 1. BASE PAGE WRAPPER --- */
 .res-page-wrapper {
   background-color: var(--mci-bg);
-  @apply min-h-screen text-slate-900 font-sans p-4 md:p-12;
+  @apply min-h-screen text-slate-900 font-sans;
+  min-width: 300px;
+  padding: 0.75rem 1.5rem 3rem 1.5rem; /* 12px top, 24px sides, 48px bottom */
 }
 
+/* Ab 768px: Mehr Abstand oben */
+@media (min-width: 768px) {
+  .res-page-wrapper {
+    padding: 2rem 1.5rem 3rem 1.5rem; /* 32px top, 24px sides, 48px bottom */
+  }
+}
+
+/* --- 1.5 NAVBAR HEADER (wie rooms) --- */
+.res-navbar {
+  @apply sticky top-0 z-50 bg-white/80 backdrop-blur-md h-20 md:h-24 flex flex-row items-center justify-between border-b border-gray-100 shadow-sm;
+  padding-left: 1rem; /* 16px */
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  .res-navbar {
+    padding-left: 1.5rem; /* 24px - matcht wrapper padding */
+    padding-right: 1.5rem;
+  }
+}
+
+/* --- 1.6 MAIN CONTENT AREA --- */
+.res-main-content {
+  margin-top: 2rem; /* Abstand zum Navbar (32px) */
+}
+
+.res-header-section {
+  margin-bottom: 2rem; /* Abstand zu Cards (32px) */
+}
+
+/* Space zwischen Sections reduzieren für harmonische Abstände */
+.res-main-content > * + * {
+  margin-top: 2rem;
+}
+
+/* --- 2. LAYOUT CONTAINER --- */
 .res-layout {
-  @apply max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 md:gap-12;
+  @apply max-w-[1850px] flex flex-col lg:flex-row items-start;
+  gap: 2rem; /* Standard Gap */
+  margin-left: 0 !important;
+  margin-top: 2rem; /* Abstand zur Headerzeile */
 }
 
+/* Desktop: Größerer Gap zwischen Filter und Cards */
+@media (min-width: 1313px) {
+  .res-layout {
+    gap: 3rem;
+  }
+}
+
+/* --- 3. SIDEBAR (FILTER) --- */
 .res-sidebar {
-  @apply w-full lg:w-80 shrink-0;
+  @apply w-full lg:w-72 shrink-0;
+}
+
+/* Titel innerhalb der Filterbox - nutzt globale .mci-filter-title */
+.res-filter-desktop-title {
+  /* Wird durch .mci-filter-title aus globals.css gesteuert */
+  display: none; /* Standardmäßig ausblenden (Mobil) */
+}
+
+/* Nur anzeigen, wenn die Sidebar links steht (ab dem Desktop-Breakpoint) */
+@media (min-width: 1313px) {
+  .res-filter-desktop-title {
+    display: flex;
+  }
+}
+
+/* Filter Toggle Button - nur anzeigen wenn Filter oben ist */
+.res-filter-toggle-btn {
+  display: flex; /* Standardmäßig sichtbar */
+  font-size: var(--text-sm)
+}
+
+/* Desktop: Filter-Button ausblenden, da Filter links sidebar ist */
+@media (min-width: 1313px) {
+  .res-filter-toggle-btn {
+    display: none;
+  }
+  .res-filter-card {
+    display: block !important; /* Auf Desktop immer sichtbar */
+  }
 }
 
 .res-filter-card {
-  @apply bg-white rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-10 border border-gray-100 shadow-sm sticky top-12 space-y-8;
+  @apply bg-white rounded-[2.5rem] p-6 md:p-8 border border-gray-100 shadow-sm space-y-4;
+  max-height: calc(100vh - 12rem); /* Verhindert, dass der Filter unten aus dem Bild läuft */
+  overflow-y: auto; /* Erlaubt internes Scrollen im Filter, falls nötig */
 }
 
-/* --- BOOKING CARDS --- */
-.res-list {
-  @apply flex-1 space-y-6;
+/* --- 4. CARDS CONTAINER (GRID) --- */
+.res-list { 
+  @apply flex-1 grid gap-8 auto-rows-max;
+  grid-template-columns: 1fr; /* Fallback: Einspaltig */
 }
 
-.res-card {
-  @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm transition-all overflow-hidden flex flex-col;
-  padding: 1.25rem;
-  gap: 1.25rem;
-}
+/* ========================================
+   BREAKPOINT-LOGIK (MATHEMATISCH PRÄZISE)
+   ======================================== */
 
-.res-card-active { @apply border-l-8 border-l-[var(--mci-blue)] shadow-md; }
-.res-card-expired { @apply opacity-50 grayscale bg-gray-50; }
+/* 
+   BERECHNUNG DER BREAKPOINTS:
+   - Card-Breite: 440px
+   - Gap zwischen Cards: 32px (2rem = gap-8)
+   - Filter-Breite: 288px (lg:w-72 = 18rem)
+   - Gap Filter-zu-Cards: 48px (md:gap-12)
+   
+   3 Cards nebeneinander mit Filter:
+   288px (Filter) + 48px (Gap) + 440px + 32px + 440px + 32px + 440px = 1720px
+   → Ab 1720px: Filter links + 3 Cards
+   
+   2 Cards nebeneinander mit Filter:
+   288px (Filter) + 48px (Gap) + 440px + 32px + 440px = 1248px
+   → Von 1248px bis 1719px: Filter links + 2 Cards
+   
+   Filter nach oben, 2 Cards darunter:
+   440px + 32px + 440px = 912px
+   → Von 912px bis 1247px: Filter oben (zusammengeklappt) + 2 Cards
+   
+   1 Card (einspaltig):
+   440px Mindestbreite
+   → Unter 912px: Filter oben + 1 Card
+   
+   Mobile Mindestbreite:
+   → Ab 400px keine weitere Skalierung
+*/
 
-.res-card.is-series {
-  @apply bg-blue-50/30;
-  background-image: radial-gradient(#004a87 0.5px, transparent 0.5px);
-  background-size: 10px 10px;
-}
-
-.res-image-wrapper {
-  @apply relative rounded-[1.5rem] overflow-hidden shrink-0 bg-slate-100 w-full;
-  height: 180px;
-}
-
-.res-content-block { @apply flex-1 flex flex-col; }
-
-.res-header-row { @apply flex flex-wrap items-center justify-between gap-2 mb-4; }
-
-.res-room-title { @apply text-xl font-black text-[#004a87] m-0; }
-
-.res-meta-grid { @apply grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4; }
-
-.res-meta-item {
-  @apply flex items-center gap-2.5 text-slate-500 text-[16px] font-bold uppercase tracking-wider;
-}
-
-/* --- ACTIONS --- */
-.res-action-bar {
-  @apply flex flex-col gap-2 pt-4 border-t border-gray-50;
-}
-
-.btn-res-action {
-  @apply flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase transition-all;
-}
-
-.btn-res-danger {
-  @apply bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white;
-}
-
-.btn-res-disabled {
-  @apply bg-gray-50 text-gray-300 border-transparent cursor-not-allowed opacity-100;
-}
-
-/* --- DESKTOP REFINEMENT --- */
-@media (min-width: 768px) {
-  .res-card {
-    flex-direction: row;
-    gap: 1.5rem;
-    align-items: top;
+/* DESKTOP: Filter links + 3 Cards (ab 1786px) */
+@media (min-width: 1786px) {
+  .res-list { 
+    grid-template-columns: repeat(3, 440px); 
   }
-
-  .res-image-wrapper { width: 180px; height: 180px; }
-
-  .res-action-bar {
-    flex-direction: column;
-    width: 200px;
-    padding: 0 0 0 2rem;
-    border-top: none;
-    border-left: 1px solid #f1f5f9;
+  .res-layout { 
+    @apply flex-row; 
+  }
+  .res-sidebar { 
+    @apply w-72 order-first; 
   }
 }
 
-/* --- RESPONSIVE HEADER --- */
-.res-page-header {
-  @apply max-w-7xl mx-auto px-4 md:px-0;
+/* DESKTOP: Filter links + 2 Cards (1313px - 1785px) */
+@media (min-width: 1313px) and (max-width: 1795px) {
+  .res-list { 
+    grid-template-columns: repeat(2, 440px); 
+  }
+  .res-layout { 
+    @apply flex-row; 
+  }
+  .res-sidebar { 
+    @apply w-72 order-first; 
+  }
 }
 
-.res-page-title {
-  @apply text-4xl md:text-6xl font-black text-[#004a87] tracking-tighter uppercase italic leading-none m-0;
-}
-
-.res-stats-badge {
-    /* display: flex; <--- DAS HIER ENTFERNEN / LÖSCHEN */
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    background-color: var(--mci-blue);
-    color: white;
-    border-radius: 1rem;
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.lang-toggle-btn {
-  @apply p-3.5 bg-white rounded-2xl shadow-sm border border-gray-100 font-black text-[10px] uppercase flex items-center gap-2 hover:bg-gray-50 transition-all;
-}
-
-/* Mobile Fixes */
-@media (max-width: 768px) {
-  .res-page-title {
-    @apply text-3xl;
+/* TABLET: Filter oben + 2 Cards (1024 - 1312px) */
+@media (min-width: 1024px) and (max-width: 1312px) {
+  .res-list { 
+    grid-template-columns: repeat(2, 440px); 
+  }
+  .res-layout { 
+    @apply flex-col; 
+  }
+  .res-sidebar { 
+    @apply w-full max-w-[1024px] order-first mb-0 bg-[var(--mci-bg)] pb-2;;
+  }
+  .res-filter-toggle-btn {
+    margin-bottom: 0 !important; /* Kein Abstand wenn eingeklappt */
+    max-width: 912px;
+  }
+  .res-filter-card { 
+    @apply sticky max-w-[912px] top-24 z-30; 
+    margin-top: 1rem; /* Abstand zum Button */
+    margin-bottom: 0;
   }
   
-  .res-stats-badge {
-    @apply flex-1 justify-center py-4;
+}
+
+/* MOBILE/TABLET: Filter oben + 1 Card (unter 1023) */
+@media (max-width: 1024px) {
+  .res-list { 
+    grid-template-columns: 1fr; 
+    max-width: 400px;
+  }
+  .res-layout { 
+    @apply flex-col gap-3; 
+  }
+  .res-sidebar { 
+    @apply w-full order-first mb-0; 
+  }
+  .res-filter-toggle-btn {
+    margin-bottom: 0 !important; /* Kein Abstand wenn Filter eingeklappt */
+  }
+  .res-filter-card { 
+    @apply sticky top-24 z-30; 
+    margin-top: 1rem; /* Abstand zum Button */
+    margin-bottom: 0;
+  }
+  .res-list { 
+    margin-top: 1.5rem !important;
   }
 }
 
 
+/* --- 5. CARD STYLING --- */
+.res-card {
+  @apply bg-white rounded-[2rem] border border-gray-100 shadow-sm transition-all overflow-hidden p-6 mb-2 flex flex-col;
+  width: 440px; 
+  min-width: 400px; /* Mindestbreite für Lesbarkeit */
+  height: fit-content;
+}
+
+/* Mobile: Cards füllen verfügbare Breite, Skalierung bis 300px Display */
+@media (max-width: 640px) { 
+  .res-card { 
+    width: 100%; 
+    min-width: 290px; /* 300px Display - 8px Padding = 292px verfügbar */
+  } 
+
+  .res-col-actions-top {
+  @apply w-[75px];
+}
+
+}
+
+@media (max-width: 500px) {
+  .res-card {
+    width: 100%;
+    min-width: 290px;
+    max-width: 500px;
+  }
+}
+
+/* Expanded State */
+.res-card.is-expanded { 
+  @apply shadow-xl ring-2 ring-[var(--mci-blue)]/5; 
+}
+
+/* --- 6. CARD HEADER LAYOUT --- */
+.res-card-row-top { 
+  @apply flex flex-row justify-between items-start gap-2; 
+}
+
+.res-col-identity { 
+  @apply flex items-center gap-2 min-w-0 flex-1; 
+}
+
+.res-room-title {
+  /* Nutzt globale .mci-card-title aus globals.css */
+  @apply truncate pr-6; /* Nur lokales Override */
+}
+
+.res-header-meta {
+  @apply text-sm md:text-base pt-2 font-medium uppercase italic tracking-wide;
+}
+
+/* --- 7. ACTION BUTTONS COLUMN --- */
+.res-col-actions-top {
+  @apply shrink-0 md:w-[125px] flex flex-col gap-2 transition-all;
+}
+
+.res-col-actions-btn {
+  @apply flex flex-col gap-2 w-full text-right
+}
+
+
+
+.res-btn-label { 
+  @apply truncate sm:inline hidden; 
+}
+
+/* Stufenweise Reduktion der Action-Spalte */
+
+
+
+
+
+
+/* --- 8. BUTTON & BUBBLE STYLING --- */
+.mci-action-btn-unified:hover { 
+  @apply brightness-110 shadow-lg scale-[1.02]; 
+}
+
+.res-status-bubble {
+  @apply h-[3.2rem] w-full flex items-center justify-center gap-2 rounded-[1.25rem] border border-slate-100 font-medium transition-all;
+}
+
+/* --- 9. IMAGE HANDLING (RESPONSIVE) --- */
+.res-mobile-head-img { 
+  @apply hidden; 
+}
+
+.res-detail-img-desktop { 
+  @apply h-[80px] w-full shrink-0 overflow-hidden rounded-xl bg-slate-50; 
+}
+
+@media (max-width: 1024px) { 
+  .res-mobile-head-img { 
+    @apply block mb-4; 
+  } 
+  .res-detail-img-desktop { 
+    @apply hidden; 
+  } 
+}
+
+/* --- 10. EXPANDED DETAILS SECTION --- */
+.res-details-left, .res-details-right { 
+  @apply flex flex-col min-h-[160px]; 
+}
+
+.res-map-wrapper { 
+  @apply w-full h-full min-h-[140px] rounded-2xl overflow-hidden; 
+}
+
+.res-map-wrapper.grayscale { 
+  filter: grayscale(1) contrast(1.1) brightness(1.05) hue-rotate(190deg) opacity(0.85); 
+}
+
+.framed-map { 
+  @apply border-4 border-white shadow-lg ring-1 ring-slate-100; 
+}
+
+/* --- 11. BADGES & TAGS --- */
+
+/* PAGE TITLE (nutzt globales Styling aus globals.css) */
+.res-page-title {
+  /* Wird durch .room-page-title / .res-page-title Style aus globals.css gesteuert */
+  /* Hier nur lokale Overrides falls nötig */
+}
+
+/* HEADER SECTION */
+.res-header-section {
+  margin-bottom: 0; /* Kein extra Abstand */
+}
+
+/* ACTIVE COUNT BADGE (nutzt globales mci-active-count-badge) */
+.res-stats-badge {
+  /* Wird durch .mci-active-count-badge aus globals.css gesteuert */
+  /* Legacy support - kann entfernt werden wenn überall migriert */
+  @apply inline-flex items-center gap-3 bg-[var(--mci-blue)] text-white px-6 py-3 rounded-2xl font-bold uppercase shadow-lg;
+  font-size: 13px;
+  margin-top: 0.75rem;
+  display: inline-flex !important; /* Überall sichtbar */
+}
+
+/* INFO TAGS - Nutzen globale .mci-info-tag */
+.mci-info-tag {
+  /* Wird durch globals.css gesteuert */
+}
+
+/* EQUIPMENT BADGES - Nutzen globale .mci-equip-badge */
+.res-equip-item-badge {
+  /* Legacy support - nutzt jetzt .mci-equip-badge aus globals.css */
+}
+
+/* --- 12. UTILITY CLASSES --- */
+.no-margin-left { 
+  margin-left: 0 !important; 
+  padding-left: 0 !important; 
+}
+
+/* ========================================
+   ENDE RESERVATIONS LAYOUT
+   ======================================== */

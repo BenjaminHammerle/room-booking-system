@@ -16,11 +16,12 @@ import {
   Info,
   CheckCircle,
   Trash2,
+  Armchair,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import "./BookingModal.css";
 
-// import der zentralen architektur für konstanten, icons und helfer-logik
+// Import der zentralen Architektur für Konstanten, Icons und Helfer-Logik
 import { APP_CONFIG, BOOKING_STATUS, Language } from "@/lib/constants";
 import { getEquipmentIcon } from "@/lib/icons";
 import { timeToMinutes, getEndTimeParts, getTrans } from "@/lib/utils";
@@ -66,7 +67,7 @@ export default function BookingModal({
   initialDate,
   initialTime,
 }: BookingModalProps) {
-  // lokale zustandsverwaltung für formularfelder und serien-logik
+  // Lokale Zustandsverwaltung
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("08:00");
   const [duration, setDuration] = useState(1);
@@ -75,14 +76,13 @@ export default function BookingModal({
   const [isExtending, setIsExtending] = useState(false);
   const [weeksToAdd, setWeeksToAdd] = useState(1);
   const [loading, setLoading] = useState(false);
-  
-  // zustand für visuelles feedback (erfolg/fehler) nach datenbank-aktionen
+
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
 
-  // initialisierung und synchronisation der felder beim öffnen des modals
+  // Synchronisation beim Öffnen
   useEffect(() => {
     if (isOpen) {
       setFeedback(null);
@@ -100,7 +100,6 @@ export default function BookingModal({
     }
   }, [isOpen, mode, booking, initialDate, initialTime]);
 
-  // ermittlung aller zugehörigen buchungen einer serie via booking_code
   const relatedBookings = useMemo(() => {
     if (!booking?.booking_code) return [];
     return bookings
@@ -112,7 +111,6 @@ export default function BookingModal({
       .sort((a, b) => a.booking_date.localeCompare(b.booking_date));
   }, [booking, bookings]);
 
-  // stornierung einer einzelnen instanz innerhalb einer serie
   const handleCancelInstanceInModal = async (id: string) => {
     if (!confirm(t("btn_cancel_single") + "?")) return;
     setLoading(true);
@@ -129,11 +127,12 @@ export default function BookingModal({
     setLoading(false);
   };
 
-  // logik für kombiräume: liefert alle ids, die zeitgleich blockiert werden müssen
   const getConflictRoomIds = (r: any): string[] => {
     if (!r) return [];
-    if (!r.room_combi) return [r.id];
+    if (!r.room_combi_id) return [r.id];
+    // Suche in der rooms_combi Logik (Punkt 3.C)
     const c = r.room_combi;
+    if (!c) return [r.id];
     return r.id === c.room_id_0
       ? Array.from(
           new Set(
@@ -145,8 +144,9 @@ export default function BookingModal({
       : [r.id, c.room_id_0];
   };
 
-  // prüfung auf zeitliche überschneidungen unter berücksichtigung von kombiräumen
-  const isAnyRoomOccupied = (
+  // Hilfsfunktion zur Überschneidungsprüfung gegen ein beliebiges Buchungs-Array
+  const checkOverlap = (
+    checkBookings: any[],
     roomIds: string[],
     date: string,
     startTime: string,
@@ -154,7 +154,7 @@ export default function BookingModal({
   ) => {
     const reqStart = timeToMinutes(startTime);
     const reqEnd = reqStart + dur * 60;
-    return bookings.some((b) => {
+    return checkBookings.some((b) => {
       if (
         b.status !== BOOKING_STATUS.ACTIVE ||
         b.booking_date !== date ||
@@ -168,7 +168,15 @@ export default function BookingModal({
     });
   };
 
-  // berechnet den plan für serien inklusive automatischer alternativ-suche (Best Match)
+  const isAnyRoomOccupied = (
+    roomIds: string[],
+    date: string,
+    startTime: string,
+    dur: number,
+  ) => {
+    return checkOverlap(bookings, roomIds, date, startTime, dur);
+  };
+
   const getSeriesPlan = () => {
     if (!selectedDate || selectedDate === "") return [];
     const plan = [];
@@ -176,18 +184,19 @@ export default function BookingModal({
     if (!currentRoom) return [];
 
     const reqCap = parseInt(minCapacity) || 0;
-
-    let iterations = 0;
+    let iterations =
+      mode === "create"
+        ? isRecurring
+          ? recurringWeeks
+          : 1
+        : isExtending
+          ? weeksToAdd
+          : 0;
     let startDateAnchor = selectedDate;
 
-    if (mode === "create") {
-      iterations = isRecurring ? recurringWeeks : 1;
-    } else {
-      iterations = isExtending ? weeksToAdd : 0;
-      if (isExtending) {
-        const lastBooking = relatedBookings[relatedBookings.length - 1];
-        if (lastBooking) startDateAnchor = lastBooking.booking_date;
-      }
+    if (mode === "edit" && isExtending) {
+      const lastBooking = relatedBookings[relatedBookings.length - 1];
+      if (lastBooking) startDateAnchor = lastBooking.booking_date;
     }
 
     const baseDate = new Date(startDateAnchor);
@@ -199,11 +208,8 @@ export default function BookingModal({
 
     for (let i = startIndex; i < maxIndex; i++) {
       const d = new Date(baseDate);
-      d.setDate(d.getDate() + i * 7);
+      d.setDate(baseDate.getDate() + i * 7);
       const curDate = d.toISOString().split("T")[0];
-
-      if (mode === "create" && !isRecurring && i > 0) break;
-
       const conflictIds = getConflictRoomIds(currentRoom);
 
       if (!isAnyRoomOccupied(conflictIds, curDate, selectedTime, duration)) {
@@ -245,6 +251,7 @@ export default function BookingModal({
     setFeedback(null);
     const plan = getSeriesPlan();
 
+    // 1. Zeitliche Validierung (Vergangenheit)
     const now = new Date();
     if (
       selectedDate === now.toISOString().split("T")[0] &&
@@ -261,12 +268,43 @@ export default function BookingModal({
       return;
     }
 
-    const code =
-      booking?.booking_code ||
-      Math.random().toString(36).substring(2, 8).toUpperCase();
-
     try {
+      // 2. KRITISCHER DOUBLE-CHECK (Concurrency Fix): Frische Daten laden
+      const { data: freshBookings, error: fetchError } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("status", BOOKING_STATUS.ACTIVE)
+        .in(
+          "booking_date",
+          plan.map((p) => p.date),
+        );
+
+      if (fetchError) throw fetchError;
+
+      // Erneute Prüfung gegen die FRISCHEN Datenbank-Daten
+      const raceConditionDetected = plan.some((p) => {
+        const conflictIds = getConflictRoomIds(p.room);
+        return checkOverlap(
+          freshBookings,
+          conflictIds,
+          p.date,
+          selectedTime,
+          duration,
+        );
+      });
+
+      if (raceConditionDetected) {
+        setFeedback({ type: "error", text: t("no_room_available") });
+        setLoading(false);
+        return;
+      }
+
+      // 3. Buchung durchführen
+      const code =
+        booking?.booking_code ||
+        Math.random().toString(36).substring(2, 8).toUpperCase();
       let error = null;
+
       if (mode === "edit") {
         const res = await supabase
           .from("bookings")
@@ -277,7 +315,6 @@ export default function BookingModal({
           })
           .eq("id", booking.id);
         error = res.error;
-
         if (!error && isExtending) {
           const newEntries = plan.map((p) => ({
             room_id: p.room.id,
@@ -338,38 +375,42 @@ export default function BookingModal({
     <div className="mci-modal-overlay animate-in fade-in">
       <div className="mci-modal-card animate-in zoom-in-95 overflow-hidden">
         {feedback && (
-          <div
-            className={`absolute inset-0 z-[100] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 ${feedback.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}
-          >
-            {feedback.type === "success" ? (
-              <CheckCircle size={80} className="mb-6 animate-bounce" />
-            ) : (
-              <XCircle size={80} className="mb-6" />
-            )}
-            <h2 className="text-3xl font-black uppercase italic tracking-tighter">
-              {feedback.text}
-            </h2>
-            {feedback.type === "error" && (
-              <button
-                onClick={() => setFeedback(null)}
-                className="mt-8 px-8 py-3 bg-white text-red-600 font-bold rounded-full uppercase text-xs"
-              >
-                zurück
-              </button>
-            )}
+          <div className="booking-feedback">
+            <div
+              className={`booking-feedback-card ${
+                feedback.type === "success"
+                  ? "booking-feedback-success"
+                  : "booking-feedback-error"
+              }`}
+            >
+              {feedback.type === "success" ? (
+                <CheckCircle size={80} className="mb-6 animate-bounce" />
+              ) : (
+                <XCircle size={80} className="mb-6" />
+              )}
+              <h2 className="text-3xl font-black uppercase italic tracking-tighter">
+                {feedback.text}
+              </h2>
+              {feedback.type === "error" && (
+                <button
+                  onClick={() => setFeedback(null)}
+                  className="mt-8 px-8 py-3 bg-white text-red-600 font-bold rounded-full uppercase text-xs"
+                >
+                  zurück
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         <div className="mci-modal-header text-white">
-          <div className="flex flex-col text-left">
-            <p className="text-xs font-black opacity-70 uppercase italic">
+          <div className="flex flex-col text-left gap-1">
+            <p className="mci-modal-subtitle">
               {mode === "edit"
                 ? t("label_edit_booking")
                 : t("label_new_booking")}
             </p>
-            <h3 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter">
-              {currentRoomContext?.name}
-            </h3>
+            <h3 className="mci-modal-title">{currentRoomContext?.name}</h3>
           </div>
           <button
             onClick={onClose}
@@ -380,7 +421,7 @@ export default function BookingModal({
         </div>
 
         <div className="mci-modal-body">
-          <div className="ebene-wrapper">
+          <div className="booking-form-group">
             <label className="mci-label">{t("header_date")}</label>
             <input
               type="date"
@@ -391,11 +432,11 @@ export default function BookingModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="ebene-wrapper">
+          <div className="booking-form-grid">
+            <div className="booking-form-group">
               <label className="mci-label">{t("modal_time")}</label>
-              <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl shadow-inner text-[#004a87]">
-                <Clock size={20} className="text-blue-500 ml-2" />
+              <div className="mci-time-picker">
+                <Clock size={20} className="text-blue-500" />
                 <select
                   value={selectedTime.split(":")[0]}
                   onChange={(e) =>
@@ -403,7 +444,7 @@ export default function BookingModal({
                       `${e.target.value}:${selectedTime.split(":")[1]}`,
                     )
                   }
-                  className="bg-transparent font-black text-2xl outline-none cursor-pointer"
+                  className="mci-time-select"
                 >
                   {Array.from({ length: 17 }, (_, i) =>
                     (i + 7).toString().padStart(2, "0"),
@@ -417,7 +458,7 @@ export default function BookingModal({
                     </option>
                   ))}
                 </select>
-                <span className="font-black text-2xl">:</span>
+                <span className="mci-time-colon">:</span>
                 <select
                   value={selectedTime.split(":")[1]}
                   onChange={(e) =>
@@ -425,7 +466,7 @@ export default function BookingModal({
                       `${selectedTime.split(":")[0]}:${e.target.value}`,
                     )
                   }
-                  className="bg-transparent font-black text-2xl outline-none cursor-pointer"
+                  className="mci-time-select"
                 >
                   {["00", "15", "30", "45"].map((m) => (
                     <option
@@ -444,10 +485,10 @@ export default function BookingModal({
                 </select>
               </div>
             </div>
-            <div className="ebene-wrapper">
+            <div className="booking-form-group">
               <label className="mci-label">{t("label_ebene_end")}</label>
-              <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl shadow-inner text-[#004a87]">
-                <CheckCircle2 size={20} className="text-orange-500 ml-2" />
+              <div className="mci-time-picker">
+                <CheckCircle2 size={20} className="text-orange-500" />
                 <select
                   value={getEndTimeParts(selectedTime, duration).hh}
                   onChange={(e) => {
@@ -456,7 +497,7 @@ export default function BookingModal({
                       parseInt(getEndTimeParts(selectedTime, duration).mm);
                     setDuration((newTotal - timeToMinutes(selectedTime)) / 60);
                   }}
-                  className="bg-transparent font-black text-2xl outline-none cursor-pointer"
+                  className="mci-time-select"
                 >
                   {Array.from({ length: 17 }, (_, i) =>
                     (i + 7).toString().padStart(2, "0"),
@@ -472,7 +513,7 @@ export default function BookingModal({
                     </option>
                   ))}
                 </select>
-                <span className="font-black text-2xl">:</span>
+                <span className="mci-time-colon">:</span>
                 <select
                   value={getEndTimeParts(selectedTime, duration).mm}
                   onChange={(e) => {
@@ -482,7 +523,7 @@ export default function BookingModal({
                       parseInt(e.target.value);
                     setDuration((newTotal - timeToMinutes(selectedTime)) / 60);
                   }}
-                  className="bg-transparent font-black text-2xl outline-none cursor-pointer"
+                  className="mci-time-select"
                 >
                   {["00", "15", "30", "45"].map((m) => (
                     <option
@@ -504,22 +545,22 @@ export default function BookingModal({
           </div>
 
           <div
-            className={`p-5 rounded-2xl font-bold flex items-center gap-4 border ${isOccupiedNow ? "bg-red-50 text-red-600 border-red-100" : "bg-green-50 text-green-700 border-green-100"}`}
+            className={`mci-status-badge ${isOccupiedNow ? "mci-status-conflict" : "mci-status-available"}`}
           >
             {isOccupiedNow ? (
               <AlertCircle size={24} />
             ) : (
               <CheckCircle2 size={24} />
             )}
-            <span className="uppercase text-xs font-black tracking-widest italic">
+            <span>
               {isOccupiedNow
                 ? t("label_status_conflict")
                 : t("label_status_free")}
             </span>
           </div>
 
-          <div className="res-extension-wrapper mt-8 pt-8 border-t border-dashed">
-            <label className="flex items-center gap-4 cursor-pointer mb-6 group">
+          <div className="mt-8 pt-8 border-t border-dashed">
+            <label className="recurring-toggle">
               <input
                 type="checkbox"
                 checked={mode === "create" ? isRecurring : isExtending}
@@ -528,9 +569,8 @@ export default function BookingModal({
                     ? setIsRecurring(e.target.checked)
                     : setIsExtending(e.target.checked)
                 }
-                className="w-6 h-6 accent-[var(--mci-blue)] rounded"
               />
-              <span className="text-sm font-black uppercase text-[var(--mci-blue)] italic group-hover:text-[var(--mci-orange)] transition-colors">
+              <span>
                 {mode === "create"
                   ? t("label_recurring")
                   : t("label_extend_series")}
@@ -557,13 +597,11 @@ export default function BookingModal({
                     className="mci-number-input-lg"
                   />
                 </div>
-                <div className="flex flex-col gap-1 border-l-2 border-orange-100 pl-8 py-2 text-left">
-                  <p className="text-xl font-black text-[var(--mci-blue)] uppercase italic">
+                <div className="res-extension-text-group">
+                  <p className="mci-section-title">
                     {t("label_series_preview")}
                   </p>
-                  <p className="text-[11px] font-bold text-orange-400 uppercase tracking-tight">
-                    {t("hint_extension_preview")}
-                  </p>
+                  <p className="mci-hint-text">{t("hint_extension_preview")}</p>
                 </div>
               </div>
             )}
@@ -610,22 +648,23 @@ export default function BookingModal({
                             data-label={t("header_features")}
                             className="flex items-center justify-between gap-2"
                           >
-                            {isCurrent ? (
-                              <span className="text-[var(--mci-orange)] font-black uppercase text-[8px]">
-                                {t("label_editing")}
-                              </span>
-                            ) : (
-                              <span className="text-[8px] font-black uppercase bg-slate-100 px-2 py-0.5 rounded">
-                                {t("label_existing")}
-                              </span>
-                            )}
+                            <span
+                              className={
+                                isCurrent
+                                  ? "text-[var(--mci-orange)] font-black uppercase text-[8px]"
+                                  : "text-[8px] font-black uppercase bg-slate-100 px-2 py-0.5 rounded"
+                              }
+                            >
+                              {isCurrent
+                                ? t("label_editing")
+                                : t("label_existing")}
+                            </span>
                             {!isCurrent && (
                               <button
                                 onClick={() =>
                                   handleCancelInstanceInModal(b.id)
                                 }
                                 className="p-1 hover:text-red-600 transition"
-                                title={t("btn_cancel_single")}
                               >
                                 <Trash2 size={12} />
                               </button>
@@ -634,18 +673,14 @@ export default function BookingModal({
                         </div>
                       );
                     })}
-
                   {getSeriesPlan().map((p, i) => {
-                    // DIFF-LOGIK FÜR EQUIPMENT (V14 Punkt 4.C Erweiterung)
                     const originalFeatures = [
                       ...(currentRoomContext?.equipment || []),
                     ];
                     if (currentRoomContext?.accessible)
                       originalFeatures.push("accessible");
-
                     const currentFeatures = [...(p.room?.equipment || [])];
                     if (p.room?.accessible) currentFeatures.push("accessible");
-
                     const extra = currentFeatures.filter(
                       (id) => !originalFeatures.includes(id),
                     );
@@ -653,12 +688,18 @@ export default function BookingModal({
                       (id) => !currentFeatures.includes(id),
                     );
 
-                    const isFirstInCreate = mode === "create" && i === 0;
-
                     return (
                       <div
                         key={`preview-${i}`}
-                        className={`series-grid series-data-row border-l-4 ${p.status === "conflict" ? "bg-red-50 border-l-red-500" : isFirstInCreate ? "bg-orange-50 border-l-[var(--mci-orange)]" : "bg-orange-50/20 border-l-orange-400"}`}
+                        className={`series-grid series-data-row border-l-4 ${
+                          p.status === "conflict"
+                            ? "bg-red-50 border-l-red-500"
+                            : p.status === "alternative"
+                              ? "bg-red-50/50 border-l-red-400"
+                              : mode === "create" && i === 0
+                                ? "bg-orange-50 border-l-[var(--mci-orange)]"
+                                : "bg-green-50/30 border-l-green-400"
+                        }`}
                       >
                         <div
                           data-label={t("header_date")}
@@ -676,11 +717,13 @@ export default function BookingModal({
                         >
                           {p.status === "conflict" ? (
                             <XCircle size={14} className="text-red-500" />
+                          ) : p.status === "alternative" ? (
+                            <AlertCircle size={14} className="text-red-500" />
                           ) : (
-                            <PlusCircle size={14} className="text-orange-500" />
+                            <CheckCircle size={14} className="text-green-600" />
                           )}
                           <span
-                            className={`font-bold ${p.status === "conflict" ? "text-red-600" : "text-slate-700"}`}
+                            className={`font-bold ${p.status === "conflict" || p.status === "alternative" ? "text-red-600" : "text-slate-700"}`}
                           >
                             {p.room?.name || t("no_room_available")}
                           </span>
@@ -710,25 +753,29 @@ export default function BookingModal({
                                   Best Match
                                 </span>
                               )}
-                              {/* Anzeige zusätzlicher Features (GRÜN) */}
+                              {p.room?.seating_arrangement && (
+                                <span className="bg-slate-100 text-slate-600 text-[8px] px-1.5 py-0.5 rounded font-black uppercase flex items-center gap-1">
+                                  <Armchair size={10} />{" "}
+                                  {t(p.room.seating_arrangement)}
+                                </span>
+                              )}
                               {extra.map((id) => (
                                 <span
                                   key={id}
                                   className="bg-green-100 text-green-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase flex items-center gap-1"
                                 >
-                                  +{getEquipmentIcon(id)}
+                                  +{getEquipmentIcon(id)}{" "}
                                   {id === "accessible"
                                     ? t("label_accessible")
                                     : t("equip_" + id)}
                                 </span>
                               ))}
-                              {/* Anzeige fehlender Features (ROT + DURCHGESTRICHEN) */}
                               {missing.map((id) => (
                                 <span
                                   key={id}
                                   className="bg-red-100 text-red-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase line-through flex items-center gap-1"
                                 >
-                                  -{getEquipmentIcon(id)}
+                                  -{getEquipmentIcon(id)}{" "}
                                   {id === "accessible"
                                     ? t("label_accessible")
                                     : t("equip_" + id)}
@@ -745,18 +792,20 @@ export default function BookingModal({
             )}
           </div>
 
-          <button
-            disabled={loading}
-            onClick={handleSave}
-            className="btn-mci-main mt-8 w-full py-6 text-xl"
-          >
-            <Save size={28} />{" "}
-            {loading
-              ? "..."
-              : mode === "edit"
-                ? t("save_btn")
-                : t("modal_btn_confirm")}
-          </button>
+          <div className="modal-actions">
+            <button
+              disabled={loading}
+              onClick={handleSave}
+              className="btn-mci-main py-6 text-xl shadow-xl"
+            >
+              <Save size={28} />{" "}
+              {loading
+                ? "..."
+                : mode === "edit"
+                  ? t("save_btn")
+                  : t("btn_reserve")}
+            </button>
+          </div>
         </div>
       </div>
     </div>

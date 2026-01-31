@@ -1,84 +1,261 @@
 @import "tailwindcss";
 
-/* Header Spacing */
+/* ========================================
+   BOOKING MODAL - OPTIMIZED V2
+   Harmonisierte Styles für einheitliches Design
+   ======================================== */
+
+/* --- 1. MODAL OVERLAY & CARD --- */
+/* Nutzt bereits .mci-modal-overlay und .mci-modal-card aus globals.css */
+
+/* --- 2. MODAL HEADER COMPONENTS --- */
+.mci-modal-subtitle {
+  @apply text-xs font-black opacity-70 uppercase italic;
+}
+
+.mci-modal-title {
+  @apply text-4xl md:text-5xl font-black uppercase italic tracking-tighter;
+}
+
+/* --- 3. TIME PICKER (einheitlich) --- */
+.mci-time-picker {
+  @apply flex items-center gap-4 bg-gray-50 p-4 rounded-2xl shadow-inner;
+  color: var(--mci-blue);
+}
+
+.mci-time-select {
+  @apply bg-transparent font-black text-2xl outline-none cursor-pointer;
+  color: var(--mci-blue);
+}
+
+.mci-time-colon {
+  @apply font-black text-2xl;
+  color: var(--mci-blue);
+}
+
+/* --- 4. STATUS BADGE (einheitlich) --- */
+.mci-status-badge {
+  @apply p-5 rounded-2xl font-bold flex items-center gap-4 border;
+}
+
+.mci-status-badge span {
+  @apply uppercase text-xs font-black tracking-widest italic;
+}
+
+.mci-status-conflict {
+  @apply bg-red-50 text-red-600 border-red-100;
+}
+
+.mci-status-available {
+  @apply bg-green-50 text-green-700 border-green-100;
+}
+
+/* --- 5. SECTION TITLES & HINTS (einheitlich) --- */
+.mci-section-title {
+  @apply text-xl font-black uppercase italic;
+  color: var(--mci-blue);
+}
+
+.mci-hint-text {
+  @apply text-[11px] font-bold uppercase tracking-tight text-orange-400;
+}
+
+/* --- 6. HEADER SPACING --- */
 .admin-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
+  @apply flex justify-between items-center gap-4 md:gap-8 mb-6 md:mb-8 flex-wrap;
 }
 
-/* Sidebar Bubble & Desktop Logic */
-.admin-sidebar-container { width: 100%; }
+/* --- 3. SIDEBAR (FILTER/INFO) --- */
+.admin-sidebar-container {
+  @apply w-full;
+}
+
 @media (min-width: 1024px) {
-  .admin-sidebar-container { width: 18rem; flex-shrink: 0; position: sticky; top: 2rem; }
+  .admin-sidebar-container {
+    @apply w-80 shrink-0 sticky self-start;
+    top: 2rem;
+  }
 }
 
-
-/* Export/Print Button Responsive */
+/* --- 4. PRINT/EXPORT BUTTON --- */
 .print-btn-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1rem;
+  @apply flex justify-end mb-4;
 }
+
 @media (max-width: 640px) {
-  .print-btn-container { justify-content: center; width: 100%; }
-  .admin-action-btn { width: 100% !important; }
+  .print-btn-container {
+    @apply justify-center w-full;
+  }
+  .admin-action-btn {
+    width: 100% !important;
+  }
 }
 
-/* --- EXTENSION BOX (RESPONSIVE FIX) --- */
+/* --- 5. EXTENSION BOX (Serienbuchung verlängern) --- */
 .res-extension-box {
-  @apply mb-8 mt-2 p-6 md:p-8 bg-white rounded-[1.5rem] md:rounded-[1.5rem] 
-         border-2 border-orange-100 flex flex-col md:flex-row items-center 
-         gap-6 md:gap-10 shadow-xl shadow-orange-900/5;
+  @apply mb-8 mt-2 p-6 md:p-8 bg-white rounded-[1.5rem] border-2 border-orange-100 shadow-xl;
   animation: mciPop 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
 }
 
-/* Das Zahlenfeld schrumpft am Handy leicht */
+@media (min-width: 768px) {
+  .res-extension-box {
+    flex-direction: row;
+    gap: 2.5rem;
+  }
+}
+
+/* Zahlen-Input für Wochen (groß und prominent) */
 .mci-number-input-lg {
-  @apply w-24 h-20 md:w-32 md:h-24 bg-orange-50 border-none rounded-2xl md:rounded-3xl 
-         text-4xl md:text-5xl font-black text-[var(--mci-blue)] text-center 
-         outline-none ring-2 ring-orange-100 focus:ring-4 focus:ring-[var(--mci-orange)] 
-         shadow-inner transition-all;
+  @apply bg-orange-50 border-none rounded-2xl md:rounded-3xl font-black text-center outline-none shadow-inner transition-all;
+  width: 6rem; /* 96px */
+  height: 5rem; /* 80px */
+  font-size: 2.5rem; /* 40px */
+  color: var(--mci-blue);
+  border: 2px solid rgba(249, 115, 22, 0.2);
 }
 
+.mci-number-input-lg:focus {
+  @apply ring-4;
+  border-color: var(--mci-orange);
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2);
+}
+
+@media (min-width: 768px) {
+  .mci-number-input-lg {
+    width: 8rem; /* 128px */
+    height: 6rem; /* 96px */
+    font-size: 3rem; /* 48px */
+  }
+}
+
+/* Text-Gruppe neben dem Input */
 .res-extension-text-group {
-  @apply flex flex-col gap-1 border-t-2 md:border-t-0 md:border-l-2 
-         border-orange-100 pt-4 md:pt-0 md:pl-8 py-2 text-center md:text-left min-w-0 flex-1;
+  @apply flex flex-col gap-1 text-center md:text-left min-w-0 flex-1;
+  padding-top: 1rem;
+  border-top: 2px solid rgba(249, 115, 22, 0.2);
 }
 
-/* --- MOBILE LISTEN-ANSICHT FÜR SERIEN --- */
-/* Spalten: Datum | Raum+Status | Stock | Sitze | Features */
+@media (min-width: 768px) {
+  .res-extension-text-group {
+    padding-top: 0;
+    padding-left: 2rem;
+    border-top: none;
+    border-left: 2px solid rgba(249, 115, 22, 0.2);
+  }
+}
+
+/* --- 6. SERIES GRID (Serienbuchungen Liste) --- */
 .series-grid {
   display: grid;
   grid-template-columns: 1.2fr 1.8fr 0.6fr 0.8fr 1.5fr;
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .series-header-row {
-  @apply bg-slate-50 text-[9px] font-black uppercase text-slate-400 border-b border-gray-100;
-  display: grid !important; /* Fix für Desktop */
+  @apply bg-slate-50 border-b border-gray-100;
+  display: grid !important;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #94a3b8;
 }
 
-/* Mobil-Anpassung: Von Horizontal auf Block-Stapel */
+.series-data-row {
+  @apply transition-all hover:bg-slate-50;
+}
+
+/* Mobile: Von Grid auf Block-Stapel */
 @media (max-width: 768px) {
   .series-grid {
     display: block;
-    border-bottom: 1px solid #f1f5f9;
     padding: 1.5rem;
   }
-  .series-header-row { display: none !important; }
-  .series-data-row > div { margin-bottom: 0.5rem; display: flex; justify-content: space-between; }
-  .series-data-row > div::before { content: attr(data-label); font-weight: 900; font-size: 8px; text-transform: uppercase; color: #94a3b8; }
+  
+  .series-header-row {
+    display: none !important;
+  }
+  
+  .series-data-row > div {
+    @apply mb-2 flex justify-between items-center;
+  }
+  
+  .series-data-row > div::before {
+    content: attr(data-label);
+    font-weight: 900;
+    font-size: 8px;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-right: 0.5rem;
+  }
 }
 
+/* --- 7. LABEL OVERRIDE --- */
 .mci-label {
-  /* FALSCH: @apply ml-0 !important; */
-  /* RICHTIG: */
-  @apply !ml-0 !mb-0;
+  margin-left: 0 !important;
+  margin-bottom: 0 !important;
 }
 
+/* --- 8. FEEDBACK MESSAGE (Success/Error) --- */
+.booking-feedback {
+  @apply fixed inset-0 z-[200] flex items-center justify-center p-6 bg-white/90 backdrop-blur-md;
+  animation: mciFade 0.3s ease-out;
+}
+
+.booking-feedback-card {
+  @apply p-10 rounded-[3rem] shadow-2xl text-center max-w-sm;
+}
+
+.booking-feedback-success {
+  @apply bg-green-600 text-white;
+}
+
+.booking-feedback-error {
+  @apply bg-red-600 text-white;
+}
+
+/* --- 9. FORM GRID HELPERS --- */
+.booking-form-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-6 w-full;
+}
+
+.booking-form-group {
+  @apply flex flex-col gap-2;
+}
+
+/* --- 10. RECURRING OPTIONS --- */
+.recurring-toggle {
+  @apply flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer transition-all hover:bg-blue-100;
+}
+
+.recurring-toggle input[type="checkbox"] {
+  @apply w-5 h-5 accent-blue-600 cursor-pointer;
+}
+
+/* --- 11. SERIES INFO CARD --- */
+.series-info-card {
+  @apply bg-slate-50 p-6 rounded-xl border border-slate-100;
+}
+
+.series-info-item {
+  @apply flex items-center gap-2 text-sm font-medium text-slate-600;
+}
+
+/* --- 12. ACTION BUTTONS GROUP --- */
+.modal-actions {
+  @apply flex flex-col md:flex-row gap-3 mt-6;
+}
+
+.modal-actions > button {
+  @apply flex-1;
+}
+
+/* ========================================
+   ENDE BOOKING MODAL
+   ======================================== */
