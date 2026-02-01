@@ -76,7 +76,7 @@ export default function BuildingModal({
         </div>
 
         {/* RIGHT SIDE: FORMULAR & EINSTELLUNGEN */}
-        <div className="md:w-7/12 p-8 md:p-12 flex flex-col bg-white max-h-[90vh] overflow-y-auto">
+        <div className="md:w-7/12 p-8 md:p-12 flex flex-col bg-white md:max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-start mb-10">
             <div>
               <h2 className="text-[#004a87] text-2xl font-black italic uppercase tracking-tight leading-none mb-2">

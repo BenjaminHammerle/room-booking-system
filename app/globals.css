@@ -105,7 +105,7 @@
 
 /* Modal Buttons */
 .mci-modal-btn-primary {
-  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all shadow-lg;
+  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all shadow-lg flex items-center justify-center gap-2;
   background-color: var(--mci-blue);
   color: white;
 }
@@ -119,7 +119,7 @@
 }
 
 .mci-modal-btn-secondary {
-  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all;
+  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all flex items-center justify-center gap-2;
   background-color: transparent;
   border: 2px solid var(--mci-blue);
   color: var(--mci-blue);
@@ -226,7 +226,7 @@
   @apply font-black italic uppercase tracking-wider transition-all;
 }
 
-/* --- 3. GLOBAL FORM & MODAL SYSTEM (FIXED) --- */
+/* --- 3. GLOBAL FORM & MODAL SYSTEM --- */
 .mci-modal-overlay {
   @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[1000];
   animation: mciFade 0.3s ease-out forwards;

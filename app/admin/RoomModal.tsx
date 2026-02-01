@@ -107,7 +107,7 @@ export default function RoomModal({
         </div>
 
         {/* RIGHT SIDE: FORMULAR (SCROLLBAR) */}
-        <div className="md:w-8/12 p-8 md:p-12 flex flex-col bg-white max-h-[90vh] overflow-y-auto">
+        <div className="md:w-8/12 p-8 md:p-12 flex flex-col bg-white md:max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-start mb-8">
             <div>
               <h2 className="text-[#004a87] text-xl font-black italic uppercase tracking-tight leading-none mb-2">
@@ -277,7 +277,7 @@ export default function RoomModal({
                   size={18}
                   className="group-open:rotate-180 transition-transform"
                 />
-                Erweiterte Optionen
+                {t("admin_room_expand")}
               </summary>
 
               <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -42,6 +42,16 @@
   }
 }
 
+@media (max-width: 768px) {
+  .admin-header-row {
+    @apply flex-col items-stretch;
+  }
+  
+  .admin-header-row > * {
+    @apply w-full;
+  }
+}
+
 /* --- 2. SIDEBAR --- */
 .admin-sidebar-container {
   @apply w-full;
@@ -49,7 +59,7 @@
 
 @media (min-width: 1024px) {
   .admin-sidebar-container {
-    @apply w-80 shrink-0 sticky self-start;
+    @apply w-80 shrink-0 self-start;
     top: 2rem;
   }
 }
@@ -89,7 +99,7 @@
 
 /* --- 3. CONTENT CARDS - nutzt globals */
 .admin-header-row {
-  @apply flex justify-between items-center gap-4 mb-6 flex-wrap;
+  @apply flex justify-between items-center gap-4 mb-6;
 }
 
 .admin-card-grid {

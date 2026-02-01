@@ -372,7 +372,7 @@ export default function AdminPage() {
         </div>
 
         <div className="admin-layout-grid">
-          <aside className="admin-sidebar-container no-print">
+          <aside className="admin-sidebar-container lg:sticky lg:top-8 no-print">
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
               className="lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm text-[#004a87] font-black italic uppercase"
@@ -447,6 +447,9 @@ export default function AdminPage() {
             {activeTab === "planning" && (
               <div className="space-y-6 mci-animate-fade">
                 <div className="admin-header-row">
+                <h2 className="res-page-title">{t("admin_title_planning")}</h2>
+              </div>
+                <div className="admin-header-row">
                   <div className="flex gap-2 bg-slate-100 p-1.5 rounded-xl">
                     <button
                       onClick={() => setViewMode("day")}
@@ -461,12 +464,14 @@ export default function AdminPage() {
                       {t("admin_planning_view_14days")}
                     </button>
                   </div>
-                  <button
-                    onClick={() => window.print()}
-                    className="mci-action-btn-unified px-6 text-white shadow-lg"
-                  >
-                    <Printer size={16} /> {t("admin_btn_print")}
-                  </button>
+                  <div>
+                    <button
+                      onClick={() => window.print()}
+                      className="mci-modal-btn-primary"
+                    >
+                      <Printer size={16} /> {t("admin_btn_print")}
+                    </button>
+                  </div>
                 </div>
 
                 {viewMode === "day" ? (
@@ -656,72 +661,74 @@ export default function AdminPage() {
             )}
 
             {/* TAB: STATS */}
+
             {activeTab === "stats" && (
-              <div className="space-y-8 mci-animate-fade text-left">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="admin-menu-card text-center">
-                    <p className="mci-stat-label">
-                      {t("admin_stats_checkin_rate")}
-                    </p>
-                    <p className="mci-stat-value mci-text-orange">
-                      {stats.checkInRate}%
-                    </p>
+              
+                <div className="space-y-8 mci-animate-fade text-left">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="admin-menu-card text-center">
+                      <p className="mci-stat-label">
+                        {t("admin_stats_checkin_rate")}
+                      </p>
+                      <p className="mci-stat-value mci-text-orange">
+                        {stats.checkInRate}%
+                      </p>
+                    </div>
+                    <div className="admin-menu-card text-center">
+                      <p className="mci-stat-label">
+                        {t("admin_stats_avg_duration")}
+                      </p>
+                      <p className="mci-stat-value mci-text-blue">
+                        {stats.avgDuration}{" "}
+                        <span className="text-sm opacity-40">h</span>
+                      </p>
+                    </div>
+                    <div className="admin-menu-card text-center">
+                      <p className="mci-stat-label">{t("admin_stats_total")}</p>
+                      <p className="mci-stat-value mci-text-blue">
+                        {stats.totalBookings}
+                      </p>
+                    </div>
                   </div>
-                  <div className="admin-menu-card text-center">
-                    <p className="mci-stat-label">
-                      {t("admin_stats_avg_duration")}
-                    </p>
-                    <p className="mci-stat-value mci-text-blue">
-                      {stats.avgDuration}{" "}
-                      <span className="text-sm opacity-40">h</span>
-                    </p>
-                  </div>
-                  <div className="admin-menu-card text-center">
-                    <p className="mci-stat-label">{t("admin_stats_total")}</p>
-                    <p className="mci-stat-value mci-text-blue">
-                      {stats.totalBookings}
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="admin-menu-card">
+                      <h3 className="mci-stat-label border-b pb-4 mb-6">
+                        {t("admin_stats_top_lifetime")}
+                      </h3>
+                      {stats.topLifetime.map((r, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between items-center border-b border-slate-50 pb-3 mb-3 text-sm text-left"
+                        >
+                          <span className="mci-text-bold">
+                            {i + 1}. {r.name}
+                          </span>
+                          <span className="bg-slate-50 px-4 py-1 rounded-full mci-sub-label mci-text-blue">
+                            {r.count}x
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="admin-menu-card border-l-4 border-l-[var(--mci-orange)]">
+                      <h3 className="mci-stat-label border-b pb-4 mb-6 mci-text-orange">
+                        {t("admin_stats_top_last_week")}
+                      </h3>
+                      {stats.topLastWeek.map((r, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between items-center border-b border-slate-50 pb-3 mb-3 text-sm text-left"
+                        >
+                          <span className="mci-text-bold">
+                            {i + 1}. {r.name}
+                          </span>
+                          <span className="bg-orange-50 px-4 py-1 rounded-full mci-sub-label mci-text-orange">
+                            {r.count}x
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="admin-menu-card">
-                    <h3 className="mci-stat-label border-b pb-4 mb-6">
-                      {t("admin_stats_top_lifetime")}
-                    </h3>
-                    {stats.topLifetime.map((r, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-center border-b border-slate-50 pb-3 mb-3 text-sm text-left"
-                      >
-                        <span className="mci-text-bold">
-                          {i + 1}. {r.name}
-                        </span>
-                        <span className="bg-slate-50 px-4 py-1 rounded-full mci-sub-label mci-text-blue">
-                          {r.count}x
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="admin-menu-card border-l-4 border-l-[var(--mci-orange)]">
-                    <h3 className="mci-stat-label border-b pb-4 mb-6 mci-text-orange">
-                      {t("admin_stats_top_last_week")}
-                    </h3>
-                    {stats.topLastWeek.map((r, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-center border-b border-slate-50 pb-3 mb-3 text-sm text-left"
-                      >
-                        <span className="mci-text-bold">
-                          {i + 1}. {r.name}
-                        </span>
-                        <span className="bg-orange-50 px-4 py-1 rounded-full mci-sub-label mci-text-orange">
-                          {r.count}x
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             )}
 
             {/* TAB: BUILDINGS */}
@@ -731,25 +738,27 @@ export default function AdminPage() {
                   <h2 className="res-page-title">
                     {t("admin_title_buildings")}
                   </h2>
-                  <button
-                    onClick={() => {
-                      setCurrentBuilding({
-                        name: "",
-                        distance: 0,
-                        floors: 1,
-                        latitude: 47.26,
-                        longitude: 11.39,
-                        accessible: true,
-                        mci_wifi_ip: "",
-                        image_url: "",
-                        is_active: true,
-                      });
-                      setShowBuildingModal(true);
-                    }}
-                    className="mci-action-btn-unified px-6 text-white shadow-md"
-                  >
-                    <Plus size={16} /> {t("admin_btn_add_building")}
-                  </button>
+                  <div>
+                    <button
+                      onClick={() => {
+                        setCurrentBuilding({
+                          name: "",
+                          distance: 0,
+                          floors: 1,
+                          latitude: 47.26,
+                          longitude: 11.39,
+                          accessible: true,
+                          mci_wifi_ip: "",
+                          image_url: "",
+                          is_active: true,
+                        });
+                        setShowBuildingModal(true);
+                      }}
+                      className="mci-modal-btn-primary"
+                    >
+                      <PlusCircle size={16} /> {t("admin_btn_add_building")}
+                    </button>
+                  </div>
                 </div>
                 <div className="admin-card-grid">
                   {buildings.map((b) => (
@@ -804,27 +813,29 @@ export default function AdminPage() {
               <div className="space-y-6 mci-animate-fade text-left">
                 <div className="admin-header-row">
                   <h2 className="res-page-title">{t("admin_title_rooms")}</h2>
-                  <button
-                    onClick={() => {
-                      setCurrentRoom({
-                        name: "",
-                        capacity: 4,
-                        floor: 0,
-                        is_active: true,
-                        equipment: [],
-                        seating_arrangement: SEATING_OPTIONS[0],
-                        building_id: buildings[0]?.id,
-                        image_url: "",
-                        accessible: true,
-                      });
-                      setIsCombi(false);
-                      setCombiParts([]);
-                      setShowRoomModal(true);
-                    }}
-                    className="mci-action-btn-unified px-6 text-white shadow-md"
-                  >
-                    <Plus size={16} /> {t("admin_btn_add_room")}
-                  </button>
+                  <div>
+                    <button
+                      onClick={() => {
+                        setCurrentRoom({
+                          name: "",
+                          capacity: 4,
+                          floor: 0,
+                          is_active: true,
+                          equipment: [],
+                          seating_arrangement: SEATING_OPTIONS[0],
+                          building_id: buildings[0]?.id,
+                          image_url: "",
+                          accessible: true,
+                        });
+                        setIsCombi(false);
+                        setCombiParts([]);
+                        setShowRoomModal(true);
+                      }}
+                      className="mci-modal-btn-primary"
+                    >
+                      <PlusCircle size={16} /> {t("admin_btn_add_room")}
+                    </button>
+                  </div>
                 </div>
                 <div className="admin-card-grid">
                   {rooms.map((room) => (
@@ -884,12 +895,14 @@ export default function AdminPage() {
               <div className="space-y-6 mci-animate-fade text-left">
                 <div className="admin-header-row">
                   <h2 className="res-page-title">{t("admin_sidebar_users")}</h2>
-                  <button
-                    onClick={() => setShowAddUserModal(true)}
-                    className="mci-action-btn-unified px-6 text-white shadow-md"
-                  >
-                    <UserPlus size={16} /> {t("admin_btn_add_user")}
-                  </button>
+                  <div>
+                    <button
+                      onClick={() => setShowAddUserModal(true)}
+                      className="mci-modal-btn-primary"
+                    >
+                      <PlusCircle size={16} /> {t("admin_btn_add_user")}
+                    </button>
+                  </div>
                 </div>
                 <div className="admin-menu-card overflow-hidden">
                   <div className="overflow-x-auto w-full">
