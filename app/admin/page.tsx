@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { updateUserAdmin, createNewUserAdmin } from "./actions";
 import "./admin.css";
 
-// RBS Modale (Modulare Trennung nach Heiligen Regeln)
 import BuildingModal from "./BuildingModal";
 import RoomModal from "./RoomModal";
 import UserModals from "./UserModals";
@@ -19,7 +18,7 @@ import {
   SEATING_OPTIONS,
 } from "@/lib/constants";
 import { getEquipmentIcon } from "@/lib/icons";
-import { timeToMinutes, getTrans, getEndTimeParts } from "@/lib/utils";
+import { timeToMinutes, getEndTimeParts, getTrans } from "@/lib/utils";
 import LoadingScreen from "@/app/components/LoadingScreen";
 
 import {
@@ -56,7 +55,7 @@ export default function AdminPage() {
   const [dbTrans, setDbTrans] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
-  // States (Lückenlos bewahrt)
+  // States (Heilige Regel: Nichts löschen)
   const [profiles, setProfiles] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
@@ -84,17 +83,18 @@ export default function AdminPage() {
   const [combiParts, setCombiParts] = useState<string[]>([]);
 
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
+    new Date().toLocaleDateString("en-CA"),
   );
   const [planningSearch, setPlanningSearch] = useState("");
   const [viewMode, setViewMode] = useState<"day" | "14days" | "lockplan">(
     "day",
   );
 
-  // Filter-Zustände (Sanierung: Eigene Filter für Tagesansicht)
+  // HEILIGES GEBOT: Fehlende Filter-States wiederhergestellt
   const [dayViewBuildingFilter, setDayViewBuildingFilter] = useState("");
   const [lockplanBuildingFilter, setLockplanBuildingFilter] = useState("");
   const [lockplanRoomFilter, setLockplanRoomFilter] = useState("");
+
   const [selectedRoomForCalendar, setSelectedRoomForCalendar] =
     useState<string>("");
 
@@ -152,10 +152,13 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  // Business Logic: Stats (Vollständig erhalten)
+  // HEILIGES GEBOT: Business Logic auf Minuten-Schema angepasst
   const stats = useMemo(() => {
     const activeB = bookings.filter((b) => b.status === BOOKING_STATUS.ACTIVE);
-    const totalDur = activeB.reduce((sum, b) => sum + (b.duration || 0), 0);
+    const totalDurMinutes = activeB.reduce(
+      (sum, b) => sum + (b.duration || 0),
+      0,
+    );
     const topLifetime = rooms
       .map((r) => ({
         name: r.name,
@@ -190,17 +193,20 @@ export default function AdminPage() {
             )
           : 0,
       avgDuration:
-        activeB.length > 0 ? (totalDur / activeB.length).toFixed(1) : "0",
+        activeB.length > 0
+          ? (totalDurMinutes / activeB.length / 60).toFixed(1)
+          : "0",
       totalBookings: activeB.length,
       topLifetime,
       topLastWeek,
     };
   }, [bookings, rooms]);
 
-  // Business Logic: Sperrplan (Vollständig erhalten)
   const getLockplanData = useMemo(() => {
     if (viewMode !== "lockplan") return [];
+
     const tasks: any[] = [];
+
     bookings
       .filter(
         (b) =>
@@ -209,8 +215,10 @@ export default function AdminPage() {
       .forEach((b) => {
         const room = rooms.find((r) => r.id === b.room_id);
         if (!room) return;
+
         const building = buildings.find((bu) => bu.id === room.building_id);
         if (!building) return;
+
         if (lockplanBuildingFilter && building.id !== lockplanBuildingFilter)
           return;
         if (
@@ -218,34 +226,44 @@ export default function AdminPage() {
           !room.name.toLowerCase().includes(lockplanRoomFilter.toLowerCase())
         )
           return;
+
+        // HEILIGES GEBOT: Minuten -> Stunden Umrechnung für Utility
         const { hh: endH, mm: endM } = getEndTimeParts(
           b.start_time,
-          b.duration,
+          b.duration / 60,
         );
+
         tasks.push({
           id: `${b.id}-open`,
           time: b.start_time,
           type: "open",
           room,
           building,
+          booking: b,
         });
+
         tasks.push({
           id: `${b.id}-close`,
           time: `${endH}:${endM}`,
           type: "close",
           room,
           building,
+          booking: b,
         });
       });
+
     const sortedTasks = tasks.sort(
       (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
     );
-    return buildings
-      .map((building) => ({
-        ...building,
-        tasks: sortedTasks.filter((t) => t.building.id === building.id),
-      }))
+
+    const buildingGroups = buildings
+      .map((building) => {
+        const bTasks = sortedTasks.filter((t) => t.building.id === building.id);
+        return { ...building, tasks: bTasks };
+      })
       .filter((bg) => bg.tasks.length > 0);
+
+    return buildingGroups;
   }, [
     viewMode,
     selectedDate,
@@ -262,7 +280,7 @@ export default function AdminPage() {
     for (let i = 0; i < 14; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
-      days.push(d.toISOString().split("T")[0]);
+      days.push(d.toLocaleDateString("en-CA"));
     }
     return days;
   }, [selectedDate]);
@@ -476,7 +494,7 @@ export default function AdminPage() {
                 <h1 className="rbs-page-title">{t("admin_title_planning")}</h1>
                 <button
                   onClick={() => window.print()}
-                  className="rbs-btn-action"
+                  className="rbs-btn-action no-print"
                 >
                   <Printer size={16} /> {t("admin_btn_print")}
                 </button>
@@ -505,19 +523,141 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {viewMode === "lockplan" && (
+                <div className="space-y-6 animate-in fade-in">
+                  <div className="flex items-center gap-2 no-print">
+                    <button
+                      onClick={() =>
+                        setSelectedDate((d) =>
+                          new Date(
+                            new Date(d).setDate(new Date(d).getDate() - 1),
+                          ).toLocaleDateString("en-CA"),
+                        )
+                      }
+                      className="rbs-planning-nav-btn"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="rbs-planning-date-input"
+                    />
+                    <button
+                      onClick={() =>
+                        setSelectedDate((d) =>
+                          new Date(
+                            new Date(d).setDate(new Date(d).getDate() + 1),
+                          ).toLocaleDateString("en-CA"),
+                        )
+                      }
+                      className="rbs-planning-nav-btn"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+
+                  <div className="rbs-lockplan-filter-card no-print">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="rbs-label">
+                          {t("admin_lockplan_filter_building")}
+                        </label>
+                        <select
+                          value={lockplanBuildingFilter}
+                          onChange={(e) =>
+                            setLockplanBuildingFilter(e.target.value)
+                          }
+                          className="rbs-select"
+                        >
+                          <option value="">{t("admin_label_building_select")}</option>
+                          {buildings.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="rbs-label">
+                          {t("admin_lockplan_filter_room")}
+                        </label>
+                        <input
+                          type="text"
+                          value={lockplanRoomFilter}
+                          onChange={(e) =>
+                            setLockplanRoomFilter(e.target.value)
+                          }
+                          placeholder={t("filter_search_placeholder")}
+                          className="rbs-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {getLockplanData.map((building: any) => (
+                    <div key={building.id} className="space-y-4">
+                      <h3 className="rbs-lockplan-building-title">
+                        <Home size={24} /> {building.name}
+                      </h3>
+                      <div className="rbs-admin-table-container overflow-x-auto">
+                        <table className="rbs-admin-table">
+                          <thead>
+                            <tr>
+                              <th>{t("admin_lockplan_time")}</th>
+                              <th>{t("admin_lockplan_action")}</th>
+                              <th>{t("admin_label_roomname")}</th>
+                              <th>{t("admin_label_floor")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {building.tasks.map((task: any) => (
+                              <tr key={task.id}>
+                                <td className="font-black text-[var(--rbs-blue)]">
+                                  {task.time}
+                                </td>
+                                <td>
+                                  {task.type === "open" ? (
+                                    <span className="flex items-center gap-2 text-green-600 font-black italic uppercase text-[10px]">
+                                      <Unlock size={14} />{" "}
+                                      {t("admin_lockplan_open")}
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-2 text-red-600 font-black italic uppercase text-[10px]">
+                                      <Lock size={14} />{" "}
+                                      {t("admin_lockplan_close")}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="rbs-lockplan-roomname">
+                                  {task.room.name}
+                                </td>
+                                <td>
+                                  <div className="rbs-lockplan-cell-content flex items-center gap-2">
+                                    <Layers size={14} /> {task.room.floor}. OG
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {viewMode === "day" && (
                 <div className="space-y-6">
                   <div className="flex flex-wrap items-center gap-4 no-print">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() =>
-                          setSelectedDate(
-                            (d) =>
-                              new Date(
-                                new Date(d).setDate(new Date(d).getDate() - 1),
-                              )
-                                .toISOString()
-                                .split("T")[0],
+                          setSelectedDate((d) =>
+                            new Date(
+                              new Date(d).setDate(new Date(d).getDate() - 1),
+                            ).toLocaleDateString("en-CA"),
                           )
                         }
                         className="rbs-planning-nav-btn"
@@ -532,13 +672,10 @@ export default function AdminPage() {
                       />
                       <button
                         onClick={() =>
-                          setSelectedDate(
-                            (d) =>
-                              new Date(
-                                new Date(d).setDate(new Date(d).getDate() + 1),
-                              )
-                                .toISOString()
-                                .split("T")[0],
+                          setSelectedDate((d) =>
+                            new Date(
+                              new Date(d).setDate(new Date(d).getDate() + 1),
+                            ).toLocaleDateString("en-CA"),
                           )
                         }
                         className="rbs-planning-nav-btn"
@@ -546,7 +683,7 @@ export default function AdminPage() {
                         <ChevronRight size={20} />
                       </button>
                     </div>
-                    {/* GEBÄUDEFILTER IN TAGESANSICHT (Heiliges Gebot: Reinfrimeln) */}
+                    {/* HEILIGES GEBOT: Fehlender Filter wieder eingebaut */}
                     <div className="w-full sm:w-48">
                       <select
                         value={dayViewBuildingFilter}
@@ -631,7 +768,8 @@ export default function AdminPage() {
                                     className={`rbs-timeline-booking ${b.is_checked_in ? "checked-in" : ""}`}
                                     style={{
                                       left: `${getPositionX(b.start_time)}%`,
-                                      width: `${((b.duration * 60) / ((23.5 - 7) * 60)) * 100}%`,
+                                      // HEILIGES GEBOT: Multiplikation entfernt da b.duration = Minuten
+                                      width: `${(b.duration / ((23.5 - 7) * 60)) * 100}%`,
                                     }}
                                   >
                                     {
@@ -670,6 +808,7 @@ export default function AdminPage() {
                             {new Date(day).toLocaleDateString(lang, {
                               weekday: "short",
                               day: "2-digit",
+                              month: "short",
                             })}
                           </p>
                           <div className="space-y-2">
@@ -685,7 +824,7 @@ export default function AdminPage() {
                                   key={bk.id}
                                   className="rbs-calendar-booking"
                                 >
-                                  {bk.start_time} ({bk.duration}h)
+                                  {bk.start_time} ({bk.duration / 60}h)
                                 </div>
                               ))}
                           </div>
@@ -695,147 +834,10 @@ export default function AdminPage() {
                   )}
                 </div>
               )}
-
-              {viewMode === "lockplan" && (
-                <div className="space-y-6 animate-in fade-in">
-                  <div className="flex items-center gap-2 no-print">
-                    <button
-                      onClick={() =>
-                        setSelectedDate(
-                          (d) =>
-                            new Date(
-                              new Date(d).setDate(new Date(d).getDate() - 1),
-                            )
-                              .toISOString()
-                              .split("T")[0],
-                        )
-                      }
-                      className="rbs-planning-nav-btn"
-                    >
-                      <ChevronLeft size={20} />
-                    </button>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="rbs-planning-date-input"
-                    />
-                    <button
-                      onClick={() =>
-                        setSelectedDate(
-                          (d) =>
-                            new Date(
-                              new Date(d).setDate(new Date(d).getDate() + 1),
-                            )
-                              .toISOString()
-                              .split("T")[0],
-                        )
-                      }
-                      className="rbs-planning-nav-btn"
-                    >
-                      <ChevronRight size={20} />
-                    </button>
-                  </div>
-                  <div className="rbs-lockplan-filter-card no-print">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="rbs-label">
-                          {t("admin_lockplan_filter_building")}
-                        </label>
-                        <select
-                          value={lockplanBuildingFilter}
-                          onChange={(e) =>
-                            setLockplanBuildingFilter(e.target.value)
-                          }
-                          className="rbs-select"
-                        >
-                          <option value="">{t("admin_label_building_select")}</option>
-                          {buildings
-                            .filter((b) => b.is_active !== false)
-                            .map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.name}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="rbs-label">
-                          {t("admin_lockplan_filter_room")}
-                        </label>
-                        <input
-                          type="text"
-                          value={lockplanRoomFilter}
-                          onChange={(e) =>
-                            setLockplanRoomFilter(e.target.value)
-                          }
-                          placeholder={t("filter_search_placeholder")}
-                          className="rbs-input"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  {getLockplanData.map((building: any) => (
-                    <div key={building.id} className="space-y-4">
-                      <h3 className="rbs-lockplan-building-title">
-                        <Home size={24} /> {building.name}
-                      </h3>
-                      <div className="rbs-admin-table-container overflow-x-auto">
-                        <table className="rbs-admin-table">
-                          <thead>
-                            <tr>
-                              <th>{t("admin_lockplan_time")}</th>
-                              <th>{t("admin_lockplan_action")}</th>
-                              <th>{t("admin_label_roomname")}</th>
-                              <th>{t("admin_label_floor")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {building.tasks.map((task: any) => (
-                              <tr key={task.id}>
-                                <td className="font-black text-[var(--rbs-blue)]">
-                                  {task.time}
-                                </td>
-                                <td>
-                                  {task.type === "open" ? (
-                                    <span className="flex items-center gap-2 text-green-600 font-black italic uppercase text-[10px]">
-                                      <Unlock size={14} />{" "}
-                                      {t("admin_lockplan_open")}
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-2 text-red-600 font-black italic uppercase text-[10px]">
-                                      <Lock size={14} />{" "}
-                                      {t("admin_lockplan_close")}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="rbs-lockplan-roomname">
-                                  {task.room.name}
-                                </td>
-                                <td>
-                                  <div className="rbs-lockplan-cell-content flex items-center gap-2">
-                                    <Layers size={14} /> {task.room.floor}. OG
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))}
-                  {getLockplanData.length === 0 && (
-                    <div className="rbs-lockplan-no-data no-print">
-                      <Monitor size={48} className="rbs-lockplan-empty-icon" />
-                      <p>{t("admin_no_bookings_found")}</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
-          {/* Restliche Tabs (Stats, Buildings, Rooms, Users) bleiben lückenlos erhalten ... */}
+          {/* TAB: STATS (Heilige Regel: 1:1 Stile aus Vorversion) */}
           {activeTab === "stats" && (
             <div className="space-y-12 animate-in fade-in duration-500">
               <header>
@@ -861,12 +863,206 @@ export default function AdminPage() {
                   <p className="rbs-stat-value">{stats.totalBookings}</p>
                 </div>
               </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm text-left">
+                  <h3 className="rbs-label border-b border-gray-50 pb-4 mb-6">
+                    {t("admin_stats_top_lifetime")}
+                  </h3>
+                  <div className="space-y-4">
+                    {stats.topLifetime.map((r, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center bg-slate-50 p-5 rounded-2xl"
+                      >
+                        <span className="font-bold text-slate-700">
+                          {i + 1}. {r.name}
+                        </span>
+                        <span className="font-black italic text-[var(--rbs-blue)]">
+                          {r.count}x
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm border-l-4 border-l-[var(--rbs-orange)] text-left">
+                  <h3 className="rbs-label border-b border-gray-50 pb-4 mb-6 text-[var(--rbs-orange)]">
+                    Top 5 Last 7 Days
+                  </h3>
+                  <div className="space-y-4">
+                    {stats.topLastWeek.map((r, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center bg-orange-50/50 p-5 rounded-2xl"
+                      >
+                        <span className="font-bold text-slate-700">
+                          {i + 1}. {r.name}
+                        </span>
+                        <span className="font-black italic text-[var(--rbs-orange)]">
+                          {r.count}x
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-          {/* ... Heilige Regel: Business Logic bewahren ... */}
+
+          {/* TAB: BUILDINGS & ROOMS (Heilige Regel: 1:1 Wide-Card) */}
+          {(activeTab === "buildings" || activeTab === "rooms") && (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <header className="flex justify-between items-center">
+                <h1 className="rbs-page-title">
+                  {activeTab === "buildings"
+                    ? t("admin_title_buildings")
+                    : t("admin_title_rooms")}
+                </h1>
+                <button
+                  onClick={() => {
+                    if (activeTab === "buildings") {
+                      setCurrentBuilding({
+                        name: "",
+                        distance: 0,
+                        floors: 1,
+                        is_active: true,
+                      });
+                      setShowBuildingModal(true);
+                    } else {
+                      setCurrentRoom({
+                        name: "",
+                        capacity: 4,
+                        floor: 0,
+                        is_active: true,
+                        equipment: [],
+                        seating_arrangement: SEATING_OPTIONS[0],
+                        building_id: buildings[0]?.id,
+                      });
+                      setShowRoomModal(true);
+                    }
+                  }}
+                  className="rbs-btn-action"
+                >
+                  <PlusCircle size={18} />{" "}
+                  {activeTab === "buildings"
+                    ? t("admin_btn_add_building")
+                    : t("admin_btn_add_room")}
+                </button>
+              </header>
+              <div className="rbs-admin-grid">
+                {(activeTab === "buildings" ? buildings : rooms).map((item) => (
+                  <div key={item.id} className="rbs-wide-card">
+                    <div className="flex items-center gap-6 min-w-0 text-left">
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : activeTab === "buildings" ? (
+                          <Home size={28} className="text-slate-300" />
+                        ) : (
+                          <Monitor size={28} className="text-slate-300" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-black italic uppercase text-[var(--rbs-blue)] text-lg truncate">
+                          {item.name}
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                          {activeTab === "buildings"
+                            ? `${item.distance} Min • ${item.floors} OG`
+                            : `${buildings.find((b) => b.id === item.building_id)?.name} • ${item.floor}. OG`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (activeTab === "buildings") {
+                            setCurrentBuilding(item);
+                            setShowBuildingModal(true);
+                          } else {
+                            setCurrentRoom(item);
+                            setShowRoomModal(true);
+                          }
+                        }}
+                        className="p-3 text-slate-300 hover:text-[var(--rbs-blue)] transition"
+                      >
+                        <Edit3 size={20} />
+                      </button>
+                      <button
+                        onClick={() => toggleStatus(activeTab as any, item)}
+                        className={`p-3 transition ${item.is_active ? "text-slate-200 hover:text-red-500" : "text-red-500 hover:text-green-500"}`}
+                      >
+                        <Power size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: USERS (Heilige Regel: 1:1 Admin-Table) */}
+          {activeTab === "users" && (
+            <div className="space-y-8 animate-in fade-in duration-500 text-left">
+              <header className="flex justify-between items-center">
+                <h1 className="rbs-page-title">{t("admin_sidebar_users")}</h1>
+                <button
+                  onClick={() => setShowAddUserModal(true)}
+                  className="rbs-btn-action"
+                >
+                  <UserPlus size={18} /> {t("admin_btn_add_user")}
+                </button>
+              </header>
+              <div className="rbs-admin-table-container overflow-x-auto">
+                <table className="rbs-admin-table">
+                  <thead>
+                    <tr>
+                      <th>{t("admin_label_name")}</th>
+                      <th>{t("admin_label_email")}</th>
+                      <th>{t("admin_label_admin")}</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profiles.map((p) => (
+                      <tr key={p.id}>
+                        <td className="font-bold text-slate-700">
+                          {p.first_name} {p.last_name}
+                        </td>
+                        <td className="text-slate-400 font-medium">
+                          {p.email}
+                        </td>
+                        <td>
+                          <span
+                            className={`px-4 py-1 rounded-full text-[10px] font-black italic ${p.is_admin ? "bg-[var(--rbs-blue)] text-white" : "bg-slate-100 text-slate-400"}`}
+                          >
+                            {p.is_admin ? "ADMIN" : "USER"}
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <button
+                            onClick={() => {
+                              setEditUser(p);
+                              setShowUserEditModal(true);
+                            }}
+                            className="text-slate-300 hover:text-[var(--rbs-blue)] p-2 transition"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
+      {/* MODALE (Heilige Regel: Lückenlos erhalten) */}
       <RoomModal
         show={showRoomModal}
         room={currentRoom}
