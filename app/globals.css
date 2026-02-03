@@ -1,161 +1,426 @@
 @import "tailwindcss";
 
-/* --- 1. CORE VARIABLES & BRANDING --- */
 :root {
-  --mci-blue: #004a87;
-  --mci-orange: #f7941d;
-  --mci-light-blue: #549bb7;
-  --mci-bg: #f8f9fb;
+  --rbs-blue: #004a87;
+  --rbs-orange: #f7941d;
+  --rbs-light-blue: #549bb7;
+  --rbs-bg: #f8f9fb;
 }
 
-/* GLOBAL PAGE TITLE - Wiederverwendbar für alle Seiten */
+/* LOADING SCREEN - Global */
+
+.rbs-loading-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--rbs-bg);
+  color: var(--rbs-blue);
+  font-weight: 900;
+  font-style: italic;
+  animation: rbsPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes rbsPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* GLOBAL PAGE WRAPPER */
+.rbs-page-wrapper {
+  background-color: var(--rbs-bg);
+  min-height: 100vh;
+  color: rgb(15 23 42);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  text-align: left;
+  /*overflow-x: hidden;*/
+  padding: 0 1rem 4rem 1rem;
+}
+
+@media (min-width: 1400px) {
+  .rbs-page-wrapper {
+    padding: 0 3.5rem 5rem 3.5rem;
+  }
+}
+
+/* NAVBAR - STICKY OHNE @APPLY! */
+.rbs-navbar {
+  /* KRITISCH: position MUSS vor anderen properties! */
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+
+  /* Styling */
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  height: 5rem;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgb(243 244 246);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  width: 100%;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .rbs-navbar {
+    height: 6rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .rbs-navbar {
+    padding-left: 2rem;
+    padding-right: 3rem;
+  }
+}
+
+/* GLOBAL MAIN LAYOUT CONTAINER */
+.rbs-main-layout {
+  max-width: 1850px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-top: 2rem;
+}
+
+@media (min-width: 1400px) {
+  .rbs-main-layout {
+    flex-direction: row;
+    gap: 2rem;
+  }
+}
+
+/* GLOBAL PAGE TITLES */
+.rbs-page-title,
 .res-page-title,
 .room-page-title {
-  @apply block font-black uppercase italic leading-none m-0 tracking-tighter;
-  font-size: clamp(1.8rem, 5vw, 2.5rem);
-  color: var(--mci-blue);
+  display: block;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--rbs-blue);
+  font-size: clamp(1.6rem, 5vw, 2.5rem);
 }
 
-/* GLOBAL ACTIVE COUNT BADGE - Wiederverwendbar für alle Seiten */
-.mci-active-count-badge,
+/* GLOBAL STATS/COUNT BADGES - EINHEITLICH! */
+.rbs-active-count-badge,
 .res-stats-badge,
-.active-count-badge {
-  @apply inline-flex items-center gap-3 bg-[var(--mci-blue)] text-white px-6 py-3 rounded-2xl font-bold uppercase shadow-lg;
+.active-count-badge,
+.mci-active-count-badge {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--rbs-blue);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   font-size: 13px;
   margin-top: 0.75rem;
-  display: inline-flex !important; /* Überall sichtbar */
 }
 
-/* --- 3. MODAL SYSTEM (Modern & Schlicht) --- */
+/* SIDEBAR & UNITARY BUBBLE PATTERN - STICKY OHNE @APPLY! */
+.rbs-sidebar {
+  /* KRITISCH: position MUSS vor anderen properties! */
+  position: sticky !important;
+  z-index: 40 !important;
 
-/* Modal Overlay */
+  /* Styling */
+  width: 100%;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+@media (min-width: 1400px) {
+  .rbs-sidebar {
+    width: 20rem;
+    top: 7rem !important;
+  }
+}
+
+@media (max-width: 1399px) {
+  .rbs-sidebar {
+    top: 5.5rem !important;
+    order: -1;
+    margin-bottom: 1.5rem;
+  }
+}
+
+.rbs-sidebar-unit {
+  background-color: white;
+  border-radius: 2rem;
+  border: 1px solid rgb(243 244 246);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .rbs-sidebar-unit {
+    border-radius: 2.5rem;
+  }
+}
+
+.rbs-sidebar-toggle {
+  width: 100%;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--rbs-blue);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  cursor: pointer;
+  background: white;
+}
+
+@media (min-width: 1400px) {
+  .rbs-sidebar-toggle {
+    display: none !important;
+  }
+}
+
+/* SYNC: Menü-Label Desktop styling */
+.rbs-sidebar-desktop-title {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  padding: 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.025);
+  color: var(--rbs-blue);
+}
+
+@media (min-width: 1400px) {
+  .rbs-sidebar-desktop-title {
+    display: flex !important;
+  }
+}
+
+.rbs-sidebar-desktop-title svg {
+  color: var(--rbs-orange);
+}
+
+.rbs-sidebar-content {
+  background-color: white;
+  transition: all 0.3s;
+}
+
+/* Mobile: 2-Teil Pattern */
+@media (max-width: 1024px) {
+  .rbs-sidebar-unit {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .rbs-sidebar-toggle {
+    border-radius: 2rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  /* Content ist separate bubble - Erlaubt internes Scrollen auf Mobile */
+  .rbs-sidebar-content {
+    margin-top: 0.5rem;
+    border-radius: 2rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    /* Hinzugefügt für Mobile-Scroll-Support */
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+}
+.rbs-modal-overlay,
 .mci-modal-overlay {
-  @apply fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4;
+  @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[1000];
+  animation: rbsFade 0.3s ease-out forwards;
 }
 
-/* Modal Card */
+.rbs-modal-card,
 .mci-modal-card {
-  @apply bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col;
+  @apply bg-white rounded-[2.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col;
+  animation: rbsPop 0.4s ease-out forwards;
 }
 
-/* Modal Header */
+.rbs-modal-header,
 .mci-modal-header {
-  @apply flex justify-between items-center p-6 md:p-8 border-b border-gray-100;
+  @apply flex justify-between items-center p-6 md:p-8 border-b border-gray-100 shrink-0 text-white;
   background: linear-gradient(
     135deg,
-    var(--mci-blue) 0%,
-    var(--mci-light-blue) 100%
+    var(--rbs-blue) 0%,
+    var(--rbs-light-blue) 100%
   );
 }
 
-/* Modal Body */
+.rbs-modal-body,
 .mci-modal-body {
-  @apply p-6 md:p-8 overflow-y-auto flex-1;
+  @apply p-6 md:p-10 overflow-y-auto flex-1 flex flex-col gap-6;
   max-height: 80vh;
 }
 
-/* Modal Footer (für Action Buttons) */
+.rbs-modal-footer,
 .mci-modal-footer {
   @apply flex flex-col md:flex-row gap-3 p-6 md:p-8 border-t border-gray-100 bg-slate-50;
 }
 
+.rbs-modal-footer > button,
 .mci-modal-footer > button {
   @apply flex-1;
 }
 
-/* Modal Title */
+.rbs-modal-title,
 .mci-modal-title {
   @apply text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white;
 }
 
+.rbs-modal-subtitle,
 .mci-modal-subtitle {
   @apply text-xs font-bold uppercase tracking-wide text-white/70;
 }
 
-/* Modal Close Button */
+.rbs-modal-close,
 .mci-modal-close {
   @apply w-12 h-12 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all text-white;
 }
 
-/* Form Grid im Modal */
+.rbs-modal-form-grid,
 .mci-modal-form-grid {
   @apply grid grid-cols-1 md:grid-cols-2 gap-6;
 }
 
+.rbs-modal-form-group,
 .mci-modal-form-group {
   @apply flex flex-col gap-2;
 }
 
-/* Modal Input/Select Overrides (moderner) */
+/* Inputs & Selects innerhalb von Modalen */
+.rbs-modal-body .rbs-input,
+.rbs-modal-body .rbs-select,
 .mci-modal-body .mci-input,
 .mci-modal-body .mci-select {
-  @apply bg-slate-50 border-2 border-slate-200 rounded-2xl px-5 py-3 text-base font-medium;
-  transition: all 0.2s;
+  @apply bg-slate-50 border-2 border-slate-200 rounded-2xl px-5 py-3 text-base font-medium transition-all duration-200;
 }
 
+.rbs-modal-body .rbs-input:focus,
+.rbs-modal-body .rbs-select:focus,
 .mci-modal-body .mci-input:focus,
 .mci-modal-body .mci-select:focus {
-  @apply bg-white border-[var(--mci-blue)] ring-4 ring-blue-100;
-}
-
-/* Modal Label */
-.mci-modal-body .mci-label {
-  @apply text-xs font-black uppercase tracking-wide text-slate-600 mb-1;
+  @apply bg-white border-[var(--rbs-blue)] ring-4 ring-blue-100;
 }
 
 /* Modal Buttons */
-.mci-modal-btn-primary {
-  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all shadow-lg flex items-center justify-center gap-2;
-  background-color: var(--mci-blue);
-  color: white;
+.rbs-btn-primary {
+  @apply inline-flex items-center justify-center gap-2 bg-[var(--rbs-blue)] text-white px-6 py-4 rounded-2xl font-black uppercase italic  shadow-lg hover:brightness-110 transition active:scale-95 whitespace-nowrap border-none;
+  height: 3rem;
 }
 
+.rbs-modal-btn-primary,
+.mci-modal-btn-primary {
+  @apply inline-flex items-center justify-center gap-2 bg-[var(--rbs-blue)] text-white px-6 py-4 rounded-2xl font-black italic tracking-widest shadow-lg hover:brightness-110 transition active:scale-95 whitespace-nowrap border-none;
+}
+
+.rbs-modal-btn-primary:hover:not(:disabled),
 .mci-modal-btn-primary:hover:not(:disabled) {
   @apply brightness-110 shadow-xl scale-[1.02];
 }
 
-.mci-modal-btn-primary:disabled {
-  @apply opacity-50 cursor-not-allowed;
-}
-
+.rbs-modal-btn-secondary,
 .mci-modal-btn-secondary {
   @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all flex items-center justify-center gap-2;
   background-color: transparent;
-  border: 2px solid var(--mci-blue);
-  color: var(--mci-blue);
+  border: 2px solid var(--rbs-blue);
+  color: var(--rbs-blue);
 }
 
-.mci-modal-btn-secondary:hover {
-  @apply bg-blue-50;
-}
-
-.mci-modal-btn-danger {
-  @apply w-full py-4 px-6 rounded-2xl font-black text-sm uppercase transition-all;
-  background-color: #ef4444;
-  color: white;
-}
-
-/* Modal Section Title */
+.rbs-modal-section-title,
 .mci-modal-section-title {
-  @apply text-lg font-black uppercase italic text-[var(--mci-blue)] mb-4 pb-2 border-b-2 border-slate-100;
+  @apply text-lg font-black uppercase italic text-[var(--rbs-blue)] mb-4 pb-2 border-b-2 border-slate-100;
 }
 
-/* Modal Info Box */
-.mci-modal-info {
-  @apply p-4 bg-blue-50 rounded-2xl border-2 border-blue-100 text-sm;
+/* --- 4. GLOBAL UI COMPONENTS --- */
+
+.rbs-filter-title,
+.mci-filter-title {
+  @apply flex items-center gap-2 font-black italic uppercase text-sm tracking-widest;
+  color: var(--rbs-blue);
+  padding: 1.25rem 2rem;
+  margin: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.mci-modal-warning {
-  @apply p-4 bg-orange-50 rounded-2xl border-2 border-orange-100 text-sm;
+.rbs-filter-title svg,
+.mci-filter-title svg {
+  color: var(--rbs-orange);
 }
 
-.mci-modal-error {
-  @apply p-4 bg-red-50 rounded-2xl border-2 border-red-100 text-sm;
+.rbs-card-title,
+.mci-card-title {
+  @apply font-black text-2xl md:text-3xl tracking-tighter leading-none uppercase italic truncate;
+  color: var(--rbs-blue);
+}
+
+.rbs-info-tag,
+.mci-info-tag {
+  @apply flex items-center gap-3 bg-gray-50 px-4 py-3 rounded-xl text-[13px] font-bold uppercase text-slate-500 tracking-wide border border-gray-100/50 min-w-0 w-full;
+}
+
+.rbs-info-tag-text,
+.mci-info-tag-text {
+  @apply truncate block flex-1 text-[11px] font-black uppercase italic;
+}
+
+.rbs-badge,
+.mci-badge {
+  @apply bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase border border-white/50 flex items-center gap-1.5;
+  color: var(--rbs-blue);
+}
+
+.accessible-badge {
+  @apply !bg-green-50 !text-green-700 px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase flex items-center gap-1.5 border border-green-100;
+}
+
+.lang-toggle-btn {
+  @apply flex items-center gap-2 p-2 px-4 bg-white rounded-2xl shadow-sm border border-gray-100 text-[10px] font-black text-[var(--rbs-blue)] hover:bg-gray-50 transition-all cursor-pointer shrink-0 uppercase;
 }
 
 .nav-link {
   @apply flex items-center gap-2 font-black italic uppercase transition-all;
-  color: var(--mci-blue);
+  color: var(--rbs-blue);
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   background: transparent;
@@ -163,139 +428,118 @@
   cursor: pointer;
 }
 
-/* --- 2. GLOBAL UI COMPONENTS (Language, Stats, Badges) --- */
-
-/* ========================================
-   GLOBAL PAGE COMPONENTS (Seiten-übergreifend)
-   ======================================== */
-
-/* GLOBAL FILTER TITLE - Wiederverwendbar für alle Subpages */
-.mci-filter-title {
-  @apply flex items-center gap-2 font-black italic uppercase text-sm tracking-widest;
-  color: var(--mci-blue);
-  padding: 1.25rem 2rem; /* 20px top/bottom, 32px left/right */
-  margin: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+/* --- 5. GLOBAL FORM STYLES --- */
+.rbs-input,
+.rbs-select,
+.mci-input,
+.mci-select {
+  @apply w-full bg-white border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none transition-all text-base shadow-sm focus:border-[var(--rbs-blue)] focus:ring-4 focus:ring-blue-50;
 }
 
-.mci-filter-title svg {
-  color: var(--mci-orange);
-}
-
-/* GLOBAL CARD TITLE - Für Room/Reservation Cards */
-.mci-card-title {
-  @apply font-black text-2xl md:text-3xl tracking-tighter leading-none uppercase italic truncate;
-  color: var(--mci-blue);
-}
-
-/* GLOBAL INFO TAG - Für Card Details (Capacity, Location, etc.) */
-.mci-info-tag {
-  @apply flex items-center gap-3 bg-gray-50 px-4 py-3 rounded-xl text-[13px] font-bold uppercase text-slate-500 tracking-wide border border-gray-100/50 min-w-0;
-  width: 100%;
-}
-
-.mci-info-tag-text {
-  @apply truncate block flex-1 text-[11px] font-black uppercase italic;
-}
-
-/* GLOBAL BADGE (Equipment, Features, etc.) */
-.mci-badge {
-  @apply bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase border border-white/50 flex items-center gap-1.5;
-  color: var(--mci-blue);
-}
-
-.accessible-badge {
-  @apply !bg-green-50 !text-green-700 px-3 py-1.5 rounded-lg shadow-md text-[10px] font-black uppercase flex items-center gap-1.5 border border-green-100;
-}
-
-/* EQUIPMENT ITEM BADGE - Für Equipment Listen */
-.mci-equip-badge {
-  @apply bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center transition-all hover:bg-white hover:shadow-md text-[11px];
-  color: var(--mci-blue);
-}
-
-.lang-toggle-btn {
-  @apply flex items-center gap-2 p-2 px-4 bg-white rounded-2xl shadow-sm border border-gray-100 text-[10px] font-black text-[var(--mci-blue)] hover:bg-gray-50 transition-all cursor-pointer shrink-0 uppercase;
-}
-
-.res-stats-badge {
-  @apply inline-flex items-center gap-2 px-6 py-3 bg-[var(--mci-blue)] text-white rounded-2xl shadow-lg border-none font-bold;
-}
-
-.mci-ui-toggle {
-  @apply font-black italic uppercase tracking-wider transition-all;
-}
-
-/* --- 3. GLOBAL FORM & MODAL SYSTEM --- */
-.mci-modal-overlay {
-  @apply fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[1000];
-  animation: mciFade 0.3s ease-out forwards;
-}
-
-.mci-modal-card {
-  @apply bg-white rounded-[2.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col;
-  animation: mciPop 0.4s ease-out forwards;
-}
-
-.mci-modal-header {
-  @apply bg-[var(--mci-blue)] p-8 text-white flex flex-row justify-between items-center shrink-0;
-}
-
-.mci-modal-body {
-  @apply p-10 overflow-y-auto flex flex-col gap-6;
-  max-height: 80vh; /* Explizit ohne Tailwind damit es garantiert funktioniert */
-}
-
-.mci-grid-2 {
-  @apply grid grid-cols-1 md:grid-cols-2 gap-6 w-full;
-}
-
+.rbs-label,
 .mci-label {
   @apply block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2;
 }
 
-.mci-input,
-.mci-select {
-  @apply w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-gray-100 transition-all border-none text-base shadow-inner focus:ring-2 focus:ring-[var(--mci-orange)];
+/* TIME PICKER (wie Filter in Rooms) */
+.mci-time-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgb(249 250 251); /* gray-50 */
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  color: var(--rbs-blue);
 }
 
-.mci-action-btn-unified {
-  @apply w-full h-[3.5rem] flex items-center justify-center gap-3 rounded-[1.25rem] font-black italic uppercase text-[0.7rem] transition-all duration-200 cursor-pointer border-none shadow-md;
+.mci-time-select {
+  background-color: transparent;
+  font-weight: 900;
+  font-size: 1.5rem; /* 24px wie im Filter */
+  outline: none;
+  cursor: pointer;
+  color: var(--rbs-blue);
+  border: none;
+  padding: 0;
 }
 
+.mci-time-colon {
+  font-weight: 900;
+  font-size: 1.5rem; /* 24px */
+  color: var(--rbs-blue);
+}
+
+/* STATUS BADGES (für Modal) */
+.mci-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  border-width: 2px;
+}
+
+.mci-status-conflict {
+  background-color: rgb(254 226 226); /* red-100 */
+  color: rgb(185 28 28); /* red-700 */
+  border-color: rgb(254 202 202); /* red-200 */
+}
+
+.mci-status-available {
+  background-color: rgb(220 252 231); /* green-100 */
+  color: rgb(21 128 61); /* green-700 */
+  border-color: rgb(187 247 208); /* green-200 */
+}
+
+.rbs-btn-main,
 .btn-mci-main {
-  @apply w-full bg-[var(--mci-blue)] text-white py-4 rounded-2xl font-black uppercase italic tracking-widest shadow-lg hover:bg-[var(--mci-light-blue)] transition active:scale-95 flex items-center justify-center gap-3 disabled:bg-gray-200 cursor-pointer;
+  @apply w-full bg-[var(--rbs-blue)] text-white py-4 rounded-2xl font-black uppercase italic tracking-widest shadow-lg hover:bg-[var(--rbs-light-blue)] transition active:scale-95 flex items-center justify-center gap-3 disabled:bg-gray-200 cursor-pointer;
 }
 
-.filter-checkbox {
-  @apply w-5 h-5 accent-[var(--mci-blue)] cursor-pointer shrink-0;
+.btn-mci-secondary {
+  @apply w-full bg-white text-[var(--rbs-blue)] py-4 rounded-2xl font-black uppercase italic tracking-widest shadow-lg border-2 border-[var(--rbs-blue)] hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-3 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 cursor-pointer;
 }
 
-.mci-filter-item {
-  @apply flex items-center gap-3 py-2 cursor-pointer;
+.rbs-btn-action {
+  @apply inline-flex items-center justify-center gap-2 bg-[var(--rbs-blue)] text-white px-8 py-3.5 rounded-2xl font-black uppercase italic tracking-widest shadow-lg hover:brightness-110 transition active:scale-95 whitespace-nowrap border-none text-[10px] cursor-pointer;
+  min-height: 3.5rem;
+  max-width: max-content;
 }
 
-/* --- 4. SEMANTISCHE TEXT-KLASSEN --- */
+.rbs-action-btn-unified,
+.mci-action-btn-unified {
+  @apply w-full h-[3.5rem] flex items-center justify-center gap-3 rounded-[1.25rem] font-black italic uppercase text-[0.7rem] transition-all duration-200 cursor-pointer border-none shadow-md p-4;
+}
+
+/* --- 6. SEMANTISCHE TEXT-KLASSEN --- */
+.rbs-text-blue,
 .mci-text-blue {
-  color: var(--mci-blue);
+  color: var(--rbs-blue);
 }
+.rbs-text-orange,
 .mci-text-orange {
-  color: var(--mci-orange);
+  color: var(--rbs-orange);
 }
+.rbs-text-bold,
 .mci-text-bold {
   @apply font-bold text-sm text-slate-700;
 }
+.rbs-sub-label,
 .mci-sub-label {
   @apply font-black uppercase text-[14px] text-slate-400;
 }
+.rbs-stat-label,
 .mci-stat-label {
   @apply font-bold uppercase tracking-widest mb-3 text-[10px] text-slate-400;
 }
+.rbs-stat-value,
 .mci-stat-value {
   @apply font-black tracking-tighter text-[3.5rem] leading-none;
 }
 
-/* --- 5. ANIMATIONEN --- */
+/* --- 7. ANIMATIONEN & UTILITIES --- */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -303,7 +547,8 @@
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
-@keyframes mciFade {
+
+@keyframes rbsFade {
   from {
     opacity: 0;
   }
@@ -311,7 +556,7 @@
     opacity: 1;
   }
 }
-@keyframes mciPop {
+@keyframes rbsPop {
   from {
     transform: scale(0.95);
     opacity: 0;
@@ -326,4 +571,44 @@
   .no-print {
     display: none !important;
   }
+}
+/* Mobile: 2-Teil Pattern - transparenter wrapper */
+@media (max-width: 1399px) {
+  .rbs-sidebar-unit {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  /* Toggle ist eigene bubble */
+  .rbs-sidebar-toggle {
+    border-radius: 2rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  /* Content ist separate bubble */
+  .rbs-sidebar-content {
+    margin-top: 0.5rem;
+    border-radius: 2rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+  }
+}
+
+/* Desktop Title verstecken auf mobile, zeigen auf desktop */
+.rbs-sidebar-desktop-title {
+  display: none;
+}
+
+@media (min-width: 1400px) {
+  .rbs-sidebar-desktop-title {
+    display: flex !important;
+  }
+}
+
+.rbs-sidebar-desktop-title svg {
+  color: var(--rbs-orange);
 }

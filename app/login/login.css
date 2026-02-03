@@ -1,43 +1,156 @@
 @import "tailwindcss";
 
-.mci-login-container {
-  @apply min-h-screen bg-[var(--mci-bg)] flex items-center justify-center p-4 relative overflow-hidden;
+/* ===========================================
+   LOGIN PAGE - Nutzt globale RBS Klassen
+   =========================================== */
+
+/* Login Container - Full Screen Centered */
+.rbs-login-container {
+  min-height: 100vh;
+  background-color: var(--rbs-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
 }
 
-.mci-login-card {
-  @apply bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl w-full max-w-md border border-gray-100 text-center;
+/* Login Card - Hauptkarte */
+.rbs-login-card {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 3rem;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  width: 100%;
+  max-width: 28rem; /* 448px */
+  border: 1px solid rgb(243 244 246);
+  text-align: center;
 }
 
-.mci-login-logo {
-  @apply h-16 md:h-20 mx-auto mb-8 object-contain;
+@media (min-width: 768px) {
+  .rbs-login-card {
+    padding: 3rem;
+  }
 }
 
-.mci-login-title {
-  @apply text-3xl font-semibold text-[var(--mci-blue)] uppercase italic tracking-tighter mb-2;
+/* Login Logo */
+.rbs-login-logo {
+  height: 4rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 2rem;
+  object-fit: contain;
 }
 
-.mci-login-subtitle {
-  @apply text-slate-400 font-medium text-sm mb-10;
+@media (min-width: 768px) {
+  .rbs-login-logo {
+    height: 5rem;
+  }
 }
 
-.mci-login-form {
-  @apply space-y-6 text-left;
+/* Login Title */
+.rbs-login-title {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 600;
+  color: var(--rbs-blue);
+  text-transform: uppercase;
+  font-style: italic;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.5rem;
 }
 
-/* FIX: Manuelle Definition statt @apply mci-label (verhindert Build-Error) */
-.mci-login-label {
-  @apply block text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2;
+/* Login Subtitle */
+.rbs-login-subtitle {
+  color: rgb(148 163 184); /* slate-400 */
+  font-weight: 500;
+  font-size: 0.875rem;
+  margin-bottom: 2.5rem;
 }
 
-/* FIX: Manuelle Definition statt @apply mci-input */
-.mci-login-input {
-  @apply w-full bg-slate-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-slate-100 transition-all border-none focus:ring-2 focus:ring-[var(--mci-orange)] shadow-inner;
+/* Login Form */
+.rbs-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: left;
 }
 
-.mci-login-button {
-  @apply w-full bg-[var(--mci-blue)] text-white py-5 rounded-2xl font-black uppercase italic tracking-widest shadow-xl hover:bg-[var(--mci-light-blue)] transition active:scale-95 mt-4;
+/* Login Error Box */
+.rbs-login-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(239 68 68); /* red-500 */
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: rgb(254 242 242); /* red-50 */
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(254 226 226); /* red-100 */
+  font-style: italic;
 }
 
-.mci-login-footer {
-  @apply mt-10 pt-8 border-t border-dashed border-slate-100 flex justify-center;
+/* Login Button - erweitert rbs-btn-main */
+.rbs-login-button {
+  width: 100%;
+  background-color: var(--rbs-blue);
+  color: white;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-radius: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  letter-spacing: 0.1em;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.rbs-login-button:hover:not(:disabled) {
+  background-color: var(--rbs-light-blue);
+}
+
+.rbs-login-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.rbs-login-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Login Footer */
+.rbs-login-footer {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px dashed rgb(241 245 249); /* slate-100 */
+  display: flex;
+  justify-content: center;
+}
+
+/* Login Loading State */
+.rbs-login-loading {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--rbs-bg);
+  color: var(--rbs-blue);
+  font-weight: 900;
+  font-style: italic;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
 }

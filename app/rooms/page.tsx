@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import "./room.css";
 import BookingModal from "@/app/components/BookingModal";
+import LoadingScreen from "@/app/components/LoadingScreen";
 import {
   APP_CONFIG,
   BOOKING_STATUS,
@@ -330,16 +331,11 @@ export default function RoomBookingPage() {
   );
 
   if (loading && !showBookingModal && !showSettingsModal)
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-[#004a87] font-black italic animate-pulse">
-        <ShieldCheck size={80} className="mb-6 text-[#549BB7]" />
-        <span>mci system check...</span>
-      </div>
-    );
+    return <LoadingScreen />;
 
   return (
-    <div className="room-page-wrapper text-left">
-      <nav className="room-navbar">
+    <div className="rbs-page-wrapper text-left">
+      <nav className="rbs-navbar">
         <div className="flex items-center gap-2 md:gap-8">
           <img
             src="/MCI.png"
@@ -416,13 +412,13 @@ export default function RoomBookingPage() {
         </div>
       </nav>
 
-      <main className="room-main-layout">
-        <aside className="room-sidebar">
+      <main className="rbs-main-layout">
+        <aside className="rbs-sidebar">
           {/* Unitary Pattern Filter Container */}
-          <div className="filter-unit-container">
+          <div className="rbs-sidebar-unit">
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className="filter-toggle-header"
+              className="rbs-sidebar-toggle"
             >
               <div className="flex items-center gap-3">
                 <Filter size={20} className="text-[#f7941d]" />
@@ -435,13 +431,12 @@ export default function RoomBookingPage() {
             </button>
 
             <div
-              className={`filter-card-content ${
-                isDesktop ? "block" : showMobileFilters ? "block" : "hidden"
-              }`}
+              className={`rbs-sidebar-content ${showMobileFilters ? "block" : "hidden min-[1400px]:block"}`}
             >
-              <div className="filter-desktop-title mci-filter-title hidden lg:flex">
+              <div className="rbs-sidebar-desktop-title">
                 <Filter size={20} /> {t("filter_title")}
               </div>
+              <div className="px-4 lg:px-6 pt-2 pb-4 lg:pb-6 space-y-6">
               <div className="mci-field-group">
                 <label className="mci-label">{t("filter_search_label")}</label>
                 <input
@@ -602,7 +597,9 @@ export default function RoomBookingPage() {
               <div className="mci-field-group">
                 <label className="mci-label">{t("filter_equip")}</label>
                 <div className="flex flex-col gap-1 mt-2">
-                  <label className="mci-filter-item">
+                  <label
+                    className={`mci-filter-item accessible-filter ${onlyAccessible ? "active" : ""}`}
+                  >
                     <input
                       type="checkbox"
                       checked={onlyAccessible}
@@ -610,7 +607,7 @@ export default function RoomBookingPage() {
                       className="filter-checkbox"
                     />
                     <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                      <Accessibility size={16} /> {t("label_accessible")}
+                      <Accessibility size={12}/>{t("label_accessible")}
                     </span>
                   </label>
                   {equipmentList.map((eq) => (
@@ -628,8 +625,7 @@ export default function RoomBookingPage() {
                         className="filter-checkbox"
                       />
                       <span className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                        {getEquipmentIcon(eq.id)}{" "}
-                        {t("equip_" + eq.id).toUpperCase()}
+                        {getEquipmentIcon(eq.id)} {t("equip_" + eq.id)}
                       </span>
                     </label>
                   ))}
@@ -649,6 +645,7 @@ export default function RoomBookingPage() {
                 <XCircle size={14} className="inline mr-2" />{" "}
                 {t("filter_reset_btn")}
               </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -656,7 +653,7 @@ export default function RoomBookingPage() {
         <div className="flex-1 space-y-16">
           <section className="room-header-section">
             <div className="text-left">
-              <h1 className="room-page-title">{t("title")}</h1>
+              <h1 className="rbs-page-title">{t("title")}</h1>
               <div className="mt-2">
                 <div className="active-count-badge">
                   <History size={16} className="text-[#f7941d]" /> {activeCount}{" "}

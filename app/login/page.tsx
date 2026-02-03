@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, Globe, ShieldCheck } from "lucide-react";
 import { APP_CONFIG, SUPPORTED_LANGS, Language } from "@/lib/constants";
+import LoadingScreen from "@/app/components/LoadingScreen";
 import "./login.css";
 
 export default function LoginPage() {
@@ -18,7 +19,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Sprache priorisiert aus localStorage laden (Heiliges Gebot 1)
+    // Sprache priorisiert aus localStorage laden
     const savedLang = localStorage.getItem("mci_lang") as Language;
     if (SUPPORTED_LANGS.includes(savedLang)) setLang(savedLang);
 
@@ -36,7 +37,7 @@ export default function LoginPage() {
 
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
-  // Generischer Sprach-Toggle (Bibel Punkt 1)
+  // Generischer Sprach-Toggle
   const handleLangToggle = () => {
     const currentIndex = SUPPORTED_LANGS.indexOf(lang);
     const nextIndex = (currentIndex + 1) % SUPPORTED_LANGS.length;
@@ -60,34 +61,32 @@ export default function LoginPage() {
       setIsSubmitting(false);
     } else {
       router.refresh();
-      // Kurzer Delay stellt sicher, dass der localStorage-Sync abgeschlossen ist
       setTimeout(() => router.push("/rooms"), 100);
     }
   };
 
-  if (loading)
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-[#004a87] font-black italic animate-pulse">
-        <ShieldCheck size={80} className="mb-6 text-[#549BB7]" />
-        <span>mci system check...</span>
-      </div>
-    );
+  // LOADING STATE - nutzt rbs-login-loading
+  if (loading) {
+    return <LoadingScreen />
+  }
 
   return (
-    <div className="mci-login-container">
-      <div className="mci-login-card animate-in zoom-in-95 duration-500 shadow-orange-900/5">
-        <div className="mci-login-header">
-          <img src="/MCI.png" alt="MCI Logo" className="mci-login-logo" />
-          <h1 className="mci-login-title">{t("login_title")}</h1>
-          <p className="mci-login-subtitle">{t("login_subtitle")}</p>
+    <div className="rbs-login-container">
+      <div className="rbs-login-card animate-in zoom-in-95 duration-500">
+        {/* HEADER */}
+        <div>
+          <img src="/MCI.png" alt="MCI Logo" className="rbs-login-logo" />
+          <h1 className="rbs-login-title">{t("login_title")}</h1>
+          <p className="rbs-login-subtitle">{t("login_subtitle")}</p>
         </div>
 
-        <form onSubmit={handleLogin} className="mci-login-form">
+        {/* FORM - nutzt globale rbs-input und rbs-label */}
+        <form onSubmit={handleLogin} className="rbs-login-form">
           <div className="space-y-1">
-            <label className="mci-login-label">{t("login_email_label")}</label>
+            <label className="rbs-label">{t("login_email_label")}</label>
             <input
               type="email"
-              className="mci-login-input"
+              className="rbs-input"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -96,12 +95,10 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="mci-login-label">
-              {t("login_password_label")}
-            </label>
+            <label className="rbs-label">{t("login_password_label")}</label>
             <input
               type="password"
-              className="mci-login-input"
+              className="rbs-input"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -109,27 +106,29 @@ export default function LoginPage() {
             />
           </div>
 
+          {/* ERROR MESSAGE */}
           {error && (
-            <div className="flex items-center gap-2 text-red-500 text-xs font-bold bg-red-50 p-4 rounded-2xl border border-red-100 italic">
-              <ShieldAlert size={16} /> {error}
+            <div className="rbs-login-error">
+              <ShieldAlert size={16} />
+              {error}
             </div>
           )}
 
+          {/* SUBMIT BUTTON */}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mci-login-button mci-ui-toggle"
+            className="rbs-login-button"
           >
             {isSubmitting ? "..." : t("login_button")}
           </button>
         </form>
 
-        <div className="mci-login-footer">
-          <button
-            onClick={handleLangToggle}
-            className="lang-toggle-btn mci-ui-toggle"
-          >
-            <Globe size={14} /> {lang.toUpperCase()}
+        {/* FOOTER - nutzt globale lang-toggle-btn */}
+        <div className="rbs-login-footer">
+          <button onClick={handleLangToggle} className="lang-toggle-btn">
+            <Globe size={14} />
+            {lang.toUpperCase()}
           </button>
         </div>
       </div>

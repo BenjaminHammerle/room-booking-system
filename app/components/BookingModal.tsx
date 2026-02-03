@@ -21,7 +21,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import "./BookingModal.css";
 
-// Import der zentralen Architektur für Konstanten, Icons und Helfer-Logik
 import { APP_CONFIG, BOOKING_STATUS, Language } from "@/lib/constants";
 import { getEquipmentIcon } from "@/lib/icons";
 import { timeToMinutes, getEndTimeParts, getTrans } from "@/lib/utils";
@@ -67,7 +66,6 @@ export default function BookingModal({
   initialDate,
   initialTime,
 }: BookingModalProps) {
-  // Lokale Zustandsverwaltung
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("08:00");
   const [duration, setDuration] = useState(1);
@@ -76,22 +74,20 @@ export default function BookingModal({
   const [isExtending, setIsExtending] = useState(false);
   const [weeksToAdd, setWeeksToAdd] = useState(1);
   const [loading, setLoading] = useState(false);
-
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
 
-  // Synchronisation beim Öffnen
   useEffect(() => {
     if (isOpen) {
       setFeedback(null);
       if (mode === "edit" && booking) {
         setSelectedDate(booking.booking_date);
         setSelectedTime(booking.start_time);
-        setDuration(booking.duration);
+        setDuration(booking.duration / 60);
       } else {
-        setSelectedDate(initialDate || new Date().toISOString().split("T")[0]);
+        setSelectedDate(initialDate || new Date().toLocaleDateString("en-CA"));
         setSelectedTime(initialTime || "08:00");
         setDuration(1);
       }
@@ -111,26 +107,9 @@ export default function BookingModal({
       .sort((a, b) => a.booking_date.localeCompare(b.booking_date));
   }, [booking, bookings]);
 
-  const handleCancelInstanceInModal = async (id: string) => {
-    if (!confirm(t("btn_cancel_single") + "?")) return;
-    setLoading(true);
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: BOOKING_STATUS.CANCELLED })
-      .eq("id", id);
-
-    if (!error) {
-      onSuccess();
-    } else {
-      setFeedback({ type: "error", text: t("label_booking_error") });
-    }
-    setLoading(false);
-  };
-
   const getConflictRoomIds = (r: any): string[] => {
     if (!r) return [];
     if (!r.room_combi_id) return [r.id];
-    // Suche in der rooms_combi Logik (Punkt 3.C)
     const c = r.room_combi;
     if (!c) return [r.id];
     return r.id === c.room_id_0
@@ -144,17 +123,18 @@ export default function BookingModal({
       : [r.id, c.room_id_0];
   };
 
-  // Hilfsfunktion zur Überschneidungsprüfung gegen ein beliebiges Buchungs-Array
-  const checkOverlap = (
+  // HEILIGES GEBOT: Rückgabe des kollidierenden Objekts statt nur Boolean
+  const findConflict = (
     checkBookings: any[],
     roomIds: string[],
     date: string,
     startTime: string,
-    dur: number,
+    durHours: number,
   ) => {
     const reqStart = timeToMinutes(startTime);
-    const reqEnd = reqStart + dur * 60;
-    return checkBookings.some((b) => {
+    const reqEnd = reqStart + Math.round(durHours * 60);
+
+    return checkBookings.find((b) => {
       if (
         b.status !== BOOKING_STATUS.ACTIVE ||
         b.booking_date !== date ||
@@ -162,8 +142,10 @@ export default function BookingModal({
       )
         return false;
       if (mode === "edit" && b.id === booking?.id) return false;
+
       const bStart = timeToMinutes(b.start_time);
-      const bEnd = bStart + b.duration * 60;
+      const bEnd = bStart + b.duration;
+
       return reqStart < bEnd && bStart < reqEnd;
     });
   };
@@ -174,7 +156,7 @@ export default function BookingModal({
     startTime: string,
     dur: number,
   ) => {
-    return checkOverlap(bookings, roomIds, date, startTime, dur);
+    return !!findConflict(bookings, roomIds, date, startTime, dur);
   };
 
   const getSeriesPlan = () => {
@@ -184,7 +166,7 @@ export default function BookingModal({
     if (!currentRoom) return [];
 
     const reqCap = parseInt(minCapacity) || 0;
-    let iterations =
+    const iterations =
       mode === "create"
         ? isRecurring
           ? recurringWeeks
@@ -192,19 +174,20 @@ export default function BookingModal({
         : isExtending
           ? weeksToAdd
           : 0;
-    let startDateAnchor = selectedDate;
+    const startIndex = mode === "edit" && isExtending ? 1 : 0;
+    const maxIndex =
+      mode === "edit" && isExtending
+        ? iterations + 1
+        : mode === "edit"
+          ? 1
+          : iterations;
 
+    let startDateAnchor = selectedDate;
     if (mode === "edit" && isExtending) {
       const lastBooking = relatedBookings[relatedBookings.length - 1];
       if (lastBooking) startDateAnchor = lastBooking.booking_date;
     }
-
     const baseDate = new Date(startDateAnchor);
-    if (isNaN(baseDate.getTime())) return [];
-
-    const startIndex = mode === "edit" && isExtending ? 1 : 0;
-    const maxIndex =
-      mode === "edit" && isExtending ? iterations + 1 : iterations;
 
     for (let i = startIndex; i < maxIndex; i++) {
       const d = new Date(baseDate);
@@ -212,35 +195,53 @@ export default function BookingModal({
       const curDate = d.toISOString().split("T")[0];
       const conflictIds = getConflictRoomIds(currentRoom);
 
-      if (!isAnyRoomOccupied(conflictIds, curDate, selectedTime, duration)) {
+      const conflictObj = findConflict(
+        bookings,
+        conflictIds,
+        curDate,
+        selectedTime,
+        duration,
+      );
+
+      if (!conflictObj) {
         plan.push({ date: curDate, room: currentRoom, status: "ok" });
       } else {
-        const alternatives = rooms
-          .filter(
-            (r) =>
-              r.building_id === currentRoom.building_id &&
-              r.id !== currentRoom.id &&
-              r.is_active &&
-              r.capacity >= reqCap &&
-              selectedEquipment.every((eqId) => r.equipment?.includes(eqId)),
-          )
-          .sort((a, b) => a.capacity - b.capacity);
+        const isPrimary = i === 0;
+        if (!isPrimary) {
+          const foundAlt = rooms
+            .filter(
+              (r) =>
+                r.building_id === currentRoom.building_id &&
+                r.id !== currentRoom.id &&
+                r.is_active &&
+                r.capacity >= reqCap &&
+                selectedEquipment.every((eqId) => r.equipment?.includes(eqId)),
+            )
+            .sort((a, b) => a.capacity - b.capacity)
+            .find(
+              (alt) =>
+                !isAnyRoomOccupied(
+                  getConflictRoomIds(alt),
+                  curDate,
+                  selectedTime,
+                  duration,
+                ),
+            );
 
-        const foundAlt = alternatives.find(
-          (alt) =>
-            !isAnyRoomOccupied(
-              getConflictRoomIds(alt),
-              curDate,
-              selectedTime,
-              duration,
-            ),
-        );
-
-        plan.push({
-          date: curDate,
-          room: foundAlt || null,
-          status: foundAlt ? "alternative" : "conflict",
-        });
+          plan.push({
+            date: curDate,
+            room: foundAlt || null,
+            status: foundAlt ? "alternative" : "conflict",
+            conflictTime: conflictObj.start_time,
+          });
+        } else {
+          plan.push({
+            date: curDate,
+            room: currentRoom,
+            status: "conflict",
+            conflictTime: conflictObj.start_time,
+          });
+        }
       }
     }
     return plan;
@@ -250,26 +251,63 @@ export default function BookingModal({
     setLoading(true);
     setFeedback(null);
     const plan = getSeriesPlan();
-
-    // 1. Zeitliche Validierung (Vergangenheit)
-    const now = new Date();
-    if (
-      selectedDate === now.toISOString().split("T")[0] &&
-      timeToMinutes(selectedTime) < now.getHours() * 60 + now.getMinutes()
-    ) {
-      setFeedback({ type: "error", text: t("label_past_time_error") });
+    if (!plan || plan.length === 0) {
       setLoading(false);
       return;
     }
 
-    if (plan.some((p) => p.status === "conflict")) {
-      alert(t("alert_resolve_conflicts"));
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const todayStr = new Date().toLocaleDateString("en-CA");
+
+    const selStartMin = timeToMinutes(selectedTime);
+    const selEndMin = Math.round(selStartMin + duration * 60);
+
+    if (mode === "create") {
+      if (selectedDate === todayStr && selStartMin < nowMin) {
+        setFeedback({ type: "error", text: t("label_past_time_error") });
+        setLoading(false);
+        return;
+      }
+    } else {
+      const isStarted =
+        booking.booking_date < todayStr ||
+        (booking.booking_date === todayStr &&
+          timeToMinutes(booking.start_time) <= nowMin);
+      if (isStarted) {
+        if (
+          selectedTime !== booking.start_time ||
+          selectedDate !== booking.booking_date
+        ) {
+          setFeedback({ type: "error", text: t("label_past_time_error") });
+          setLoading(false);
+          return;
+        }
+        if (selectedDate === todayStr && selEndMin < nowMin) {
+          setFeedback({ type: "error", text: t("label_past_time_error") });
+          setLoading(false);
+          return;
+        }
+      } else if (selectedDate === todayStr && selStartMin < nowMin) {
+        setFeedback({ type: "error", text: t("label_past_time_error") });
+        setLoading(false);
+        return;
+      }
+      if (selEndMin < selStartMin + 15) {
+        setFeedback({ type: "error", text: t("label_past_time_error") });
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (plan[0].status !== "ok") {
+      onSuccess();
+      setFeedback({ type: "error", text: t("no_room_available") });
       setLoading(false);
       return;
     }
 
     try {
-      // 2. KRITISCHER DOUBLE-CHECK (Concurrency Fix): Frische Daten laden
       const { data: freshBookings, error: fetchError } = await supabase
         .from("bookings")
         .select("*")
@@ -278,56 +316,53 @@ export default function BookingModal({
           "booking_date",
           plan.map((p) => p.date),
         );
-
       if (fetchError) throw fetchError;
 
-      // Erneute Prüfung gegen die FRISCHEN Datenbank-Daten
-      const raceConditionDetected = plan.some((p) => {
-        const conflictIds = getConflictRoomIds(p.room);
-        return checkOverlap(
-          freshBookings,
-          conflictIds,
-          p.date,
-          selectedTime,
-          duration,
-        );
-      });
-
-      if (raceConditionDetected) {
+      if (
+        plan.some((p) =>
+          findConflict(
+            freshBookings,
+            getConflictRoomIds(p.room),
+            p.date,
+            selectedTime,
+            duration,
+          ),
+        )
+      ) {
+        onSuccess();
         setFeedback({ type: "error", text: t("no_room_available") });
         setLoading(false);
         return;
       }
 
-      // 3. Buchung durchführen
       const code =
         booking?.booking_code ||
         Math.random().toString(36).substring(2, 8).toUpperCase();
+      const dbDuration = Math.round(duration * 60);
       let error = null;
 
       if (mode === "edit") {
-        const res = await supabase
+        const { error: editError } = await supabase
           .from("bookings")
           .update({
             booking_date: selectedDate,
             start_time: selectedTime,
-            duration,
+            duration: dbDuration,
           })
           .eq("id", booking.id);
-        error = res.error;
-        if (!error && isExtending) {
-          const newEntries = plan.map((p) => ({
+        error = editError;
+        if (!error && isExtending && plan.length > 1) {
+          const newEntries = plan.slice(1).map((p) => ({
             room_id: p.room.id,
             user_id: userId,
             booking_date: p.date,
             start_time: selectedTime,
-            duration,
+            duration: dbDuration,
             user_email: userEmail,
             booking_code: code,
             status: BOOKING_STATUS.ACTIVE,
           }));
-          const resExt = await supabase.from("bookings").insert(newEntries);
-          error = resExt.error;
+          error = (await supabase.from("bookings").insert(newEntries)).error;
         }
       } else {
         const newBookings = plan.map((p) => ({
@@ -335,18 +370,16 @@ export default function BookingModal({
           user_id: userId,
           booking_date: p.date,
           start_time: selectedTime,
-          duration,
+          duration: dbDuration,
           user_email: userEmail,
           booking_code: code,
           status: BOOKING_STATUS.ACTIVE,
         }));
-        const resCreate = await supabase.from("bookings").insert(newBookings);
-        error = resCreate.error;
+        error = (await supabase.from("bookings").insert(newBookings)).error;
       }
 
-      if (error) {
-        setFeedback({ type: "error", text: t("label_booking_error") });
-      } else {
+      if (error) setFeedback({ type: "error", text: t("label_booking_error") });
+      else {
         setFeedback({ type: "success", text: t("label_booking_success") });
         setTimeout(() => {
           onSuccess();
@@ -359,17 +392,37 @@ export default function BookingModal({
     setLoading(false);
   };
 
-  if (!isOpen) return null;
+  const handleCancelInstanceInModal = async (id: string) => {
+    if (!confirm(t("btn_cancel_single") + "?")) return;
+    setLoading(true);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: BOOKING_STATUS.CANCELLED })
+      .eq("id", id);
+    if (!error) onSuccess();
+    else setFeedback({ type: "error", text: t("label_booking_error") });
+    setLoading(false);
+  };
 
+  if (!isOpen) return null;
   const currentRoomContext =
     room || rooms.find((r) => r.id === booking?.room_id);
-  const isOccupiedNow = isAnyRoomOccupied(
+
+  // HEILIGES GEBOT: Konflikt-Objekt für die UI-Badge ermitteln
+  const currentConflict = findConflict(
+    bookings,
     getConflictRoomIds(currentRoomContext),
     selectedDate,
     selectedTime,
     duration,
   );
-  const isToday = selectedDate === new Date().toISOString().split("T")[0];
+  const todayStrForDisable = new Date().toLocaleDateString("en-CA");
+  const isStartedForDisable =
+    mode === "edit" &&
+    (booking.booking_date < todayStrForDisable ||
+      (booking.booking_date === todayStrForDisable &&
+        timeToMinutes(booking.start_time) <=
+          new Date().getHours() * 60 + new Date().getMinutes()));
 
   return (
     <div className="mci-modal-overlay animate-in fade-in">
@@ -377,32 +430,30 @@ export default function BookingModal({
         {feedback && (
           <div className="booking-feedback">
             <div
-              className={`booking-feedback-card ${
-                feedback.type === "success"
-                  ? "booking-feedback-success"
-                  : "booking-feedback-error"
-              }`}
+              className={`booking-feedback-card ${feedback.type === "success" ? "booking-feedback-success" : "booking-feedback-error"}`}
             >
               {feedback.type === "success" ? (
-                <CheckCircle size={80} className="mb-6 animate-bounce" />
+                <CheckCircle size={60} className="mb-2 animate-bounce" />
               ) : (
-                <XCircle size={80} className="mb-6" />
+                <XCircle size={60} className="mb-2" />
               )}
-              <h2 className="text-3xl font-black uppercase italic tracking-tighter">
+              <h2 className="text-xl font-black uppercase italic tracking-tighter">
                 {feedback.text}
               </h2>
               {feedback.type === "error" && (
                 <button
-                  onClick={() => setFeedback(null)}
+                  onClick={() => {
+                    onSuccess();
+                    setFeedback(null);
+                  }}
                   className="mt-8 px-8 py-3 bg-white text-red-600 font-bold rounded-full uppercase text-xs"
                 >
-                  zurück
+                  {t("archiv_back")}
                 </button>
               )}
             </div>
           </div>
         )}
-
         <div className="mci-modal-header text-white">
           <div className="flex flex-col text-left gap-1">
             <p className="mci-modal-subtitle">
@@ -419,24 +470,23 @@ export default function BookingModal({
             <X size={32} />
           </button>
         </div>
-
         <div className="mci-modal-body">
           <div className="booking-form-group">
             <label className="mci-label">{t("header_date")}</label>
             <input
               type="date"
               value={selectedDate}
-              min={new Date().toISOString().split("T")[0]}
+              min={todayStrForDisable}
               onChange={(e) => setSelectedDate(e.target.value)}
+              disabled={isStartedForDisable}
               className="mci-input"
             />
           </div>
-
           <div className="booking-form-grid">
             <div className="booking-form-group">
               <label className="mci-label">{t("modal_time")}</label>
               <div className="mci-time-picker">
-                <Clock size={20} className="text-blue-500" />
+                <Clock size={24} className="text-green-600" />
                 <select
                   value={selectedTime.split(":")[0]}
                   onChange={(e) =>
@@ -444,6 +494,7 @@ export default function BookingModal({
                       `${e.target.value}:${selectedTime.split(":")[1]}`,
                     )
                   }
+                  disabled={isStartedForDisable}
                   className="mci-time-select"
                 >
                   {Array.from({ length: 17 }, (_, i) =>
@@ -452,7 +503,10 @@ export default function BookingModal({
                     <option
                       key={h}
                       value={h}
-                      disabled={isToday && parseInt(h) < new Date().getHours()}
+                      disabled={
+                        selectedDate === todayStrForDisable &&
+                        parseInt(h) < new Date().getHours()
+                      }
                     >
                       {h}
                     </option>
@@ -466,6 +520,7 @@ export default function BookingModal({
                       `${selectedTime.split(":")[0]}:${e.target.value}`,
                     )
                   }
+                  disabled={isStartedForDisable}
                   className="mci-time-select"
                 >
                   {["00", "15", "30", "45"].map((m) => (
@@ -473,7 +528,7 @@ export default function BookingModal({
                       key={m}
                       value={m}
                       disabled={
-                        isToday &&
+                        selectedDate === todayStrForDisable &&
                         parseInt(selectedTime.split(":")[0]) ===
                           new Date().getHours() &&
                         parseInt(m) <= new Date().getMinutes()
@@ -488,14 +543,19 @@ export default function BookingModal({
             <div className="booking-form-group">
               <label className="mci-label">{t("label_ebene_end")}</label>
               <div className="mci-time-picker">
-                <CheckCircle2 size={20} className="text-orange-500" />
+                <CheckCircle2 size={24} className="text-orange-500" />
                 <select
                   value={getEndTimeParts(selectedTime, duration).hh}
                   onChange={(e) => {
-                    const newTotal =
-                      parseInt(e.target.value) * 60 +
-                      parseInt(getEndTimeParts(selectedTime, duration).mm);
-                    setDuration((newTotal - timeToMinutes(selectedTime)) / 60);
+                    const currentEndMin = parseInt(
+                      getEndTimeParts(selectedTime, duration).mm,
+                    );
+                    const newEndTotal =
+                      parseInt(e.target.value) * 60 + currentEndMin;
+                    const startTotal = timeToMinutes(selectedTime);
+                    setDuration(
+                      parseFloat(((newEndTotal - startTotal) / 60).toFixed(4)),
+                    );
                   }}
                   className="mci-time-select"
                 >
@@ -517,11 +577,15 @@ export default function BookingModal({
                 <select
                   value={getEndTimeParts(selectedTime, duration).mm}
                   onChange={(e) => {
-                    const newTotal =
-                      parseInt(getEndTimeParts(selectedTime, duration).hh) *
-                        60 +
-                      parseInt(e.target.value);
-                    setDuration((newTotal - timeToMinutes(selectedTime)) / 60);
+                    const currentEndHH = parseInt(
+                      getEndTimeParts(selectedTime, duration).hh,
+                    );
+                    const newEndTotal =
+                      currentEndHH * 60 + parseInt(e.target.value);
+                    const startTotal = timeToMinutes(selectedTime);
+                    setDuration(
+                      parseFloat(((newEndTotal - startTotal) / 60).toFixed(4)),
+                    );
                   }}
                   className="mci-time-select"
                 >
@@ -544,18 +608,19 @@ export default function BookingModal({
             </div>
           </div>
 
+          {/* HEILIGES GEBOT: Anzeige der blockierenden Startzeit im Konfliktfall */}
           <div
-            className={`mci-status-badge ${isOccupiedNow ? "mci-status-conflict" : "mci-status-available"}`}
+            className={`mci-status-badge ${currentConflict ? "mci-status-conflict" : "mci-status-available"}`}
           >
-            {isOccupiedNow ? (
+            {currentConflict ? (
               <AlertCircle size={24} />
             ) : (
               <CheckCircle2 size={24} />
             )}
-            <span>
-              {isOccupiedNow
-                ? t("label_status_conflict")
-                : t("label_status_free")}
+            <span className="font-black uppercase text-sm tracking-wide">
+              {currentConflict
+                ? `${t("label_status_conflict")} - ${currentConflict.start_time}`
+                : `${t("status_free")} ${getEndTimeParts(selectedTime, duration).hh}:${getEndTimeParts(selectedTime, duration).mm}`}
             </span>
           </div>
 
@@ -570,20 +635,18 @@ export default function BookingModal({
                     : setIsExtending(e.target.checked)
                 }
               />
-              <span>
+              <span className="font-bold text-sm">
                 {mode === "create"
                   ? t("label_recurring")
                   : t("label_extend_series")}
               </span>
             </label>
-
             {((mode === "create" && isRecurring) ||
-              (mode === "edit" && isExtending)) && (
-              <div className="res-extension-box animate-in slide-in-from-top-2">
-                <div className="flex flex-col gap-2 shrink-0">
-                  <label className="mci-label !ml-0 !mb-0 text-orange-400">
-                    {t("label_weeks")}
-                  </label>
+              (mode === "edit" &&
+                (relatedBookings.length > 1 || isExtending))) && (
+              <div className="res-extension-box">
+                <div className="res-extension-input-wrapper">
+                  <label className="mci-label">{t("label_weeks")}</label>
                   <input
                     type="number"
                     min="1"
@@ -598,14 +661,15 @@ export default function BookingModal({
                   />
                 </div>
                 <div className="res-extension-text-group">
-                  <p className="mci-section-title">
+                  <p className="font-bold text-sm text-[var(--rbs-blue)]">
                     {t("label_series_preview")}
                   </p>
-                  <p className="mci-hint-text">{t("hint_extension_preview")}</p>
+                  <p className="text-[11px] font-medium text-slate-500">
+                    {t("hint_extension_preview")}
+                  </p>
                 </div>
               </div>
             )}
-
             {((mode === "create" && isRecurring) || mode === "edit") && (
               <div className="series-list-container mt-6">
                 <div className="series-grid series-header-row hidden md:grid">
@@ -629,7 +693,13 @@ export default function BookingModal({
                             data-label={t("header_date")}
                             className={isCurrent ? "font-black" : ""}
                           >
-                            {new Date(b.booking_date).toLocaleDateString(lang)}
+                            {new Date(
+                              isCurrent ? selectedDate : b.booking_date,
+                            ).toLocaleDateString(lang, {
+                              weekday: "short",
+                              day: "2-digit",
+                              month: "short",
+                            })}
                           </div>
                           <div
                             data-label={t("header_room")}
@@ -674,6 +744,7 @@ export default function BookingModal({
                       );
                     })}
                   {getSeriesPlan().map((p, i) => {
+                    if (mode === "edit" && i === 0) return null;
                     const originalFeatures = [
                       ...(currentRoomContext?.equipment || []),
                     ];
@@ -687,19 +758,10 @@ export default function BookingModal({
                     const missing = originalFeatures.filter(
                       (id) => !currentFeatures.includes(id),
                     );
-
                     return (
                       <div
                         key={`preview-${i}`}
-                        className={`series-grid series-data-row border-l-4 ${
-                          p.status === "conflict"
-                            ? "bg-red-50 border-l-red-500"
-                            : p.status === "alternative"
-                              ? "bg-red-50/50 border-l-red-400"
-                              : mode === "create" && i === 0
-                                ? "bg-orange-50 border-l-[var(--mci-orange)]"
-                                : "bg-green-50/30 border-l-green-400"
-                        }`}
+                        className={`series-grid series-data-row border-l-4 ${p.status === "conflict" ? "bg-red-50 border-l-red-500" : p.status === "alternative" ? "bg-red-50/50 border-l-red-400" : mode === "create" && i === 0 ? "bg-orange-50 border-l-[var(--mci-orange)]" : "bg-green-50/30 border-l-green-400"}`}
                       >
                         <div
                           data-label={t("header_date")}
@@ -743,42 +805,46 @@ export default function BookingModal({
                           className="flex flex-wrap gap-1"
                         >
                           {p.status === "conflict" ? (
-                            <span className="text-red-600 font-black uppercase text-[8px]">
-                              CONFLICT
+                            <span className="series-status-badge series-status-conflict">
+                              CONFLICT @ {p.conflictTime}
                             </span>
                           ) : (
                             <>
                               {p.status === "alternative" && (
-                                <span className="bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase">
+                                <span className="series-status-badge series-status-active">
                                   Best Match
                                 </span>
                               )}
                               {p.room?.seating_arrangement && (
-                                <span className="bg-slate-100 text-slate-600 text-[8px] px-1.5 py-0.5 rounded font-black uppercase flex items-center gap-1">
-                                  <Armchair size={10} />{" "}
-                                  {t(p.room.seating_arrangement)}
+                                <span className="series-status-badge series-status-pending">
+                                  <Armchair size={10} />
+                                  <span>{t(p.room.seating_arrangement)}</span>
                                 </span>
                               )}
                               {extra.map((id) => (
                                 <span
                                   key={id}
-                                  className="bg-green-100 text-green-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase flex items-center gap-1"
+                                  className="series-status-badge series-status-confirmed"
                                 >
-                                  +{getEquipmentIcon(id)}{" "}
-                                  {id === "accessible"
-                                    ? t("label_accessible")
-                                    : t("equip_" + id)}
+                                  {getEquipmentIcon(id)}
+                                  <span>
+                                    {id === "accessible"
+                                      ? t("label_accessible")
+                                      : t("equip_" + id)}
+                                  </span>
                                 </span>
                               ))}
                               {missing.map((id) => (
                                 <span
                                   key={id}
-                                  className="bg-red-100 text-red-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase line-through flex items-center gap-1"
+                                  className="series-status-badge series-status-cancelled"
                                 >
-                                  -{getEquipmentIcon(id)}{" "}
-                                  {id === "accessible"
-                                    ? t("label_accessible")
-                                    : t("equip_" + id)}
+                                  {getEquipmentIcon(id)}
+                                  <span>
+                                    {id === "accessible"
+                                      ? t("label_accessible")
+                                      : t("equip_" + id)}
+                                  </span>
                                 </span>
                               ))}
                             </>
@@ -791,12 +857,19 @@ export default function BookingModal({
               </div>
             )}
           </div>
-
           <div className="modal-actions">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-mci-secondary"
+            >
+              <X size={20} />
+              {t("archiv_back")}
+            </button>
             <button
               disabled={loading}
               onClick={handleSave}
-              className="btn-mci-main py-6 text-xl shadow-xl"
+              className="btn-mci-main py-4 text-base shadow-xl"
             >
               <Save size={28} />{" "}
               {loading

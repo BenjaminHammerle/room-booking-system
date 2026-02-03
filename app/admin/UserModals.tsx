@@ -52,90 +52,97 @@ export default function UserModals({
       {showEdit && editUser && (
         <div className="mci-modal-overlay">
           <div className="mci-modal-card max-w-2xl">
-            <div className="mci-modal-header">
-              <div>
-                <p className="mci-modal-subtitle">
-                  {t("admin_sidebar_users")}
-                </p>
-                <h3 className="mci-modal-title">
-                  {editUser.first_name} {editUser.last_name}
-                </h3>
-              </div>
-              <button onClick={onCloseEdit} className="mci-modal-close">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="mci-modal-body">
-              <div className="mci-modal-form-grid">
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
-                    {t("admin_label_fname")} *
-                  </label>
-                  <input
-                    type="text"
-                    value={editUser.first_name}
-                    onChange={(e) => onEditChange({ ...editUser, first_name: e.target.value })}
-                    className="mci-input"
-                  />
+            {/* Modal mit max-h für Scroll */}
+            <div className="flex flex-col max-h-[90vh] overflow-hidden">
+              {/* HEADER - FIXED */}
+              <div className="mci-modal-header shrink-0">
+                <div>
+                  <p className="mci-modal-subtitle">
+                    {t("admin_sidebar_users")}
+                  </p>
+                  <h3 className="mci-modal-title">
+                    {editUser.first_name} {editUser.last_name}
+                  </h3>
                 </div>
-                
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
-                    {t("admin_label_lname")} *
-                  </label>
-                  <input
-                    type="text"
-                    value={editUser.last_name}
-                    onChange={(e) => onEditChange({ ...editUser, last_name: e.target.value })}
-                    className="mci-input"
-                  />
-                </div>
+                <button onClick={onCloseEdit} className="mci-modal-close">
+                  <X size={24} />
+                </button>
               </div>
               
-              <div className="mci-modal-form-group">
-                <label className="mci-label">{t("admin_label_email")} *</label>
-                <input
-                  type="email"
-                  value={editUser.email}
-                  onChange={(e) => onEditChange({ ...editUser, email: e.target.value })}
-                  className="mci-input"
-                />
-              </div>
-              
-              <div className="mci-modal-form-group">
-                <label className="mci-label">
-                  {t("admin_label_password")} (optional)
-                </label>
-                <input
-                  type="password"
-                  onChange={(e) => onEditChange({ ...editUser, password: e.target.value })}
-                  className="mci-input"
-                />
-              </div>
-
-              <label className="flex items-center gap-3 p-5 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 border-2 border-slate-100 hover:border-blue-200 transition-all">
-                <input
-                  type="checkbox"
-                  checked={editUser.is_admin}
-                  onChange={(e) => onEditChange({ ...editUser, is_admin: e.target.checked })}
-                  className="w-5 h-5 rounded cursor-pointer"
-                />
-                <div className="flex-1">
-                  <div className="font-bold text-sm text-slate-700 flex items-center gap-2">
-                    <ShieldCheck size={18} /> {t("admin_label_admin")}
+              {/* SCROLLABLE CONTENT */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-10">
+                <div className="space-y-6">
+                  <div className="mci-modal-form-grid">
+                    <div className="mci-modal-form-group">
+                      <label className="mci-label">
+                        {t("admin_label_fname")} *
+                      </label>
+                      <input
+                        type="text"
+                        value={editUser.first_name}
+                        onChange={(e) => onEditChange({ ...editUser, first_name: e.target.value })}
+                        className="mci-input"
+                      />
+                    </div>
+                    
+                    <div className="mci-modal-form-group">
+                      <label className="mci-label">
+                        {t("admin_label_lname")} *
+                      </label>
+                      <input
+                        type="text"
+                        value={editUser.last_name}
+                        onChange={(e) => onEditChange({ ...editUser, last_name: e.target.value })}
+                        className="mci-input"
+                      />
+                    </div>
                   </div>
+                  
+                  <div className="mci-modal-form-group">
+                    <label className="mci-label">{t("admin_label_email")} *</label>
+                    <input
+                      type="email"
+                      value={editUser.email}
+                      onChange={(e) => onEditChange({ ...editUser, email: e.target.value })}
+                      className="mci-input"
+                    />
+                  </div>
+                  
+                  <div className="mci-modal-form-group">
+                    <label className="mci-label">
+                      {t("admin_label_password")} (optional)
+                    </label>
+                    <input
+                      type="password"
+                      onChange={(e) => onEditChange({ ...editUser, password: e.target.value })}
+                      className="mci-input"
+                    />
+                  </div>
+
+                  <label className="admin-checkbox-card">
+                    <input
+                      type="checkbox"
+                      checked={editUser.is_admin}
+                      onChange={(e) => onEditChange({ ...editUser, is_admin: e.target.checked })}
+                    />
+                    <div className="flex items-center gap-2 font-bold text-sm text-slate-700">
+                      <ShieldCheck size={18} />
+                      {t("admin_label_admin")}
+                    </div>
+                  </label>
                 </div>
-              </label>
-            </div>
-            
-            <div className="mci-modal-footer">
-              <button onClick={onCloseEdit} className="mci-modal-btn-secondary">
-                {t("archiv_back")}
-              </button>
-              <button onClick={onUpdateUser} className="mci-modal-btn-primary">
-                <Save size={20} /> {t("save_btn")}
-              </button>
+              </div>
+              
+              {/* FOOTER - FIXED */}
+              <div className="mci-modal-footer shrink-0">
+                <button onClick={onCloseEdit} className="btn-mci-secondary">
+                  {t("archiv_back")}
+                </button>
+                <button onClick={onUpdateUser} className="btn-mci-main">
+                  <Save size={20} />
+                  {t("save_btn")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -145,94 +152,103 @@ export default function UserModals({
       {showAdd && (
         <div className="mci-modal-overlay">
           <div className="mci-modal-card max-w-2xl">
-            <div className="mci-modal-header">
-              <div>
-                <p className="mci-modal-subtitle">
-                  {t("admin_sidebar_users")}
-                </p>
-                <h3 className="mci-modal-title">
-                  {t("admin_modal_add_user_title")}
-                </h3>
-              </div>
-              <button onClick={onCloseAdd} className="mci-modal-close">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={onCreateUser} className="mci-modal-body pb-0">
-              <div className="mci-modal-form-grid">
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
-                    {t("admin_label_fname")} *
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={newUser.first_name}
-                    onChange={(e) => onNewChange({ ...newUser, first_name: e.target.value })}
-                    className="mci-input"
-                  />
+            <form onSubmit={onCreateUser}>
+              {/* Modal mit max-h für Scroll */}
+              <div className="flex flex-col max-h-[90vh] overflow-hidden">
+                {/* HEADER - FIXED */}
+                <div className="mci-modal-header shrink-0">
+                  <div>
+                    <p className="mci-modal-subtitle">
+                      {t("admin_sidebar_users")}
+                    </p>
+                    <h3 className="mci-modal-title">
+                      {t("admin_modal_add_user_title")}
+                    </h3>
+                  </div>
+                  <button type="button" onClick={onCloseAdd} className="mci-modal-close">
+                    <X size={24} />
+                  </button>
                 </div>
                 
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
-                    {t("admin_label_lname")} *
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={newUser.last_name}
-                    onChange={(e) => onNewChange({ ...newUser, last_name: e.target.value })}
-                    className="mci-input"
-                  />
-                </div>
-              </div>
-              
-              <div className="mci-modal-form-group">
-                <label className="mci-label">{t("admin_label_email")} *</label>
-                <input
-                  required
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) => onNewChange({ ...newUser, email: e.target.value })}
-                  className="mci-input"
-                />
-              </div>
-              
-              <div className="mci-modal-form-group">
-                <label className="mci-label">
-                  {t("admin_label_password")} *
-                </label>
-                <input
-                  required
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => onNewChange({ ...newUser, password: e.target.value })}
-                  className="mci-input"
-                />
-              </div>
-              
-              <label className="flex items-center gap-3 p-5 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 border-2 border-slate-100 hover:border-blue-200 transition-all">
-                <input
-                  type="checkbox"
-                  checked={newUser.is_admin}
-                  onChange={(e) => onNewChange({ ...newUser, is_admin: e.target.checked })}
-                  className="w-5 h-5 rounded cursor-pointer"
-                />
-                <div className="flex-1">
-                  <div className="font-bold text-sm text-slate-700 flex items-center gap-2">
-                    <ShieldCheck size={18} /> {t("admin_label_admin")}
+                {/* SCROLLABLE CONTENT */}
+                <div className="flex-1 overflow-y-auto p-6 md:p-10">
+                  <div className="space-y-6">
+                    <div className="mci-modal-form-grid">
+                      <div className="mci-modal-form-group">
+                        <label className="mci-label">
+                          {t("admin_label_fname")} *
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={newUser.first_name}
+                          onChange={(e) => onNewChange({ ...newUser, first_name: e.target.value })}
+                          className="mci-input"
+                        />
+                      </div>
+                      
+                      <div className="mci-modal-form-group">
+                        <label className="mci-label">
+                          {t("admin_label_lname")} *
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={newUser.last_name}
+                          onChange={(e) => onNewChange({ ...newUser, last_name: e.target.value })}
+                          className="mci-input"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="mci-modal-form-group">
+                      <label className="mci-label">{t("admin_label_email")} *</label>
+                      <input
+                        required
+                        type="email"
+                        value={newUser.email}
+                        onChange={(e) => onNewChange({ ...newUser, email: e.target.value })}
+                        className="mci-input"
+                      />
+                    </div>
+                    
+                    <div className="mci-modal-form-group">
+                      <label className="mci-label">
+                        {t("admin_label_password")} *
+                      </label>
+                      <input
+                        required
+                        type="password"
+                        value={newUser.password}
+                        onChange={(e) => onNewChange({ ...newUser, password: e.target.value })}
+                        className="mci-input"
+                      />
+                    </div>
+                    
+                    <label className="admin-checkbox-card">
+                      <input
+                        type="checkbox"
+                        checked={newUser.is_admin}
+                        onChange={(e) => onNewChange({ ...newUser, is_admin: e.target.checked })}
+                      />
+                      <div className="flex items-center gap-2 font-bold text-sm text-slate-700">
+                        <ShieldCheck size={18} />
+                        {t("admin_label_admin")}
+                      </div>
+                    </label>
                   </div>
                 </div>
-              </label>
-              
-              <div className="mci-modal-footer">
-                <button type="button" onClick={onCloseAdd} className="mci-modal-btn-secondary">
-                  {t("archiv_back")}
-                </button>
-                <button type="submit" className="mci-modal-btn-primary">
-                  <UserPlus size={20} /> {t("admin_btn_add_user")}
-                </button>
+                
+                {/* FOOTER - FIXED */}
+                <div className="mci-modal-footer shrink-0">
+                  <button type="button" onClick={onCloseAdd} className="btn-mci-secondary">
+                    {t("archiv_back")}
+                  </button>
+                  <button type="submit" className="btn-mci-main">
+                    <UserPlus size={20} />
+                    {t("admin_btn_add_user")}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

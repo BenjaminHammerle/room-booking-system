@@ -1,354 +1,598 @@
 @import "tailwindcss";
 
-/* ========================================
-   ADMIN PAGE - MINIMAL CSS
-   Nutzt globals.css maximal, nur Spezifika hier
-   ======================================== */
-
-/* --- 1. ADMIN LAYOUT --- */
-.admin-page-wrapper {
-  background-color: var(--mci-bg);
-  @apply min-h-screen text-slate-900 font-sans;
-  min-width: 300px;
-  padding: 0.75rem 1.5rem 3rem 1.5rem;
+/* --- LAYOUT STABILITY FIX --- */
+/* Verhindert das seitliche Einrücken (10px Shift) bei Tab-Wechseln */
+.rbs-main-layout {
+  min-height: 0;
+  width: 100%;
 }
 
-@media (min-width: 768px) {
-  .admin-page-wrapper {
-    padding: 2rem 1.5rem 3rem 1.5rem;
-  }
+/* --- 1. RBS ADMIN TABS --- */
+.rbs-tab-btn {
+  @apply flex items-center w-full gap-4 px-6 py-4 rounded-2xl font-bold text-sm text-slate-500 bg-transparent transition-all border-none cursor-pointer;
 }
 
-.admin-navbar {
-  @apply sticky top-0 z-50 bg-white/80 backdrop-blur-md h-20 md:h-24 flex flex-row items-center justify-between border-b border-gray-100 shadow-sm px-4 md:px-6;
+.rbs-tab-btn.active {
+  background-color: var(--rbs-blue);
+  @apply text-white shadow-xl italic font-bold;
 }
 
-.admin-main-content {
-  margin-top: 2rem;
+/* --- 2. ADMIN CHECKBOXES --- */
+.admin-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 1rem;
+  /*background-color: rgb(248 250 252);*/
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  /*border: 1px solid rgb(226 232 240);*/
 }
 
-.admin-header-section {
-  margin-bottom: 2rem;
+.admin-checkbox-item:hover {
+  background-color: rgb(241 245 249);
 }
 
-.admin-layout-grid {
-  @apply flex flex-col gap-8 md:gap-12;
-  margin-top: 2rem;
+.admin-checkbox-item input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--rbs-blue);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-@media (min-width: 1024px) {
-  .admin-layout-grid {
-    @apply flex-row items-start;
-  }
+.admin-checkbox-item span {
+  flex: 1;
+  min-width: 0;
 }
 
-@media (max-width: 768px) {
-  .admin-header-row {
-    @apply flex-col items-stretch;
-  }
-  
-  .admin-header-row > * {
-    @apply w-full;
-  }
+/* Checkbox Card (für Kombiraum) */
+.admin-checkbox-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background-color: rgb(239 246 255); /* blue-50 */
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid rgb(219 234 254); /* blue-100 */
 }
 
-/* --- 2. SIDEBAR --- */
-.admin-sidebar-container {
-  @apply w-full;
+.admin-checkbox-card:hover {
+  background-color: rgb(219 234 254);
+  border-color: rgb(191 219 254);
 }
 
-@media (min-width: 1024px) {
-  .admin-sidebar-container {
-    @apply w-80 shrink-0 self-start;
-    top: 2rem;
-  }
+.admin-checkbox-card input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--rbs-blue);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-/* Mobile Menu Toggle - nutzt globals Styles */
-.admin-mobile-menu-toggle {
-  @apply lg:hidden w-full mb-4 flex items-center justify-between bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm font-black italic uppercase cursor-pointer;
-  color: var(--mci-blue);
+/* --- 3. STATUS BUTTONS (Aktiv/Wartung) --- */
+.admin-status-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  cursor: pointer;
+  border: 2px solid rgb(226 232 240); /* slate-200 */
+  background-color: rgb(248 250 252); /* slate-50 */
+  color: rgb(100 116 139); /* slate-500 */
+  transition: all 0.2s;
 }
 
-.admin-mobile-menu-toggle svg:last-child {
-  @apply transition-transform;
+.admin-status-btn:hover {
+  background-color: rgb(241 245 249);
 }
 
-/* Menu Card - nutzt globals */
-.admin-menu-card {
-  @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6;
+.admin-status-btn-active {
+  background-color: rgb(220 252 231) !important; /* green-50 */
+  border-color: rgb(34 197 94) !important; /* green-500 */
+  color: rgb(21 128 61) !important; /* green-700 */
 }
 
-/* Tab Buttons */
-.admin-tab-btn {
-  @apply flex items-center w-full gap-4 px-5 py-4 rounded-2xl font-bold text-sm text-slate-600 bg-transparent border-none cursor-pointer transition-all;
+.admin-status-btn-inactive {
+  background-color: rgb(255 237 213) !important; /* orange-50 */
+  border-color: rgb(249 115 22) !important; /* orange-500 */
+  color: rgb(194 65 12) !important; /* orange-700 */
 }
 
-.admin-tab-btn:hover {
-  @apply bg-slate-50;
+/* --- 4. ADMIN TABLES --- */
+.rbs-admin-table-container {
+  @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden w-full;
 }
 
-.admin-tab-btn.active {
-  background-color: var(--mci-blue);
-  @apply text-white shadow-md;
-}
-
-.admin-tab-btn svg {
-  @apply shrink-0;
-}
-
-/* --- 3. CONTENT CARDS - nutzt globals */
-.admin-header-row {
-  @apply flex justify-between items-center gap-4 mb-6;
-}
-
-.admin-card-grid {
-  @apply grid grid-cols-1 gap-5;
-}
-
-@media (min-width: 1200px) {
-  .admin-card-grid {
-    @apply grid-cols-2;
-  }
-}
-
-/* --- 4. TABLE - nutzt globals mci-input/select */
-.admin-table {
+.rbs-admin-table {
   @apply w-full border-collapse text-left;
 }
 
-.admin-table th {
-  @apply px-5 py-4 bg-slate-50 border-b border-gray-100 text-xs font-black uppercase text-slate-500 tracking-wider;
+.rbs-admin-table th {
+  @apply px-8 py-5 bg-slate-50 border-b border-gray-100 text-[10px] font-black uppercase text-slate-500 tracking-widest;
 }
 
-.admin-table td {
-  @apply px-5 py-4 border-b border-gray-100 text-sm;
+.rbs-admin-table td {
+  @apply px-8 py-5 border-b border-gray-100 text-sm font-bold text-slate-700;
 }
 
-.admin-table tr:hover {
-  @apply bg-slate-50 transition-colors;
+.rbs-admin-table tr:last-child td {
+  @apply border-b-0;
 }
 
-/* --- 5. EQUIPMENT GRID --- */
-.equipment-checkbox-grid {
-  @apply grid gap-3;
+/* --- 5. PLANNING TIMELINE --- */
+.rbs-timeline-row { @apply flex items-center border-b border-gray-50 h-20 hover:bg-slate-50/50 transition-colors; }
+
+.rbs-timeline-room-info {
+  @apply w-48 shrink-0 p-4 border-r border-gray-100 bg-white;
+}
+
+.rbs-timeline-bar-container {
+  @apply flex-1 relative h-full bg-slate-50/50;
+}
+
+/* --- 6. STATS --- */
+.rbs-stat-card {
+  @apply bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm text-center flex flex-col items-center justify-center;
+}
+
+.rbs-stat-value {
+  @apply font-black tracking-tighter text-[4rem] leading-none text-[var(--rbs-blue)] italic;
+}
+
+.rbs-stat-label {
+  @apply font-black uppercase italic text-[11px] text-slate-400 tracking-widest mt-4;
+}
+
+/* --- 7. GRID FOR ADMIN CARDS (Buildings/Rooms) --- */
+.rbs-admin-grid {
+  @apply grid gap-4 md:gap-6 w-full;
   grid-template-columns: 1fr;
 }
 
-.equipment-checkbox-item {
-  @apply flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors;
+@media (min-width: 1199px) {
+  .rbs-admin-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-.equipment-checkbox-item input[type="checkbox"] {
-  @apply w-5 h-5 rounded cursor-pointer;
+.rbs-wide-card {
+  @apply bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm p-4 md:p-6 flex items-center justify-between gap-4 transition-all;
+  min-width: 0; 
 }
 
-/* --- 6. TIMELINE VIEW (Planning) --- */
-.timeline-row {
-  @apply flex items-center border-b border-gray-100;
-  height: 4.5rem;
+/* ==========================================
+   NEUE KLASSEN FÜR ADMIN.CSS
+   FIXED: @apply entfernt, Properties direkt
+   ========================================== */
+
+/* --- PLANNING: VIEW MODE TOGGLE --- */
+.rbs-planning-toggle-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  background-color: rgb(241 245 249);
+  padding: 0.375rem;
+  border-radius: 0.75rem;
+  width: 100%;
 }
 
-.timeline-room-info {
-  @apply shrink-0 pr-4 text-left;
-  width: 12rem;
-}
-
-.timeline-bar-container {
-  @apply flex-1 relative bg-slate-50 rounded-xl overflow-hidden;
-  height: 2.5rem;
-}
-
-/* --- 7. STATS CARDS - nutzt globals */
-.admin-stat-card {
-  @apply bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4;
-}
-
-.admin-stat-icon {
-  @apply w-14 h-14 rounded-2xl flex items-center justify-center;
-}
-
-/* --- 8. MODAL SPLITS (zusätzlich zu globals) --- */
-.modal-split-container {
-  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col;
-  max-width: 64rem;
-}
-
-@media (min-width: 768px) {
-  .modal-split-container {
-    @apply flex-row;
+@media (min-width: 640px) {
+  .rbs-planning-toggle-wrapper {
+    width: auto;
   }
 }
 
-.modal-split-container-room {
-  @apply bg-white w-full rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col;
-  max-width: 80rem;
-}
-
-@media (min-width: 768px) {
-  .modal-split-container-room {
-    @apply flex-row;
-  }
-}
-
-/* --- 9. MODAL IMAGE SIDEBARS --- */
-.modal-image-full {
-  @apply relative bg-slate-100;
-  min-height: 300px;
-}
-
-@media (min-width: 768px) {
-  .modal-image-full {
-    width: 41.666667%;
-  }
-}
-
-.modal-image-full img {
-  @apply w-full h-full object-cover transition-opacity duration-500;
-}
-
-.modal-image-compact {
-  @apply relative bg-slate-100 overflow-hidden;
-  height: 280px;
-}
-
-@media (min-width: 768px) {
-  .modal-image-compact {
-    width: 33.333333%;
-    height: auto;
-  }
-}
-
-.modal-image-compact img {
-  @apply w-full h-full object-cover transition-opacity duration-500;
-}
-
-.modal-image-placeholder {
-  @apply w-full h-full flex flex-col items-center justify-center text-slate-300 p-8 text-center;
-  background-color: rgba(0, 74, 135, 0.05);
-}
-
-.modal-image-placeholder svg {
-  @apply mb-4 opacity-20;
-}
-
-.modal-image-placeholder-text {
-  @apply text-xs font-black uppercase italic tracking-widest opacity-40;
-}
-
-.modal-image-overlay {
-  @apply absolute inset-0 flex flex-col justify-end p-8;
-  background: linear-gradient(to top, rgba(15, 23, 42, 0.8), transparent, transparent);
-}
-
-.modal-image-overlay-title {
-  @apply text-white text-3xl font-black italic uppercase tracking-tighter leading-none;
-}
-
-.modal-image-overlay-subtitle {
-  @apply text-white/60 text-xs font-bold uppercase mt-2 flex items-center gap-2;
-}
-
-/* --- 10. MODAL FORMS --- */
-.modal-form-wide {
-  @apply p-6 md:p-8 flex flex-col bg-white;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-@media (min-width: 768px) {
-  .modal-form-wide {
-    width: 58.333333%;
-  }
-}
-
-.modal-form-standard {
-  @apply p-6 md:p-8 flex flex-col bg-white;
-  max-height: 90vh;
-}
-
-@media (min-width: 768px) {
-  .modal-form-standard {
-    width: 66.666667%;
-  }
-}
-
-/* Scrollable Content */
-.modal-body-scroll {
-  @apply flex-1 overflow-y-auto overflow-x-hidden space-y-6;
-  padding-right: 0.5rem;
-  max-height: 60vh;
-}
-
-.modal-body-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.modal-body-scroll::-webkit-scrollbar-track {
+.rbs-planning-toggle-btn {
+  flex: 1;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  font-size: 10px;
+  transition: all 0.2s;
+  color: rgb(148 163 184);
   background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
-.modal-body-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+.rbs-planning-toggle-btn.active {
+  background-color: white;
+  color: var(--rbs-blue);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-/* --- 11. MODAL UTILITIES --- */
-.modal-header-flex {
-  @apply flex justify-between items-start mb-6;
+/* --- PLANNING: NAVIGATION BUTTONS --- */
+.rbs-planning-nav-btn {
+  padding: 0.75rem;
+  background-color: white;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(243 244 246);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.modal-header-title {
-  color: var(--mci-blue);
-  @apply text-xl font-black italic uppercase tracking-tight leading-none mb-1;
+.rbs-planning-nav-btn:hover {
+  background-color: rgb(248 250 252);
 }
 
-.modal-header-id {
-  @apply text-slate-400 text-xs font-black uppercase italic tracking-widest;
+/* --- PLANNING: DATE INPUT --- */
+.rbs-planning-date-input {
+  width: auto;
+  background-color: white;
+  border: 2px solid rgb(241 245 249);
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  outline: none;
+  transition: all 0.2s;
+  font-size: 1rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-.modal-close-btn {
-  @apply p-2 hover:bg-slate-50 rounded-full transition-all text-slate-300 hover:text-red-500;
+.rbs-planning-date-input:focus {
+  border-color: var(--rbs-blue);
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.1);
 }
 
-/* --- 12. LOADING SCREEN --- */
-.admin-loading-screen {
-  @apply h-screen flex flex-col items-center justify-center font-black italic animate-pulse;
-  background-color: var(--mci-bg);
-  color: var(--mci-blue);
+/* --- PLANNING: SEARCH --- */
+.rbs-planning-search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
 }
 
-.admin-loading-icon {
-  color: var(--mci-light-blue);
-  @apply mb-6;
+.rbs-planning-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgb(203 213 225);
 }
 
-/* --- 13. CHECKBOXES --- */
-input[type="checkbox"] {
-  accent-color: var(--mci-blue);
+.rbs-planning-search-input {
+  width: 100%;
+  background-color: white;
+  border: 2px solid rgb(241 245 249);
+  padding: 0.75rem 1rem 0.75rem 3rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  outline: none;
+  transition: all 0.2s;
+  font-size: 1rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-input[type="radio"] {
-  accent-color: var(--mci-blue);
+.rbs-planning-search-input:focus {
+  border-color: var(--rbs-blue);
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.1);
 }
 
-/* --- 14. UTILITIES --- */
-.grayscale {
-  filter: grayscale(100%);
+/* --- TIMELINE: WRAPPER & HEADER --- */
+.rbs-timeline-wrapper {
+  min-width: 900px;
+  padding: 2rem;
 }
 
-/* --- 15. RESPONSIVE --- */
-@media (max-width: 768px) {
-  .admin-table {
-    @apply text-xs;
+.rbs-timeline-header {
+  display: flex;
+  border-bottom: 1px solid rgb(243 244 246);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.rbs-timeline-header-room {
+  width: 12rem;
+  flex-shrink: 0;
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  color: rgb(156 163 175);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-left: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.rbs-timeline-header-time {
+  flex: 1;
+  position: relative;
+  height: 1.5rem;
+}
+
+.rbs-timeline-hour-marker {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 900;
+  color: rgb(203 213 225);
+  border-left: 1px solid rgb(241 245 249);
+  padding-left: 0.5rem;
+  height: 100%;
+}
+
+/* --- TIMELINE: ROW --- */
+.rbs-timeline-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgb(249 250 251);
+  height: 5rem;
+  transition: all 0.2s;
+}
+
+.rbs-timeline-row:hover {
+  background-color: rgb(248 250 252 / 0.5);
+}
+
+.rbs-timeline-room-info {
+  width: 12rem;
+  flex-shrink: 0;
+  padding-right: 1rem;
+  border-right: 1px solid rgb(243 244 246);
+  background-color: white;
+}
+
+.rbs-timeline-room-name {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: rgb(51 65 85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rbs-timeline-building-name {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: rgb(148 163 184);
+}
+
+.rbs-timeline-bar-container {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  background-color: rgb(248 250 252 / 0.5);
+}
+
+.rbs-timeline-booking {
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  color: white;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  overflow: hidden;
+  background-color: var(--rbs-blue);
+}
+
+.rbs-timeline-booking.checked-in {
+  background-color: rgb(34 197 94);
+}
+
+/* --- CALENDAR: 14 DAYS VIEW --- */
+.rbs-calendar-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .rbs-calendar-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .rbs-calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .rbs-calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.rbs-calendar-day-card {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 2.5rem;
+  border: 1px solid rgb(243 244 246);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  min-height: 160px;
+}
+
+.rbs-calendar-day-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--rbs-orange);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-left: 0.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgb(248 250 252);
+  padding-bottom: 0.5rem;
+}
+
+.rbs-calendar-booking {
+  padding: 0.5rem;
+  background-color: rgb(239 246 255);
+  font-size: 10px;
+  font-weight: 900;
+  font-style: italic;
+  color: var(--rbs-blue);
+  border-radius: 0.75rem;
+  border: 1px solid rgb(219 234 254);
+}
+
+/* --- LOCKPLAN: FILTER CARD --- */
+.rbs-lockplan-filter-card {
+  background-color: white;
+  border-radius: 1rem;
+  border: 1px solid rgb(241 245 249);
+  padding: 1.5rem;
+}
+
+/* --- LOCKPLAN: BUILDING TITLE --- */
+.rbs-lockplan-building-title {
+  font-size: 1.25rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  color: var(--rbs-blue);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* --- LOCKPLAN: TABLE COLUMNS --- */
+.rbs-lockplan-col-room {
+  width: 20%;
+}
+
+.rbs-lockplan-col-info {
+  width: 15%;
+}
+
+.rbs-lockplan-col-schedule {
+  width: 50%;
+}
+
+/* --- LOCKPLAN: TABLE CONTENT --- */
+.rbs-lockplan-roomname {
+  font-weight: 900;
+  color: var(--rbs-blue);
+}
+
+.rbs-lockplan-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rbs-lockplan-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rbs-lockplan-badge-available {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background-color: rgb(220 252 231);
+  color: rgb(21 128 61);
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  border: 1px solid rgb(187 247 208);
+}
+
+.rbs-lockplan-badge-occupied {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background-color: rgb(254 226 226);
+  color: rgb(185 28 28);
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  border: 1px solid rgb(254 202 202);
+}
+
+/* --- LOCKPLAN: EMPTY STATES --- */
+.rbs-lockplan-empty-row {
+  text-align: center;
+  color: rgb(148 163 184);
+  font-style: italic;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.rbs-lockplan-no-data {
+  text-align: center;
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+  color: rgb(148 163 184);
+  font-style: italic;
+}
+
+.rbs-lockplan-empty-icon {
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1rem;
+  opacity: 0.2;
+}
+
+/* --- SPERRPLAN: MOBILE SCALING (< 640px) --- */
+@media (max-width: 640px) {
+  /* Reduziert Schrift und Abstände, damit 4 Spalten auf 350px passen */
+  .rbs-lockplan-table {
+    font-size: 10px !important;
+  }
+  
+  .rbs-lockplan-table th, 
+  .rbs-lockplan-table td {
+    padding: 0.75rem 0.4rem !important; /* Extrem schmale Paddings */
+    white-space: nowrap;
   }
 
-  .admin-table th,
-  .admin-table td {
-    @apply px-3 py-3;
+  .rbs-lockplan-badge-open, 
+  .rbs-lockplan-badge-close {
+    padding: 0.25rem 0.4rem !important;
+    font-size: 8px !important;
+    gap: 0.25rem !important;
+  }
+
+  .rbs-lockplan-cell-content {
+    gap: 0.25rem !important;
   }
 }
 
-/* ========================================
-   ENDE ADMIN PAGE
-   ======================================== */
+/* --- SPERRPLAN: PRINT OPTIMIZATION --- */
+/* --- PRINT OPTIMIZATION --- */
+@media print {
+  @page {
+    size: portrait;
+    margin: 3cm; /* Heiliger Standard: 3cm Ränder für Dokumente */
+  }
+
+  /* KRITISCH: Erzwingt Farbdruck für Buchungs-Bubbles */
+  .rbs-timeline-booking, 
+  .rbs-timeline-booking.checked-in {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important; /* Das ist der Standard */
+  }
+
+  .no-print, 
+  .rbs-navbar, 
+  .rbs-sidebar, 
+  .rbs-planning-toggle-wrapper, 
+  .rbs-lockplan-filter-card,
+  .rbs-btn-action,
+  .rbs-planning-nav-btn {
+    display: none !important;
+  }
+
+  .rbs-page-wrapper { padding: 0 !important; }
+  .rbs-admin-table-container { border: 1px solid #eee !important; box-shadow: none !important; }
+}
