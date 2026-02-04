@@ -211,11 +211,10 @@ export default function BookingModal({
           const foundAlt = rooms
             .filter(
               (r) =>
-                r.building_id === currentRoom.building_id &&
+                r.building_id === currentRoom.building_id && 
                 r.id !== currentRoom.id &&
                 r.is_active &&
-                r.capacity >= reqCap &&
-                selectedEquipment.every((eqId) => r.equipment?.includes(eqId)),
+                r.capacity >= currentRoom.capacity 
             )
             .sort((a, b) => a.capacity - b.capacity)
             .find(
