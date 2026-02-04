@@ -448,7 +448,7 @@
 
 .rbs-label,
 .mci-label {
-  @apply block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2;
+  @apply block text-[10px] font-black text-gray-600 uppercase tracking-widest ml-1 mb-2;
 }
 
 /* TIME PICKER (wie Filter in Rooms) */

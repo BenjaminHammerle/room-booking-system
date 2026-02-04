@@ -203,7 +203,8 @@ export default function RoomBookingPage() {
               .filter((r) => r.building)
               .map((r) => [r.building.id, r.building]),
           ).values(),
-        ) as any[],
+        ) 
+        .sort((a: any, b: any) => a.name.localeCompare(b.name)) as any[]
       );
     }
     if (profileRes.data) {
@@ -606,7 +607,9 @@ export default function RoomBookingPage() {
                       new Set(
                         rooms.map((r) => r.seating_arrangement).filter(Boolean),
                       ),
-                    ).map((s: any) => (
+                    )
+                    .sort((a: any, b: any) => t(a).localeCompare(t(b)))
+                    .map((s: any) => (
                       <option key={s} value={s}>
                         {t(s)}
                       </option>
