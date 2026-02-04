@@ -288,27 +288,37 @@ export default function ReservationsPage() {
           (b.booking_date === todayStr &&
             timeToMinutes(b.start_time) + b.duration <= currentMin);
 
-        // HEILIGES GEBOT: Datums-Filter als oberste Instanz (gilt für alle Tabs)
+        // 1. Datums-Filter (Oberste Instanz)
         if (filterDate && b.booking_date !== filterDate) return false;
 
+        // 2. Status-Filter (HEILIGES GEBOT: Nur bei Mismatch abbrechen, kein vorzeitiger Erfolg!)
         if (filterStatus === "open") {
-          return b.status === BOOKING_STATUS.ACTIVE && !isPast;
+          if (!(b.status === BOOKING_STATUS.ACTIVE && !isPast)) return false;
+        } else if (filterStatus === "finished") {
+          if (
+            !(
+              (b.status === BOOKING_STATUS.ACTIVE && isPast) ||
+              b.status === BOOKING_STATUS.RELEASED
+            )
+          )
+            return false;
+        } else if (filterStatus === "cancelled") {
+          if (b.status !== BOOKING_STATUS.CANCELLED) return false;
         }
-        if (filterStatus === "finished") {
-          return (
-            (b.status === BOOKING_STATUS.ACTIVE && isPast) ||
-            b.status === BOOKING_STATUS.RELEASED
-          );
-        }
-        if (filterStatus === "cancelled") {
-          return b.status === BOOKING_STATUS.CANCELLED;
-        }
+        // Bei "all" wird dieser Block einfach übersprungen -> alle Stati bleiben im Rennen
 
+        // 3. Raum-Filter
         if (filterRoom !== "all" && b.room_id !== filterRoom) return false;
+
+        // 4. Gebäude-Filter
         if (filterBuilding !== "all" && room?.building_id !== filterBuilding)
           return false;
+
+        // 5. User-Filter (für Admin)
+        // Hinweis: Dieser Filter steht standardmäßig auf DEINER ID!
         if (isAdmin && filterUser !== "all" && b.user_id !== filterUser)
           return false;
+
         return true;
       })
       .sort((a, b) => {
@@ -316,7 +326,6 @@ export default function ReservationsPage() {
         if (dateCompare !== 0) return dateCompare;
         return a.start_time.localeCompare(b.start_time);
       });
-    // HEILIGES GEBOT: filterDate muss hier zwingend rein!
   }, [
     bookings,
     filterStatus,
@@ -430,7 +439,9 @@ export default function ReservationsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mci-label">{t("filter_time_label") || "Datum"}</label>
+                  <label className="mci-label">
+                    {t("filter_time_label") || "Datum"}
+                  </label>
                   <div className="relative group">
                     <input
                       type="date"
@@ -439,7 +450,7 @@ export default function ReservationsPage() {
                       className="mci-input"
                     />
                     {filterDate && (
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.preventDefault();
                           setFilterDate("");
