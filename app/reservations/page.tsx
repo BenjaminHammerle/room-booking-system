@@ -50,6 +50,7 @@ import {
   Info,
   ChevronUp,
   MoreHorizontal,
+  CircleX,
 } from "lucide-react";
 
 export default function ReservationsPage() {
@@ -76,6 +77,7 @@ export default function ReservationsPage() {
   const [filterRoom, setFilterRoom] = useState("all");
   const [filterUser, setFilterUser] = useState("all");
   const [filterBuilding, setFilterBuilding] = useState("all");
+  const [filterDate, setFilterDate] = useState("");
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<any>(null);
@@ -273,27 +275,35 @@ export default function ReservationsPage() {
     let list = isAdmin
       ? bookings
       : bookings.filter((b) => b.user_id === user?.id);
+
     return list
       .filter((b) => {
         const room = rooms.find((r) => r.id === b.room_id);
         const now = new Date();
         const todayStr = now.toISOString().split("T")[0];
         const currentMin = now.getHours() * 60 + now.getMinutes();
+
         const isPast =
           b.booking_date < todayStr ||
           (b.booking_date === todayStr &&
-            timeToMinutes(b.start_time) + b.duration * 60 <= currentMin);
-        if (
-          filterStatus === "open" &&
-          (isPast || b.status !== BOOKING_STATUS.ACTIVE)
-        )
-          return false;
-        if (filterStatus === "finished" && !isPast) return false;
-        if (
-          filterStatus === "cancelled" &&
-          b.status !== BOOKING_STATUS.CANCELLED
-        )
-          return false;
+            timeToMinutes(b.start_time) + b.duration <= currentMin);
+
+        // HEILIGES GEBOT: Datums-Filter als oberste Instanz (gilt für alle Tabs)
+        if (filterDate && b.booking_date !== filterDate) return false;
+
+        if (filterStatus === "open") {
+          return b.status === BOOKING_STATUS.ACTIVE && !isPast;
+        }
+        if (filterStatus === "finished") {
+          return (
+            (b.status === BOOKING_STATUS.ACTIVE && isPast) ||
+            b.status === BOOKING_STATUS.RELEASED
+          );
+        }
+        if (filterStatus === "cancelled") {
+          return b.status === BOOKING_STATUS.CANCELLED;
+        }
+
         if (filterRoom !== "all" && b.room_id !== filterRoom) return false;
         if (filterBuilding !== "all" && room?.building_id !== filterBuilding)
           return false;
@@ -302,19 +312,18 @@ export default function ReservationsPage() {
         return true;
       })
       .sort((a, b) => {
-        // HEILIGES GEBOT: Sekundäre Sortierung nach Uhrzeit
         const dateCompare = a.booking_date.localeCompare(b.booking_date);
-        if (dateCompare !== 0) return dateCompare; // Wenn Datum unterschiedlich: Sortiere nach Datum
-
-        // Wenn gleiches Datum: Sortiere nach Startzeit
+        if (dateCompare !== 0) return dateCompare;
         return a.start_time.localeCompare(b.start_time);
       });
+    // HEILIGES GEBOT: filterDate muss hier zwingend rein!
   }, [
     bookings,
     filterStatus,
     filterRoom,
     filterUser,
     filterBuilding,
+    filterDate,
     isAdmin,
     rooms,
     user,
@@ -419,6 +428,29 @@ export default function ReservationsPage() {
                       {t("archiv_opt_cancelled")}
                     </option>
                   </select>
+                </div>
+                <div>
+                  <label className="mci-label">{t("filter_time_label") || "Datum"}</label>
+                  <div className="relative group">
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className="mci-input"
+                    />
+                    {filterDate && (
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setFilterDate("");
+                        }}
+                        /* z-index erhöht, damit der Klick vor dem unsichtbaren Browser-Icon landet */
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 z-10 transition-colors"
+                      >
+                        <CircleX size={20} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="mci-label">
