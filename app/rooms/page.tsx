@@ -72,6 +72,18 @@ export default function RoomBookingPage() {
     return () => window.removeEventListener("resize", checkDesktop);
   }, []);
 
+  // HEILIGES GEBOT: Background Scroll Lock für das Profil-Modal
+  useEffect(() => {
+    if (showSettingsModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showSettingsModal]);
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     if (now.getHours() >= APP_CONFIG.SMART_TIME_THRESHOLD_HOUR) {
@@ -238,11 +250,16 @@ export default function RoomBookingPage() {
       );
     const current = dayBookings.find((b) => {
       const start = timeToMinutes(b.start_time);
-      const end = start + b.duration * 60;
+      // HEILIGES GEBOT: duration sind bereits Minuten, keine Multiplikation nötig!
+      const end = start + b.duration;
       return refMin >= start && refMin < end;
     });
     if (current) {
-      const endT = getEndTimeParts(current.start_time, current.duration).full;
+      // HEILIGES GEBOT: getEndTimeParts erwartet Stunden als Float
+      const endT = getEndTimeParts(
+        current.start_time,
+        current.duration / 60,
+      ).full;
       return {
         type: "occupied",
         isOccupiedNow: true,
@@ -437,214 +454,217 @@ export default function RoomBookingPage() {
                 <Filter size={20} /> {t("filter_title")}
               </div>
               <div className="px-4 lg:px-6 pt-2 pb-4 lg:pb-6 space-y-6">
-              <div className="mci-field-group">
-                <label className="mci-label">{t("filter_search_label")}</label>
-                <input
-                  type="text"
-                  placeholder={t("filter_search_placeholder")}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="mci-input"
-                />
-              </div>
-              <div className="mci-field-group">
-                <label className="mci-label">{t("filter_time_label")}</label>
-                <div className="flex items-center gap-2 mb-2">
-                  <button
-                    onClick={() => {
-                      const d = new Date(selectedDate);
-                      d.setDate(d.getDate() - 1);
-                      if (
-                        d.toISOString().split("T")[0] >=
-                        nowComp.toISOString().split("T")[0]
-                      )
-                        setSelectedDate(d.toISOString().split("T")[0]);
-                    }}
-                    className="mci-step-btn"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    min={nowComp.toISOString().split("T")[0]}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="mci-input !text-center flex-1 min-w-0 !px-2"
-                  />
-                  <button
-                    onClick={() => {
-                      const d = new Date(selectedDate);
-                      d.setDate(d.getDate() + 1);
-                      setSelectedDate(d.toISOString().split("T")[0]);
-                    }}
-                    className="mci-step-btn"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <select
-                    value={selectedTime.split(":")[0]}
-                    onChange={(e) =>
-                      setSelectedTime(
-                        `${e.target.value}:${selectedTime.split(":")[1]}`,
-                      )
-                    }
-                    className="mci-select text-center flex-1"
-                  >
-                    {Array.from({ length: 17 }, (_, i) =>
-                      (i + 7).toString().padStart(2, "0"),
-                    ).map((h) => (
-                      <option
-                        key={h}
-                        value={h}
-                        disabled={isToday && parseInt(h) < currentHour}
-                      >
-                        {h}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="font-bold">:</span>
-                  <select
-                    value={selectedTime.split(":")[1]}
-                    onChange={(e) =>
-                      setSelectedTime(
-                        `${selectedTime.split(":")[0]}:${e.target.value}`,
-                      )
-                    }
-                    className="mci-select text-center flex-1"
-                  >
-                    {["00", "15", "30", "45"].map((m) => (
-                      <option
-                        key={m}
-                        value={m}
-                        disabled={
-                          isToday &&
-                          parseInt(selectedTime.split(":")[0]) ===
-                            currentHour &&
-                          parseInt(m) <= currentMin
-                        }
-                      >
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="mci-field-group">
-                <label className="mci-label">{t("filter_cap")}</label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max={999}
-                    value={minCapacity}
-                    onChange={(e) => setMinCapacity(e.target.value)}
-                    className="filter-capacity-bar"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    max="999"
-                    maxLength={3}
-                    value={minCapacity}
-                    onChange={(e) => {
-                      const val = Math.max(
-                        0,
-                        Math.min(999, parseInt(e.target.value) || 0),
-                      );
-                      setMinCapacity(val.toString());
-                    }}
-                    className="filter-capacity-number"
-                    style={{ width: "50px" }}
-                  />
-                </div>
-              </div>
-              <div className="mci-field-group">
-                <label className="mci-label">{t("filter_location")}</label>
-                <select
-                  value={selectedBuildingId}
-                  onChange={(e) => setSelectedBuildingId(e.target.value)}
-                  className="mci-select"
-                >
-                  <option value="all">{t("filter_all")}</option>
-                  {buildings.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mci-field-group">
-                <label className="mci-label">{t("filter_seating")}</label>
-                <select
-                  value={selectedSeating}
-                  onChange={(e) => setSelectedSeating(e.target.value)}
-                  className="mci-select"
-                >
-                  <option value="all">{t("filter_all")}</option>
-                  {Array.from(
-                    new Set(
-                      rooms.map((r) => r.seating_arrangement).filter(Boolean),
-                    ),
-                  ).map((s: any) => (
-                    <option key={s} value={s}>
-                      {t(s)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mci-field-group">
-                <label className="mci-label">{t("filter_equip")}</label>
-                <div className="flex flex-col gap-1 mt-2">
-                  <label
-                    className={`mci-filter-item accessible-filter ${onlyAccessible ? "active" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={onlyAccessible}
-                      onChange={() => setOnlyAccessible(!onlyAccessible)}
-                      className="filter-checkbox"
-                    />
-                    <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                      <Accessibility size={12}/>{t("label_accessible")}
-                    </span>
+                <div className="mci-field-group">
+                  <label className="mci-label">
+                    {t("filter_search_label")}
                   </label>
-                  {equipmentList.map((eq) => (
-                    <label key={eq.id} className="mci-filter-item">
+                  <input
+                    type="text"
+                    placeholder={t("filter_search_placeholder")}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="mci-input"
+                  />
+                </div>
+                <div className="mci-field-group">
+                  <label className="mci-label">{t("filter_time_label")}</label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <button
+                      onClick={() => {
+                        const d = new Date(selectedDate);
+                        d.setDate(d.getDate() - 1);
+                        if (
+                          d.toISOString().split("T")[0] >=
+                          nowComp.toISOString().split("T")[0]
+                        )
+                          setSelectedDate(d.toISOString().split("T")[0]);
+                      }}
+                      className="mci-step-btn"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      min={nowComp.toISOString().split("T")[0]}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="mci-input !text-center flex-1 min-w-0 !px-2"
+                    />
+                    <button
+                      onClick={() => {
+                        const d = new Date(selectedDate);
+                        d.setDate(d.getDate() + 1);
+                        setSelectedDate(d.toISOString().split("T")[0]);
+                      }}
+                      className="mci-step-btn"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <select
+                      value={selectedTime.split(":")[0]}
+                      onChange={(e) =>
+                        setSelectedTime(
+                          `${e.target.value}:${selectedTime.split(":")[1]}`,
+                        )
+                      }
+                      className="mci-select text-center flex-1"
+                    >
+                      {Array.from({ length: 17 }, (_, i) =>
+                        (i + 7).toString().padStart(2, "0"),
+                      ).map((h) => (
+                        <option
+                          key={h}
+                          value={h}
+                          disabled={isToday && parseInt(h) < currentHour}
+                        >
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="font-bold">:</span>
+                    <select
+                      value={selectedTime.split(":")[1]}
+                      onChange={(e) =>
+                        setSelectedTime(
+                          `${selectedTime.split(":")[0]}:${e.target.value}`,
+                        )
+                      }
+                      className="mci-select text-center flex-1"
+                    >
+                      {["00", "15", "30", "45"].map((m) => (
+                        <option
+                          key={m}
+                          value={m}
+                          disabled={
+                            isToday &&
+                            parseInt(selectedTime.split(":")[0]) ===
+                              currentHour &&
+                            parseInt(m) <= currentMin
+                          }
+                        >
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="mci-field-group">
+                  <label className="mci-label">{t("filter_cap")}</label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max={150}
+                      value={minCapacity}
+                      onChange={(e) => setMinCapacity(e.target.value)}
+                      className="filter-capacity-bar"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      max="150"
+                      maxLength={3}
+                      value={minCapacity}
+                      onChange={(e) => {
+                        const val = Math.max(
+                          0,
+                          Math.min(150, parseInt(e.target.value) || 0),
+                        );
+                        setMinCapacity(val.toString());
+                      }}
+                      className="filter-capacity-number"
+                      style={{ width: "50px" }}
+                    />
+                  </div>
+                </div>
+                <div className="mci-field-group">
+                  <label className="mci-label">{t("filter_location")}</label>
+                  <select
+                    value={selectedBuildingId}
+                    onChange={(e) => setSelectedBuildingId(e.target.value)}
+                    className="mci-select"
+                  >
+                    <option value="all">{t("filter_all")}</option>
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mci-field-group">
+                  <label className="mci-label">{t("filter_seating")}</label>
+                  <select
+                    value={selectedSeating}
+                    onChange={(e) => setSelectedSeating(e.target.value)}
+                    className="mci-select"
+                  >
+                    <option value="all">{t("filter_all")}</option>
+                    {Array.from(
+                      new Set(
+                        rooms.map((r) => r.seating_arrangement).filter(Boolean),
+                      ),
+                    ).map((s: any) => (
+                      <option key={s} value={s}>
+                        {t(s)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mci-field-group">
+                  <label className="mci-label">{t("filter_equip")}</label>
+                  <div className="flex flex-col gap-1 mt-2">
+                    <label
+                      className={`mci-filter-item accessible-filter ${onlyAccessible ? "active" : ""}`}
+                    >
                       <input
                         type="checkbox"
-                        checked={selectedEquipment.includes(eq.id)}
-                        onChange={() =>
-                          setSelectedEquipment((prev) =>
-                            prev.includes(eq.id)
-                              ? prev.filter((id) => id !== eq.id)
-                              : [...prev, eq.id],
-                          )
-                        }
+                        checked={onlyAccessible}
+                        onChange={() => setOnlyAccessible(!onlyAccessible)}
                         className="filter-checkbox"
                       />
-                      <span className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                        {getEquipmentIcon(eq.id)} {t("equip_" + eq.id)}
+                      <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
+                        <Accessibility size={12} />
+                        {t("label_accessible")}
                       </span>
                     </label>
-                  ))}
+                    {equipmentList.map((eq) => (
+                      <label key={eq.id} className="mci-filter-item">
+                        <input
+                          type="checkbox"
+                          checked={selectedEquipment.includes(eq.id)}
+                          onChange={() =>
+                            setSelectedEquipment((prev) =>
+                              prev.includes(eq.id)
+                                ? prev.filter((id) => id !== eq.id)
+                                : [...prev, eq.id],
+                            )
+                          }
+                          className="filter-checkbox"
+                        />
+                        <span className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                          {getEquipmentIcon(eq.id)} {t("equip_" + eq.id)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setMinCapacity("0");
-                  setSelectedEquipment([]);
-                  setOnlyAccessible(false);
-                  setSelectedBuildingId("all");
-                  setSelectedSeating("all");
-                }}
-                className="filter-reset-btn"
-              >
-                <XCircle size={14} className="inline mr-2" />{" "}
-                {t("filter_reset_btn")}
-              </button>
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setMinCapacity("0");
+                    setSelectedEquipment([]);
+                    setOnlyAccessible(false);
+                    setSelectedBuildingId("all");
+                    setSelectedSeating("all");
+                  }}
+                  className="filter-reset-btn"
+                >
+                  <XCircle size={14} className="inline mr-2" />{" "}
+                  {t("filter_reset_btn")}
+                </button>
               </div>
             </div>
           </div>
@@ -768,40 +788,38 @@ export default function RoomBookingPage() {
         </div>
       </main>
 
-      {/* Settings Modal */}
+      {/* Settings Modal - Mobile & Layout Sanierung */}
       {showSettingsModal && (
         <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-xl animate-in zoom-in-95">
-            <div className="mci-modal-header text-white">
+          <div className="mci-modal-card max-w-xl">
+            <div className="mci-modal-header">
               <div className="flex flex-col text-left">
-                <p className="text-xs font-black opacity-70 uppercase italic">
-                  {t("nav_profile")}
-                </p>
-                <h3 className="text-4xl font-black uppercase italic tracking-tighter">
+                <p className="mci-modal-subtitle">{t("nav_profile")}</p>
+                <h3 className="mci-modal-title">
                   {firstName} {lastName}
                 </h3>
               </div>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="bg-white/10 p-3 rounded-full hover:rotate-90 transition-all"
+                className="mci-modal-close"
               >
                 <X size={24} />
               </button>
             </div>
-            <div className="mci-modal-body p-10 space-y-6 text-left">
-              {/* Email ReadOnly ganz oben */}
-              <div>
+
+            <div className="mci-modal-body">
+              <div className="mci-modal-form-group">
                 <label className="mci-label">E-MAIL</label>
                 <input
                   value={user?.email || ""}
                   readOnly
                   disabled
-                  className="mci-input !bg-gray-100 !cursor-not-allowed opacity-60"
-                  title="E-Mail kann nicht geändert werden"
+                  className="mci-input !bg-slate-100 !cursor-not-allowed opacity-60"
                 />
               </div>
-              <div className="mci-grid-2">
-                <div>
+
+              <div className="mci-modal-form-grid">
+                <div className="mci-modal-form-group">
                   <label className="mci-label">{t("admin_label_fname")}</label>
                   <input
                     value={firstName}
@@ -809,7 +827,7 @@ export default function RoomBookingPage() {
                     className="mci-input"
                   />
                 </div>
-                <div>
+                <div className="mci-modal-form-group">
                   <label className="mci-label">{t("admin_label_lname")}</label>
                   <input
                     value={lastName}
@@ -818,7 +836,8 @@ export default function RoomBookingPage() {
                   />
                 </div>
               </div>
-              <div>
+
+              <div className="mci-modal-form-group">
                 <label className="mci-label">
                   {t("admin_label_password")} ({t("label_new_password")})
                 </label>
@@ -830,11 +849,21 @@ export default function RoomBookingPage() {
                   className="mci-input"
                 />
               </div>
+            </div>
+
+            <div className="mci-modal-footer">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="btn-mci-secondary"
+              >
+                <XCircle size={20} /> <span>{t("archiv_back")}</span>
+              </button>
+              {/* Fix: Icon-Alignment durch explizites justify-center */}
               <button
                 onClick={handleUpdateProfile}
-                className="mci-action-btn-unified !bg-green-600 text-white mt-8 shadow-xl"
+                className="btn-mci-main !justify-center"
               >
-                <Save size={20} /> {t("admin_btn_save")}
+                <Save size={20} /> <span>{t("save_btn")}</span>
               </button>
             </div>
           </div>

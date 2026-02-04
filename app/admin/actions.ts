@@ -1,70 +1,74 @@
-'use server'
+"use server"; // Zwingend erforderlich für Next.js Server Actions
 
-import { createClient } from '@supabase/supabase-js'
-import { revalidatePath } from 'next/cache'
+import { createClient } from "@supabase/supabase-js";
 
+// HEILIGES GEBOT: Nutze den Service_Role_Key für Admin-Aktionen (Auth-Management)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! //
-)
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // Dieser Key darf NIEMALS im Frontend landen!
+);
 
-export async function updateUserAdmin(id: string, data: { email?: string, first_name?: string, last_name?: string, is_admin?: boolean }) {
-  // 1. Auth-Daten (E-Mail) aktualisieren
-  if (data.email) {
-    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, { email: data.email });
-    if (authError) throw authError;
+export async function createNewUserAdmin(userData: any) {
+  try {
+    // 1. User im Supabase Auth-System anlegen
+    // Dies generiert die neue UUID
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: userData.email,
+      password: userData.password,
+      email_confirm: true,
+      user_metadata: { 
+        first_name: userData.first_name, 
+        last_name: userData.last_name 
+      }
+    });
+
+    if (authError) return { error: authError.message };
+
+    // 2. HEILIGES GEBOT: Nutze UPSERT statt INSERT
+    // Wir nehmen die UUID von oben (authUser.user.id).
+    // Falls der DB-Trigger das Profil bereits angelegt hat, überschreiben wir es einfach.
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .upsert({
+        id: authUser.user.id, // Die vom System vergebene UUID
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        email: userData.email,
+        is_admin: userData.is_admin
+      }, { onConflict: 'id' }); // Verhindert den PKEY-Fehler!
+
+    if (profileError) return { error: profileError.message };
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
   }
-
-  // 2. Profil-Daten aktualisieren
-  const { error: profError } = await supabaseAdmin
-    .from('profiles')
-    .update({ 
-      first_name: data.first_name, 
-      last_name: data.last_name, 
-      is_admin: data.is_admin,
-      email: data.email //
-    })
-    .eq('id', id);
-
-  if (profError) throw profError;
-  
-  revalidatePath('/admin');
-  return { success: true };
 }
 
-export async function createNewUserAdmin(data: any) {
-  // 1. User in Auth anlegen
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: data.email,
-    password: data.password,
-    email_confirm: true,
-    user_metadata: { 
-      first_name: data.first_name, 
-      last_name: data.last_name,
-      is_admin: data.is_admin 
-    }
-  });
+export async function updateUserAdmin(userId: string, userData: any) {
+  try {
+    // 1. Auth-Email/Passwort aktualisieren (falls nötig)
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      email: userData.email,
+      // Passwort nur ändern wenn ein neues mitgegeben wurde
+      ...(userData.password && { password: userData.password })
+    });
 
-  // Falls der Auth-User schon existiert, fangen wir das hier ab
-  if (authError) throw authError;
+    if (authError) return { error: authError.message };
 
-  // 2. Profil in der Datenbank anlegen (mit UPSERT statt INSERT)
-  if (authData.user) {
-    const { error: profError } = await supabaseAdmin
-      .from('profiles')
-      .upsert([ // <--- KORREKTUR: upsert statt insert
-        {
-          id: authData.user.id,
-          email: data.email,
-          first_name: data.first_name,
-          last_name: data.last_name,
-          is_admin: data.is_admin
-        }
-      ], { onConflict: 'id' }); // Sagt der DB: Bei ID-Konflikt einfach überschreiben
+    // 2. Profildaten in DB aktualisieren
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        email: userData.email,
+        is_admin: userData.is_admin
+      })
+      .eq("id", userId);
 
-    if (profError) throw profError;
+    if (profileError) return { error: profileError.message };
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
   }
-
-  revalidatePath('/admin');
-  return { success: true };
 }

@@ -34,7 +34,6 @@ import {
   ChevronDown,
   History,
   Edit3,
-  UserIcon,
   CheckCircle,
   Repeat,
   Layers,
@@ -261,7 +260,6 @@ export default function ReservationsPage() {
       setDbTrans(tMap);
     }
     setIsAdmin(profileRes.data?.is_admin || false);
-    setFilterUser(session.user.id);
     setRooms(roomsRes.data || []);
     setProfiles(profilesRes.data || []);
     setBuildings(buildRes.data || []);
@@ -301,14 +299,7 @@ export default function ReservationsPage() {
           return false;
         return true;
       })
-      .sort((a, b) => {
-        // HEILIGES GEBOT: Sekundäre Sortierung nach Uhrzeit
-        const dateCompare = a.booking_date.localeCompare(b.booking_date);
-        if (dateCompare !== 0) return dateCompare; // Wenn Datum unterschiedlich: Sortiere nach Datum
-
-        // Wenn gleiches Datum: Sortiere nach Startzeit
-        return a.start_time.localeCompare(b.start_time);
-      });
+      .sort((a, b) => a.booking_date.localeCompare(b.booking_date));
   }, [
     bookings,
     filterStatus,
@@ -505,7 +496,6 @@ export default function ReservationsPage() {
                     bk.status !== BOOKING_STATUS.CANCELLED,
                 )
                 .sort((a, b) => a.booking_date.localeCompare(b.booking_date));
-              const bookingUser = profiles.find((p) => p.id === b.user_id);
               const isExpanded = expandedCards.has(b.id);
               const isCancelled = b.status === BOOKING_STATUS.CANCELLED;
               const isReleased =
@@ -519,12 +509,9 @@ export default function ReservationsPage() {
               const isFinished =
                 b.booking_date < new Date().toISOString().split("T")[0] ||
                 (b.booking_date === new Date().toISOString().split("T")[0] &&
-                  // HEILIGES GEBOT: b.duration direkt addieren (Minuten-Schema)
-                  timeToMinutes(b.start_time) + b.duration <=
+                  timeToMinutes(b.start_time) + b.duration * 60 <=
                     new Date().getHours() * 60 + new Date().getMinutes());
-
-              // Korrektur: getEndTimeParts benötigt Stunden (Minuten / 60)
-              const { hh, mm } = getEndTimeParts(b.start_time, b.duration / 60);
+              const { hh, mm } = getEndTimeParts(b.start_time, b.duration);
               const formattedDate = new Date(b.booking_date).toLocaleDateString(
                 lang,
                 {
@@ -580,19 +567,6 @@ export default function ReservationsPage() {
                         <p className="res-header-meta text-[var(--mci-blue)]">
                           {building?.name} • {room?.floor}. {t("label_floor")}
                         </p>
-
-                        <div className="flex items-center gap-2 mt-1 text-[10px] font-black uppercase italic text-slate-400">
-                          <UserIcon
-                            size={12}
-                            className="text-[var(--rbs-orange)]"
-                          />
-                          <span>
-                            {bookingUser
-                              ? `${bookingUser.first_name} ${bookingUser.last_name}`
-                              : b.user_email}
-                          </span>
-                        </div>
-
                         <div className="flex flex-wrap gap-2 mt-3">
                           <div className="mci-info-tag !px-3">
                             <Calendar size={14} className="text-orange-500" />

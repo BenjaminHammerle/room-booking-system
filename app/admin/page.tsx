@@ -154,11 +154,16 @@ export default function AdminPage() {
 
   // HEILIGES GEBOT: Business Logic auf Minuten-Schema angepasst
   const stats = useMemo(() => {
+    // Basis für Dauer-Statistiken sind weiterhin alle aktiven Buchungen
     const activeB = bookings.filter((b) => b.status === BOOKING_STATUS.ACTIVE);
-    const totalDurMinutes = activeB.reduce(
-      (sum, b) => sum + (b.duration || 0),
-      0,
-    );
+    const totalDurMin = activeB.reduce((sum, b) => sum + (b.duration || 0), 0);
+
+    // HEILIGES GEBOT: Check-In Performance Logik (Checked-In vs. Released)
+    // Wir zählen nur jene, die bereits ein Ergebnis haben (Eingecheckt ODER wegen Nicht-Erscheinen freigegeben)
+    const checkedInCount = bookings.filter((b) => b.is_checked_in).length;
+    const releasedCount = bookings.filter((b) => b.status === BOOKING_STATUS.RELEASED).length;
+    const performanceDenominator = checkedInCount + releasedCount;
+
     const topLifetime = rooms
       .map((r) => ({
         name: r.name,
@@ -168,9 +173,11 @@ export default function AdminPage() {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
+
     const oneWeekAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
+
     const topLastWeek = rooms
       .map((r) => ({
         name: r.name,
@@ -183,19 +190,15 @@ export default function AdminPage() {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
+
     return {
-      checkInRate:
-        bookings.length > 0
-          ? Math.round(
-              (bookings.filter((b) => b.is_checked_in).length /
-                bookings.length) *
-                100,
-            )
-          : 0,
+      // Berechnung nur auf Basis abgeschlossener/gestarteter Vorgänge
+      checkInRate: performanceDenominator > 0
+        ? Math.round((checkedInCount / performanceDenominator) * 100)
+        : 0,
+      // HEILIGES GEBOT: Umrechnung Minuten (DB) -> Stunden (UI)
       avgDuration:
-        activeB.length > 0
-          ? (totalDurMinutes / activeB.length / 60).toFixed(1)
-          : "0",
+        activeB.length > 0 ? (totalDurMin / activeB.length / 60).toFixed(1) : "0",
       totalBookings: activeB.length,
       topLifetime,
       topLastWeek,
@@ -292,12 +295,19 @@ export default function AdminPage() {
 
   const handleUpdateUser = async () => {
     setLoading(true);
-    const res: any = await updateUserAdmin(editUser.id, editUser);
-    if (!res?.error) {
-      setShowUserEditModal(false);
-      loadAdminData();
-    } else {
-      alert(res.error);
+    try {
+      const res: any = await updateUserAdmin(editUser.id, editUser);
+      if (!res?.error) {
+        setShowUserEditModal(false);
+        await loadAdminData(); // Warten auf den Refresh
+      } else {
+        alert(res.error);
+      }
+    } catch (err) {
+      console.error("User Update Error:", err);
+      alert("Fehler beim Speichern des Nutzers.");
+    } finally {
+      // HEILIGES GEBOT: Spinner wird IMMER gestoppt
       setLoading(false);
     }
   };
@@ -305,19 +315,25 @@ export default function AdminPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const res: any = await createNewUserAdmin(newUser);
-    if (!res?.error) {
-      setShowAddUserModal(false);
-      setNewUser({
-        email: "",
-        password: "",
-        first_name: "",
-        last_name: "",
-        is_admin: false,
-      });
-      loadAdminData();
-    } else {
-      alert(res.error);
+    try {
+      const res: any = await createNewUserAdmin(newUser);
+      if (!res?.error) {
+        setShowAddUserModal(false);
+        setNewUser({
+          email: "",
+          password: "",
+          first_name: "",
+          last_name: "",
+          is_admin: false,
+        });
+        await loadAdminData();
+      } else {
+        alert(res.error);
+      }
+    } catch (err) {
+      console.error("User Create Error:", err);
+      alert("Fehler beim Anlegen des Nutzers.");
+    } finally {
       setLoading(false);
     }
   };
@@ -571,7 +587,9 @@ export default function AdminPage() {
                           }
                           className="rbs-select"
                         >
-                          <option value="">{t("admin_label_building_select")}</option>
+                          <option value="">
+                            {t("admin_label_building_select")}
+                          </option>
                           {buildings.map((b) => (
                             <option key={b.id} value={b.id}>
                               {b.name}
@@ -692,7 +710,9 @@ export default function AdminPage() {
                         }
                         className="rbs-select"
                       >
-                        <option value="">{t("admin_label_building_select")}</option>
+                        <option value="">
+                          {t("admin_label_building_select")}
+                        </option>
                         {buildings
                           .filter((b) => b.is_active !== false)
                           .map((b) => (

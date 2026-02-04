@@ -375,10 +375,10 @@ export default function RoomModal({
 
             {/* FOOTER - FIXED */}
             <div className="mci-modal-footer shrink-0">
-              <button onClick={onClose} className="mci-modal-btn-secondary">
+              <button onClick={onClose} className="btn-mci-secondary">
                 {t("archiv_back")}
               </button>
-              <button onClick={onSave} className="mci-modal-btn-primary">
+              <button onClick={onSave} className="btn-mci-main">
                 <Save size={18} />
                 {room.id ? t("save_btn") : t("admin_btn_add_room")}
               </button>
