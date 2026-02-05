@@ -472,14 +472,14 @@ export default function BookingModal({
         <div className="mci-modal-body">
           <div className="booking-form-group">
             <label className="mci-label">{t("header_date")}</label>
-            <input
+            <div className='relatve'><input
               type="date"
               value={selectedDate}
               min={todayStrForDisable}
               onChange={(e) => setSelectedDate(e.target.value)}
               disabled={isStartedForDisable}
               className="mci-input"
-            />
+            /></div>
           </div>
           <div className="booking-form-grid">
             <div className="booking-form-group">
