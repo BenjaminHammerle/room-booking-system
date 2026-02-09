@@ -46,7 +46,6 @@
     Roboto,
     sans-serif;
   text-align: left;
-  /*overflow-x: hidden;*/
   padding: 0 1rem 4rem 1rem;
 }
 
@@ -56,9 +55,8 @@
   }
 }
 
-/* NAVBAR - STICKY OHNE @APPLY! */
+/* NAVBAR */
 .rbs-navbar {
-  /* KRITISCH: position MUSS vor anderen properties! */
   position: sticky !important;
   top: 0 !important;
   z-index: 50 !important;
@@ -125,7 +123,7 @@
   font-size: clamp(1.6rem, 5vw, 2.5rem);
 }
 
-/* GLOBAL STATS/COUNT BADGES - EINHEITLICH! */
+/* GLOBAL STATS/COUNT BADGES */
 .rbs-active-count-badge,
 .res-stats-badge,
 .active-count-badge,
@@ -144,9 +142,8 @@
   margin-top: 0.75rem;
 }
 
-/* SIDEBAR & UNITARY BUBBLE PATTERN - STICKY OHNE @APPLY! */
+/* SIDEBAR  */
 .rbs-sidebar {
-  /* KRITISCH: position MUSS vor anderen properties! */
   position: sticky !important;
   z-index: 40 !important;
 
@@ -208,7 +205,6 @@
   }
 }
 
-/* SYNC: Menü-Label Desktop styling */
 .rbs-sidebar-desktop-title {
   display: none;
   align-items: center;
@@ -263,14 +259,12 @@
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   }
 
-  /* Content ist separate bubble - Erlaubt internes Scrollen auf Mobile */
   .rbs-sidebar-content {
     margin-top: 0.5rem;
     border-radius: 2rem;
     border: 1px solid #f1f5f9;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     padding: 1.5rem;
-    /* Hinzugefügt für Mobile-Scroll-Support */
     max-height: 75vh;
     overflow-y: auto;
   }
@@ -361,7 +355,7 @@
 
 .rbs-modal-btn-primary,
 .mci-modal-btn-primary {
-  @apply inline-flex items-center justify-center gap-2 bg-[var(--rbs-blue)] text-white px-6 py-4 rounded-2xl font-black italic tracking-widest shadow-lg hover:brightness-110 transition active:scale-95 whitespace-nowrap border-none;
+  @apply inline-flex items-center justify-center gap-2 bg-[var(--rbs-blue)] text-white px-6 py-4 rounded-2xl uppercase font-black italic tracking-widest shadow-lg hover:brightness-110 transition active:scale-95 whitespace-nowrap border-none;
 }
 
 .rbs-modal-btn-primary:hover:not(:disabled),
@@ -382,7 +376,7 @@
   @apply text-lg font-black uppercase italic text-[var(--rbs-blue)] mb-4 pb-2 border-b-2 border-slate-100;
 }
 
-/* --- 4. GLOBAL UI COMPONENTS --- */
+/* --- GLOBAL UI COMPONENTS --- */
 
 .rbs-filter-title,
 .mci-filter-title {
@@ -438,7 +432,7 @@
   cursor: pointer;
 }
 
-/* --- 5. GLOBAL FORM STYLES --- */
+/* --- GLOBAL FORM STYLES --- */
 .rbs-input,
 .rbs-select,
 .mci-input,
@@ -451,8 +445,8 @@
   @apply block text-[10px] font-black text-gray-600 uppercase tracking-widest ml-1 mb-2;
 }
 
-/* TIME PICKER (wie Filter in Rooms) */
-.mci-time-picker {
+/* TIME PICKER */
+.rbs-time-picker {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -463,7 +457,7 @@
   color: var(--rbs-blue);
 }
 
-.mci-time-select {
+.rbs-time-select {
   background-color: transparent;
   font-weight: 900;
   font-size: 1.5rem; /* 24px wie im Filter */
@@ -474,14 +468,14 @@
   padding: 0;
 }
 
-.mci-time-colon {
+.rbs-time-colon {
   font-weight: 900;
   font-size: 1.5rem; /* 24px */
   color: var(--rbs-blue);
 }
 
-/* STATUS BADGES (für Modal) */
-.mci-status-badge {
+/* STATUS BADGES */
+.rbs-status-badge {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -491,13 +485,13 @@
   border-width: 2px;
 }
 
-.mci-status-conflict {
+.rbs-status-conflict {
   background-color: rgb(254 226 226); /* red-100 */
   color: rgb(185 28 28); /* red-700 */
   border-color: rgb(254 202 202); /* red-200 */
 }
 
-.mci-status-available {
+.rbs-status-available {
   background-color: rgb(220 252 231); /* green-100 */
   color: rgb(21 128 61); /* green-700 */
   border-color: rgb(187 247 208); /* green-200 */
@@ -523,7 +517,7 @@
   @apply w-full h-[3.5rem] flex items-center justify-center gap-3 rounded-[1.25rem] font-black italic uppercase text-[0.7rem] transition-all duration-200 cursor-pointer border-none shadow-md p-4;
 }
 
-/* --- 6. SEMANTISCHE TEXT-KLASSEN --- */
+/* --- TEXT-KLASSEN --- */
 .rbs-text-blue,
 .mci-text-blue {
   color: var(--rbs-blue);
@@ -549,7 +543,7 @@
   @apply font-black tracking-tighter text-[3.5rem] leading-none;
 }
 
-/* --- 7. ANIMATIONEN & UTILITIES --- */
+/* --- ANIMATIONEN & UTILITIES --- */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -593,14 +587,12 @@
   flex-direction: column;
   }
 
-  /* Toggle ist eigene bubble */
   .rbs-sidebar-toggle {
     border-radius: 2rem;
     border: 1px solid #f1f5f9;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   }
 
-  /* Content ist separate bubble */
   .rbs-sidebar-content {
     margin-top: 0.5rem;
     border-radius: 2rem;
@@ -640,7 +632,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   right: 0;
   top: 0;
   width: auto;
-  z-index: 1; /* Bleibt innerhalb des Feldes */
+  z-index: 1;
 }
 
 /* Platz für den CircleX-Button im Archiv-Filter lassen */

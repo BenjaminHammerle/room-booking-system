@@ -1,17 +1,17 @@
-"use server"; // Zwingend erforderlich für Next.js Server Actions
+"use server";
 
 import { createClient } from "@supabase/supabase-js";
 
-// HEILIGES GEBOT: Nutze den Service_Role_Key für Admin-Aktionen (Auth-Management)
+// supabase admin client mit service role key für auth management
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Dieser Key darf NIEMALS im Frontend landen!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// neuen benutzer erstellen
 export async function createNewUserAdmin(userData: any) {
   try {
-    // 1. User im Supabase Auth-System anlegen
-    // Dies generiert die neue UUID
+    // user im auth system anlegen
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: userData.email,
       password: userData.password,
@@ -24,18 +24,16 @@ export async function createNewUserAdmin(userData: any) {
 
     if (authError) return { error: authError.message };
 
-    // 2. HEILIGES GEBOT: Nutze UPSERT statt INSERT
-    // Wir nehmen die UUID von oben (authUser.user.id).
-    // Falls der DB-Trigger das Profil bereits angelegt hat, überschreiben wir es einfach.
+    // profil in datenbank anlegen mit upsert (falls trigger schon profil angelegt hat)
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .upsert({
-        id: authUser.user.id, // Die vom System vergebene UUID
+        id: authUser.user.id,
         first_name: userData.first_name,
         last_name: userData.last_name,
         email: userData.email,
         is_admin: userData.is_admin
-      }, { onConflict: 'id' }); // Verhindert den PKEY-Fehler!
+      }, { onConflict: 'id' });
 
     if (profileError) return { error: profileError.message };
     return { success: true };
@@ -44,18 +42,18 @@ export async function createNewUserAdmin(userData: any) {
   }
 }
 
+// benutzer aktualisieren
 export async function updateUserAdmin(userId: string, userData: any) {
   try {
-    // 1. Auth-Email/Passwort aktualisieren (falls nötig)
+    // auth email/passwort aktualisieren
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       email: userData.email,
-      // Passwort nur ändern wenn ein neues mitgegeben wurde
       ...(userData.password && { password: userData.password })
     });
 
     if (authError) return { error: authError.message };
 
-    // 2. Profildaten in DB aktualisieren
+    // profildaten in db aktualisieren
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .update({

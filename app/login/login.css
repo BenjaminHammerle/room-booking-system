@@ -1,10 +1,6 @@
 @import "tailwindcss";
 
-/* ===========================================
-   LOGIN PAGE - Nutzt globale RBS Klassen
-   =========================================== */
-
-/* Login Container - Full Screen Centered */
+/* login container - zentriert den ganzen login bereich */
 .rbs-login-container {
   min-height: 100vh;
   background-color: var(--rbs-bg);
@@ -16,14 +12,14 @@
   overflow: hidden;
 }
 
-/* Login Card - Hauptkarte */
+/* login karte - das weisse rechteck in der mitte */
 .rbs-login-card {
   background-color: white;
   padding: 2rem;
   border-radius: 3rem;
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   width: 100%;
-  max-width: 28rem; /* 448px */
+  max-width: 28rem;
   border: 1px solid rgb(243 244 246);
   text-align: center;
 }
@@ -34,7 +30,7 @@
   }
 }
 
-/* Login Logo */
+/* mci logo oben auf der karte */
 .rbs-login-logo {
   height: 4rem;
   margin-left: auto;
@@ -49,9 +45,9 @@
   }
 }
 
-/* Login Title */
+/* hauptüberschrift vom login */
 .rbs-login-title {
-  font-size: 1.875rem; /* 30px */
+  font-size: 1.875rem;
   font-weight: 600;
   color: var(--rbs-blue);
   text-transform: uppercase;
@@ -60,15 +56,15 @@
   margin-bottom: 0.5rem;
 }
 
-/* Login Subtitle */
+/* untertitel unter der überschrift */
 .rbs-login-subtitle {
-  color: rgb(148 163 184); /* slate-400 */
+  color: rgb(148 163 184);
   font-weight: 500;
   font-size: 0.875rem;
   margin-bottom: 2.5rem;
 }
 
-/* Login Form */
+/* das eigentliche login formular */
 .rbs-login-form {
   display: flex;
   flex-direction: column;
@@ -76,22 +72,22 @@
   text-align: left;
 }
 
-/* Login Error Box */
+/* fehlerbox wenn login fehlschlägt */
 .rbs-login-error {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: rgb(239 68 68); /* red-500 */
+  color: rgb(239 68 68);
   font-size: 0.75rem;
   font-weight: 700;
-  background-color: rgb(254 242 242); /* red-50 */
+  background-color: rgb(254 242 242);
   padding: 1rem;
   border-radius: 1rem;
-  border: 1px solid rgb(254 226 226); /* red-100 */
+  border: 1px solid rgb(254 226 226);
   font-style: italic;
 }
 
-/* Login Button - erweitert rbs-btn-main */
+/* login button */
 .rbs-login-button {
   width: 100%;
   background-color: var(--rbs-blue);
@@ -123,16 +119,16 @@
   cursor: not-allowed;
 }
 
-/* Login Footer */
+/* footer bereich ganz unten mit sprach toggle */
 .rbs-login-footer {
   margin-top: 2.5rem;
   padding-top: 2rem;
-  border-top: 1px dashed rgb(241 245 249); /* slate-100 */
+  border-top: 1px dashed rgb(241 245 249);
   display: flex;
   justify-content: center;
 }
 
-/* Login Loading State */
+/* loading animation während daten geladen werden */
 .rbs-login-loading {
   height: 100vh;
   display: flex;

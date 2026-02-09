@@ -1,5 +1,7 @@
 "use client";
 
+// react hooks
+
 import { useEffect } from "react";
 import {
   Monitor,
@@ -45,6 +47,7 @@ interface RoomModalProps {
   modalSubtitle?: string;
 }
 
+// room modal komponente
 export default function RoomModal({
   show,
   room,
@@ -76,14 +79,15 @@ export default function RoomModal({
     return () => document.body.classList.remove("modal-open");
   }, [show]);
 
+
+  // modal nur anzeigen wenn aktiv
   if (!show || !room) return null;
 
   return (
-    <div className="mci-modal-overlay animate-in fade-in duration-300">
-      <div className="mci-modal-card animate-in zoom-in-95 duration-300">
-        {/* Modal CONTAINER mit max-h für Mobile Scroll */}
+    <div className="rbs-modal-overlay animate-in fade-in duration-300">
+      <div className="rbs-modal-card animate-in zoom-in-95 duration-300">
         <div className="flex flex-col md:flex-row max-h-[90vh] overflow-hidden">
-          {/* LEFT SIDE: BILD */}
+          
           <div className="md:w-4/12 bg-slate-100 relative h-[280px] md:h-auto md:min-h-full">
             {room.image_url ? (
               <img
@@ -100,7 +104,6 @@ export default function RoomModal({
               </div>
             )}
 
-            {/* Identity Badge Overlay */}
             <div className="absolute inset-0 flex flex-col justify-between p-8">
               <p className="text-white/80 text-xs font-bold uppercase flex items-center gap-2"></p>
               <div className="bg-gradient-to-t from-slate-900/80 to-transparent pt-8 -mx-8 -mb-8 px-8 pb-8">
@@ -114,9 +117,7 @@ export default function RoomModal({
             </div>
           </div>
 
-          {/* RIGHT SIDE: SCROLLBARES FORMULAR */}
           <div className="md:w-8/12 flex flex-col overflow-hidden">
-            {/* HEADER - FIXED */}
             <div className="flex justify-between items-start p-6 md:p-8 border-b border-slate-100 shrink-0">
               <div>
                 <h2 className="text-[#004a87] text-xl font-black italic uppercase tracking-tight leading-none mb-2">
@@ -134,14 +135,13 @@ export default function RoomModal({
               </button>
             </div>
 
-            {/* SCROLLABLE CONTENT */}
             <div className="flex-1 overflow-y-auto p-6 md:p-8">
               <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Spalte 1 */}
                   <div className="space-y-4">
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_roomname")}
                       </label>
                       <input
@@ -150,13 +150,13 @@ export default function RoomModal({
                         onChange={(e) =>
                           onChange({ ...room, name: e.target.value })
                         }
-                        className="mci-input"
+                        className="rbs-input"
                         placeholder="z.B. 163"
                       />
                     </div>
 
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_building_select")}
                       </label>
                       <select
@@ -164,7 +164,7 @@ export default function RoomModal({
                         onChange={(e) =>
                           onChange({ ...room, building_id: e.target.value })
                         }
-                        className="mci-select"
+                        className="rbs-select"
                       >
                         {buildings.map((b) => (
                           <option key={b.id} value={b.id}>
@@ -174,8 +174,8 @@ export default function RoomModal({
                       </select>
                     </div>
 
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_field_image_url")}
                       </label>
                       <input
@@ -184,16 +184,15 @@ export default function RoomModal({
                         onChange={(e) =>
                           onChange({ ...room, image_url: e.target.value })
                         }
-                        className="mci-input"
+                        className="rbs-input"
                         placeholder="https://..."
                       />
                     </div>
                   </div>
 
-                  {/* Spalte 2 */}
                   <div className="space-y-4">
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_capacity")}
                       </label>
                       <input
@@ -204,12 +203,12 @@ export default function RoomModal({
                         onChange={(e) =>
                           onChange({ ...room, capacity: parseInt(e.target.value) })
                         }
-                        className="mci-input"
+                        className="rbs-input"
                       />
                     </div>
 
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_floor")}
                       </label>
                       <input
@@ -220,12 +219,12 @@ export default function RoomModal({
                         onChange={(e) =>
                           onChange({ ...room, floor: parseInt(e.target.value) })
                         }
-                        className="mci-input"
+                        className="rbs-input"
                       />
                     </div>
 
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_seating")}
                       </label>
                       <select
@@ -233,7 +232,7 @@ export default function RoomModal({
                         onChange={(e) =>
                           onChange({ ...room, seating_arrangement: e.target.value })
                         }
-                        className="mci-select"
+                        className="rbs-select"
                       >
                         {SEATING_OPTIONS.map((o) => (
                           <option key={o} value={o}>
@@ -244,10 +243,9 @@ export default function RoomModal({
                     </div>
                   </div>
 
-                  {/* Spalte 3: Equipment */}
                   <div className="space-y-4">
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_field_equipment")}
                       </label>
                       <div className="space-y-2">
@@ -274,7 +272,6 @@ export default function RoomModal({
                   </div>
                 </div>
 
-                {/* Erweiterte Optionen */}
                 <details className="mt-6 group">
                   <summary className="text-[#004a87] text-sm font-black italic uppercase tracking-wider border-b-2 border-slate-100 pb-2 cursor-pointer select-none flex items-center gap-2">
                     <ChevronDown
@@ -286,7 +283,7 @@ export default function RoomModal({
 
                   <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Combo */}
-                    <div className="mci-modal-form-group">
+                    <div className="rbs-modal-form-group">
                       <label className="admin-checkbox-card">
                         <input
                           type="checkbox"
@@ -310,7 +307,7 @@ export default function RoomModal({
                                 n[idx] = e.target.value;
                                 onCombiPartsChange(n);
                               }}
-                              className="mci-select"
+                              className="rbs-select"
                             >
                               <option value="">
                                 {t("admin_label_combi_parts")}
@@ -328,8 +325,7 @@ export default function RoomModal({
                       )}
                     </div>
 
-                    {/* Status - Radio Buttons */}
-                    <div className="mci-modal-form-group">
+                    <div className="rbs-modal-form-group">
                       <div className="flex gap-3">
                         <label
                           className={`admin-status-btn ${
@@ -373,12 +369,11 @@ export default function RoomModal({
               </div>
             </div>
 
-            {/* FOOTER - FIXED */}
-            <div className="mci-modal-footer shrink-0">
-              <button onClick={onClose} className="btn-mci-secondary">
+            <div className="rbs-modal-footer shrink-0">
+              <button onClick={onClose} className="rbs-modal-btn-secondary">
                 {t("archiv_back")}
               </button>
-              <button onClick={onSave} className="btn-mci-main">
+              <button onClick={onSave} className="rbs-btn-main">
                 <Save size={18} />
                 {room.id ? t("save_btn") : t("admin_btn_add_room")}
               </button>

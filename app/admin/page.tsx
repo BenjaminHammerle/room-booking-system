@@ -1,5 +1,7 @@
 "use client";
 
+// react und hooks
+
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -48,8 +50,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+// admin hauptseite komponente
 export default function AdminPage() {
   const router = useRouter();
+  // states für tabs und ui
   const [activeTab, setActiveTab] = useState("planning");
   const [lang, setLang] = useState<Language>(APP_CONFIG.DEFAULT_LANG);
   const [dbTrans, setDbTrans] = useState<any>({});
@@ -90,14 +94,16 @@ export default function AdminPage() {
     "day",
   );
 
-  // HEILIGES GEBOT: Fehlende Filter-States wiederhergestellt
   const [dayViewBuildingFilter, setDayViewBuildingFilter] = useState("");
+
+  // lockplan filter states
   const [lockplanBuildingFilter, setLockplanBuildingFilter] = useState("");
   const [lockplanRoomFilter, setLockplanRoomFilter] = useState("");
 
   const [selectedRoomForCalendar, setSelectedRoomForCalendar] =
     useState<string>("");
 
+  // übersetzungs funktion
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
   useEffect(() => {
@@ -152,16 +158,16 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  // HEILIGES GEBOT: Business Logic auf Minuten-Schema angepasst
   const stats = useMemo(() => {
-    // Basis für Dauer-Statistiken sind weiterhin alle aktiven Buchungen
+    // nur aktive buchungn zählen
     const activeB = bookings.filter((b) => b.status === BOOKING_STATUS.ACTIVE);
     const totalDurMin = activeB.reduce((sum, b) => sum + (b.duration || 0), 0);
 
-    // HEILIGES GEBOT: Check-In Performance Logik (Checked-In vs. Released)
-    // Wir zählen nur jene, die bereits ein Ergebnis haben (Eingecheckt ODER wegen Nicht-Erscheinen freigegeben)
+    // nur bereits gebuchte zählen
     const checkedInCount = bookings.filter((b) => b.is_checked_in).length;
-    const releasedCount = bookings.filter((b) => b.status === BOOKING_STATUS.RELEASED).length;
+    const releasedCount = bookings.filter(
+      (b) => b.status === BOOKING_STATUS.RELEASED,
+    ).length;
     const performanceDenominator = checkedInCount + releasedCount;
 
     const topLifetime = rooms
@@ -192,19 +198,22 @@ export default function AdminPage() {
       .slice(0, 5);
 
     return {
-      // Berechnung nur auf Basis abgeschlossener/gestarteter Vorgänge
-      checkInRate: performanceDenominator > 0
-        ? Math.round((checkedInCount / performanceDenominator) * 100)
-        : 0,
-      // HEILIGES GEBOT: Umrechnung Minuten (DB) -> Stunden (UI)
+      // nur abgeschlossene/gestartete buchungen zählen
+      checkInRate:
+        performanceDenominator > 0
+          ? Math.round((checkedInCount / performanceDenominator) * 100)
+          : 0,
       avgDuration:
-        activeB.length > 0 ? (totalDurMin / activeB.length / 60).toFixed(1) : "0",
+        activeB.length > 0
+          ? (totalDurMin / activeB.length / 60).toFixed(1)
+          : "0",
       totalBookings: activeB.length,
       topLifetime,
       topLastWeek,
     };
   }, [bookings, rooms]);
 
+  // lockplan daten filtern und sortieren
   const getLockplanData = useMemo(() => {
     if (viewMode !== "lockplan") return [];
 
@@ -230,7 +239,6 @@ export default function AdminPage() {
         )
           return;
 
-        // HEILIGES GEBOT: Minuten -> Stunden Umrechnung für Utility
         const { hh: endH, mm: endM } = getEndTimeParts(
           b.start_time,
           b.duration / 60,
@@ -293,13 +301,14 @@ export default function AdminPage() {
     return Math.max(0, ((h * 60 + m - 7 * 60) / ((23.5 - 7) * 60)) * 100);
   };
 
+  // benutzer aktualisieren
   const handleUpdateUser = async () => {
     setLoading(true);
     try {
       const res: any = await updateUserAdmin(editUser.id, editUser);
       if (!res?.error) {
         setShowUserEditModal(false);
-        await loadAdminData(); // Warten auf den Refresh
+        await loadAdminData();
       } else {
         alert(res.error);
       }
@@ -307,11 +316,11 @@ export default function AdminPage() {
       console.error("User Update Error:", err);
       alert("Fehler beim Speichern des Nutzers.");
     } finally {
-      // HEILIGES GEBOT: Spinner wird IMMER gestoppt
       setLoading(false);
     }
   };
 
+  // neuen benutzer erstellen
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -338,6 +347,7 @@ export default function AdminPage() {
     }
   };
 
+  // gebäude speichern oder erstellen
   const handleSaveBuilding = async () => {
     setLoading(true);
     const { error } = currentBuilding.id
@@ -355,6 +365,7 @@ export default function AdminPage() {
     }
   };
 
+  // raum speichern oder erstellen
   const handleSaveRoom = async () => {
     setLoading(true);
     const { data: savedRoom, error } = currentRoom.id
@@ -399,6 +410,7 @@ export default function AdminPage() {
     loadAdminData();
   };
 
+  // loading screen
   if (loading) return <LoadingScreen />;
 
   return (
@@ -504,6 +516,8 @@ export default function AdminPage() {
         </aside>
 
         <div className="flex-1 w-full min-w-0">
+
+          {/* tab planning */}
           {activeTab === "planning" && (
             <div className="space-y-8 animate-in fade-in duration-500">
               <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -558,7 +572,7 @@ export default function AdminPage() {
                       type="date"
                       value={selectedDate}
                       onChange={(e) => setSelectedDate(e.target.value)}
-                      className="rbs-planning-date-input"
+                      className="rbs-planning-date-input !relative"
                     />
                     <button
                       onClick={() =>
@@ -686,7 +700,7 @@ export default function AdminPage() {
                         type="date"
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
-                        className="rbs-planning-date-input"
+                        className="rbs-planning-date-input !relative"
                       />
                       <button
                         onClick={() =>
@@ -701,7 +715,6 @@ export default function AdminPage() {
                         <ChevronRight size={20} />
                       </button>
                     </div>
-                    {/* HEILIGES GEBOT: Fehlender Filter wieder eingebaut */}
                     <div className="w-full sm:w-48">
                       <select
                         value={dayViewBuildingFilter}
@@ -788,7 +801,6 @@ export default function AdminPage() {
                                     className={`rbs-timeline-booking ${b.is_checked_in ? "checked-in" : ""}`}
                                     style={{
                                       left: `${getPositionX(b.start_time)}%`,
-                                      // HEILIGES GEBOT: Multiplikation entfernt da b.duration = Minuten
                                       width: `${(b.duration / ((23.5 - 7) * 60)) * 100}%`,
                                     }}
                                   >
@@ -857,7 +869,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB: STATS (Heilige Regel: 1:1 Stile aus Vorversion) */}
+          {/* tab stats */}
           {activeTab === "stats" && (
             <div className="space-y-12 animate-in fade-in duration-500">
               <header>
@@ -928,7 +940,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB: BUILDINGS & ROOMS (Heilige Regel: 1:1 Wide-Card) */}
+          {/* tab gebäude */}
           {(activeTab === "buildings" || activeTab === "rooms") && (
             <div className="space-y-8 animate-in fade-in duration-500">
               <header className="flex justify-between items-center">
@@ -1023,7 +1035,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB: USERS (Heilige Regel: 1:1 Admin-Table) */}
+          {/* tab users */}
           {activeTab === "users" && (
             <div className="space-y-8 animate-in fade-in duration-500 text-left">
               <header className="flex justify-between items-center">
@@ -1082,7 +1094,6 @@ export default function AdminPage() {
         </div>
       </main>
 
-      {/* MODALE (Heilige Regel: Lückenlos erhalten) */}
       <RoomModal
         show={showRoomModal}
         room={currentRoom}

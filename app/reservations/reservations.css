@@ -1,44 +1,39 @@
 @import "tailwindcss";
 
 /* ========================================
-   RESERVATIONS.CSS - NUR RESERVATIONS-SPEZIFIKA
-   Alle Layout-Klassen kommen aus globals.css!
+   reservations.css - nur reservations-spezifika
+   alle layout-klassen kommen aus globals.css
    ======================================== */
 
-/* Sidebar Korrektur für absolute Ebenentreue */
+/* sidebar z-index korrektur */
 .rbs-sidebar {
-  /* Sicherstellen, dass sie vor dem Header (30) aber hinter der Navbar (50) liegt */
   z-index: 40 !important;
 }
 
-/* --- 1. RESERVATIONS GRID (Mathematische Breakpoints) --- */
+/* reservations grid mit mathematischen breakpoints */
 .res-list {
   @apply flex-1 grid gap-8 auto-rows-max;
   grid-template-columns: 1fr;
 }
 
-/* DESKTOP XL: 3 Cards (> 1786px) */
 @media (min-width: 1786px) {
   .res-list {
     grid-template-columns: repeat(3, 440px);
   }
 }
 
-/* DESKTOP: 2 Cards (1313px - 1785px) */
 @media (min-width: 1313px) and (max-width: 1795px) {
   .res-list {
     grid-template-columns: repeat(2, 440px);
   }
 }
 
-/* TABLET: 2 Cards (1024px - 1312px) */
 @media (min-width: 1024px) and (max-width: 1312px) {
   .res-list {
     grid-template-columns: repeat(2, 440px);
   }
 }
 
-/* MOBILE: 1 Card (< 1024px) */
 @media (max-width: 1023px) {
   .res-list {
     grid-template-columns: 1fr;
@@ -46,7 +41,7 @@
   }
 }
 
-/* --- 2. RESERVATION CARDS --- */
+/* reservation card */
 .res-card {
   @apply bg-white rounded-[2rem] border border-gray-100 shadow-sm transition-all overflow-hidden p-6 mb-2 flex flex-col;
   width: 440px;
@@ -69,11 +64,12 @@
   }
 }
 
+/* card wenn expanded */
 .res-card.is-expanded {
   @apply shadow-xl ring-2 ring-[var(--rbs-blue)]/5;
 }
 
-/* --- 3. CARD HEADER LAYOUT --- */
+/* card header layout */
 .res-card-row-top {
   @apply flex flex-row justify-between items-start gap-2;
 }
@@ -90,7 +86,7 @@
   @apply text-sm md:text-base pt-2 font-medium uppercase italic tracking-wide;
 }
 
-/* --- 4. ACTION BUTTONS --- */
+/* action buttons */
 .res-col-actions-top {
   @apply shrink-0 md:w-[155px] flex flex-col gap-2 transition-all;
 }
@@ -109,11 +105,12 @@
   @apply truncate sm:inline hidden;
 }
 
+/* status bubble */
 .res-status-bubble {
   @apply h-[3.2rem] w-full flex items-center justify-center gap-2 rounded-[1.25rem] border border-slate-100 font-medium transition-all;
 }
 
-/* --- 5. IMAGE HANDLING --- */
+/* image handling */
 .res-mobile-head-img {
   @apply hidden;
 }
@@ -131,12 +128,13 @@
   }
 }
 
-/* --- 6. EXPANDED DETAILS --- */
+/* expanded details */
 .res-details-left,
 .res-details-right {
   @apply flex flex-col min-h-[160px];
 }
 
+/* map wrapper */
 .res-map-wrapper {
   @apply w-full h-full min-h-[140px] rounded-2xl overflow-hidden;
 }
@@ -150,13 +148,13 @@
   @apply border-4 border-white shadow-lg ring-1 ring-slate-100;
 }
 
-/* --- 7. UTILITY --- */
+/* utility */
 .no-margin-left {
   margin-left: 0 !important;
   padding-left: 0 !important;
 }
 
-/* --- 8. EDIT BUTTON - Orange MCI Style --- */
+/* edit button in orange */
 .res-btn-edit {
   @apply w-full h-[3.2rem] px-4 flex items-center justify-center gap-3 rounded-[1.25rem] font-black italic uppercase text-[0.7rem] transition-all duration-200 cursor-pointer border-none shadow-md;
   background-color: var(--rbs-orange);

@@ -1,5 +1,7 @@
 "use client";
 
+// react und hooks
+
 import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
@@ -46,6 +48,7 @@ interface BookingModalProps {
   initialTime?: string;
 }
 
+// booking modal komponente
 export default function BookingModal({
   isOpen,
   onClose,
@@ -123,7 +126,6 @@ export default function BookingModal({
       : [r.id, c.room_id_0];
   };
 
-  // HEILIGES GEBOT: Rückgabe des kollidierenden Objekts statt nur Boolean
   const findConflict = (
     checkBookings: any[],
     roomIds: string[],
@@ -407,7 +409,6 @@ export default function BookingModal({
   const currentRoomContext =
     room || rooms.find((r) => r.id === booking?.room_id);
 
-  // HEILIGES GEBOT: Konflikt-Objekt für die UI-Badge ermitteln
   const currentConflict = findConflict(
     bookings,
     getConflictRoomIds(currentRoomContext),
@@ -423,9 +424,11 @@ export default function BookingModal({
         timeToMinutes(booking.start_time) <=
           new Date().getHours() * 60 + new Date().getMinutes()));
 
+
+  // modal rendern
   return (
-    <div className="mci-modal-overlay animate-in fade-in">
-      <div className="mci-modal-card animate-in zoom-in-95 overflow-hidden">
+    <div className="rbs-modal-overlay animate-in fade-in">
+      <div className="rbs-modal-card animate-in zoom-in-95 overflow-hidden">
         {feedback && (
           <div className="booking-feedback">
             <div
@@ -453,14 +456,14 @@ export default function BookingModal({
             </div>
           </div>
         )}
-        <div className="mci-modal-header text-white">
+        <div className="rbs-modal-header text-white">
           <div className="flex flex-col text-left gap-1">
-            <p className="mci-modal-subtitle">
+            <p className="rbs-modal-subtitle">
               {mode === "edit"
                 ? t("label_edit_booking")
                 : t("label_new_booking")}
             </p>
-            <h3 className="mci-modal-title">{currentRoomContext?.name}</h3>
+            <h3 className="rbs-modal-title">{currentRoomContext?.name}</h3>
           </div>
           <button
             onClick={onClose}
@@ -469,22 +472,22 @@ export default function BookingModal({
             <X size={32} />
           </button>
         </div>
-        <div className="mci-modal-body">
+        <div className="rbs-modal-body">
           <div className="booking-form-group">
-            <label className="mci-label">{t("header_date")}</label>
+            <label className="rbs-label">{t("header_date")}</label>
             <div className='relatve'><input
               type="date"
               value={selectedDate}
               min={todayStrForDisable}
               onChange={(e) => setSelectedDate(e.target.value)}
               disabled={isStartedForDisable}
-              className="mci-input"
+              className="rbs-input !relative"
             /></div>
           </div>
           <div className="booking-form-grid">
             <div className="booking-form-group">
-              <label className="mci-label">{t("modal_time")}</label>
-              <div className="mci-time-picker">
+              <label className="rbs-label">{t("modal_time")}</label>
+              <div className="rbs-time-picker">
                 <Clock size={24} className="text-green-600" />
                 <select
                   value={selectedTime.split(":")[0]}
@@ -494,7 +497,7 @@ export default function BookingModal({
                     )
                   }
                   disabled={isStartedForDisable}
-                  className="mci-time-select"
+                  className="rbs-time-select"
                 >
                   {Array.from({ length: 17 }, (_, i) =>
                     (i + 7).toString().padStart(2, "0"),
@@ -511,7 +514,7 @@ export default function BookingModal({
                     </option>
                   ))}
                 </select>
-                <span className="mci-time-colon">:</span>
+                <span className="rbs-time-colon">:</span>
                 <select
                   value={selectedTime.split(":")[1]}
                   onChange={(e) =>
@@ -520,7 +523,7 @@ export default function BookingModal({
                     )
                   }
                   disabled={isStartedForDisable}
-                  className="mci-time-select"
+                  className="rbs-time-select"
                 >
                   {["00", "15", "30", "45"].map((m) => (
                     <option
@@ -540,8 +543,8 @@ export default function BookingModal({
               </div>
             </div>
             <div className="booking-form-group">
-              <label className="mci-label">{t("label_ebene_end")}</label>
-              <div className="mci-time-picker">
+              <label className="rbs-label">{t("label_ebene_end")}</label>
+              <div className="rbs-time-picker">
                 <CheckCircle2 size={24} className="text-orange-500" />
                 <select
                   value={getEndTimeParts(selectedTime, duration).hh}
@@ -556,7 +559,7 @@ export default function BookingModal({
                       parseFloat(((newEndTotal - startTotal) / 60).toFixed(4)),
                     );
                   }}
-                  className="mci-time-select"
+                  className="rbs-time-select"
                 >
                   {Array.from({ length: 17 }, (_, i) =>
                     (i + 7).toString().padStart(2, "0"),
@@ -572,7 +575,7 @@ export default function BookingModal({
                     </option>
                   ))}
                 </select>
-                <span className="mci-time-colon">:</span>
+                <span className="rbs-time-colon">:</span>
                 <select
                   value={getEndTimeParts(selectedTime, duration).mm}
                   onChange={(e) => {
@@ -586,7 +589,7 @@ export default function BookingModal({
                       parseFloat(((newEndTotal - startTotal) / 60).toFixed(4)),
                     );
                   }}
-                  className="mci-time-select"
+                  className="rbs-time-select"
                 >
                   {["00", "15", "30", "45"].map((m) => (
                     <option
@@ -607,9 +610,8 @@ export default function BookingModal({
             </div>
           </div>
 
-          {/* HEILIGES GEBOT: Anzeige der blockierenden Startzeit im Konfliktfall */}
           <div
-            className={`mci-status-badge ${currentConflict ? "mci-status-conflict" : "mci-status-available"}`}
+            className={`rbs-status-badge ${currentConflict ? "rbs-status-conflict" : "rbs-status-available"}`}
           >
             {currentConflict ? (
               <AlertCircle size={24} />
@@ -645,7 +647,7 @@ export default function BookingModal({
                 (relatedBookings.length > 1 || isExtending))) && (
               <div className="res-extension-box">
                 <div className="res-extension-input-wrapper">
-                  <label className="mci-label">{t("label_weeks")}</label>
+                  <label className="rbs-label">{t("label_weeks")}</label>
                   <input
                     type="number"
                     min="1"
@@ -656,7 +658,7 @@ export default function BookingModal({
                         ? setRecurringWeeks(parseInt(e.target.value))
                         : setWeeksToAdd(parseInt(e.target.value))
                     }
-                    className="mci-number-input-lg"
+                    className="rbs-number-input-lg"
                   />
                 </div>
                 <div className="res-extension-text-group">
@@ -683,10 +685,12 @@ export default function BookingModal({
                     relatedBookings.map((b) => {
                       const isCurrent = b.id === booking.id;
                       const r = rooms.find((rm) => rm.id === b.room_id);
+
+  // modal rendern
                       return (
                         <div
                           key={b.id}
-                          className={`series-grid series-data-row border-l-4 ${isCurrent ? "bg-orange-50 border-l-[var(--mci-orange)] shadow-sm" : "opacity-40 grayscale border-l-slate-300"}`}
+                          className={`series-grid series-data-row border-l-4 ${isCurrent ? "bg-orange-50 border-l-[var(--rbs-orange)] shadow-sm" : "opacity-40 grayscale border-l-slate-300"}`}
                         >
                           <div
                             data-label={t("header_date")}
@@ -720,7 +724,7 @@ export default function BookingModal({
                             <span
                               className={
                                 isCurrent
-                                  ? "text-[var(--mci-orange)] font-black uppercase text-[8px]"
+                                  ? "text-[var(--rbs-orange)] font-black uppercase text-[8px]"
                                   : "text-[8px] font-black uppercase bg-slate-100 px-2 py-0.5 rounded"
                               }
                             >
@@ -757,10 +761,12 @@ export default function BookingModal({
                     const missing = originalFeatures.filter(
                       (id) => !currentFeatures.includes(id),
                     );
+
+  // modal rendern
                     return (
                       <div
                         key={`preview-${i}`}
-                        className={`series-grid series-data-row border-l-4 ${p.status === "conflict" ? "bg-red-50 border-l-red-500" : p.status === "alternative" ? "bg-red-50/50 border-l-red-400" : mode === "create" && i === 0 ? "bg-orange-50 border-l-[var(--mci-orange)]" : "bg-green-50/30 border-l-green-400"}`}
+                        className={`series-grid series-data-row border-l-4 ${p.status === "conflict" ? "bg-red-50 border-l-red-500" : p.status === "alternative" ? "bg-red-50/50 border-l-red-400" : mode === "create" && i === 0 ? "bg-orange-50 border-l-[var(--rbs-orange)]" : "bg-green-50/30 border-l-green-400"}`}
                       >
                         <div
                           data-label={t("header_date")}
@@ -860,7 +866,7 @@ export default function BookingModal({
             <button
               type="button"
               onClick={onClose}
-              className="btn-mci-secondary"
+              className="rbs-modal-btn-secondary"
             >
               <X size={20} />
               {t("archiv_back")}
@@ -868,7 +874,7 @@ export default function BookingModal({
             <button
               disabled={loading}
               onClick={handleSave}
-              className="btn-mci-main py-4 text-base shadow-xl"
+              className="rbs-btn-main py-4 text-base shadow-xl"
             >
               <Save size={28} />{" "}
               {loading

@@ -1,5 +1,7 @@
 "use client";
 
+// react und hooks
+
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -7,7 +9,7 @@ import "./reservations.css";
 import BookingModal from "@/app/components/BookingModal";
 import LoadingScreen from "@/app/components/LoadingScreen";
 
-// Integration der zentralen lib-Architektur
+// zentrale libs
 import {
   APP_CONFIG,
   BOOKING_STATUS,
@@ -22,7 +24,7 @@ import {
   getDistance,
 } from "@/lib/utils";
 
-// Heiliges Gebot: Alle Icons explizit importieren um Fehler zu vermeiden
+// icons
 import {
   ArrowLeft,
   Calendar,
@@ -53,10 +55,13 @@ import {
   CircleX,
 } from "lucide-react";
 
+// reservations seite komponente
 export default function ReservationsPage() {
+  // router für navigation
   const router = useRouter();
 
-  // Zustandsverwaltung
+  // states für app funktionalität
+  // states für sprache, daten und ui
   const [lang, setLang] = useState<Language>(APP_CONFIG.DEFAULT_LANG);
   const [dbTrans, setDbTrans] = useState<any>({});
   const [user, setUser] = useState<any>(null);
@@ -67,31 +72,27 @@ export default function ReservationsPage() {
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Steuerung für Expansion
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-
-  // Filter-Steuerung
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState("open");
   const [filterRoom, setFilterRoom] = useState("all");
   const [filterUser, setFilterUser] = useState("all");
   const [filterBuilding, setFilterBuilding] = useState("all");
   const [filterDate, setFilterDate] = useState("");
-
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<any>(null);
   const [minCapacity, setMinCapacity] = useState("0");
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-
   const [checkinFeedback, setCheckinFeedback] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
 
+  // helper funktionen
+
+  // übersetzungs funktion
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
 
-  // HEILIGES GEBOT: BACKGROUND SCROLL LOCK (Verhindert Scrollen der Liste bei offenem Filter)
   useEffect(() => {
     if (showMobileFilters) {
       document.body.style.overflow = "hidden";
@@ -103,14 +104,15 @@ export default function ReservationsPage() {
     };
   }, [showMobileFilters]);
 
-  // --- CORE FUNCTIONS (SAFEGUARDED) ---
+  // sprache wechseln
 
+  // sprache wechseln und speichern
   const handleLangToggle = () => {
     const currentIndex = SUPPORTED_LANGS.indexOf(lang);
     const nextIndex = (currentIndex + 1) % SUPPORTED_LANGS.length;
     const nextLang = SUPPORTED_LANGS[nextIndex];
     setLang(nextLang);
-    localStorage.setItem("mci_lang", nextLang);
+    localStorage.setItem("rbs_lang", nextLang);
   };
 
   const toggleCard = (id: string) => {
@@ -152,7 +154,7 @@ export default function ReservationsPage() {
     try {
       const ipRes = await fetch("https://api.ipify.org?format=json");
       const { ip } = await ipRes.json();
-      const allowedPrefixes = (building?.mci_wifi_ip || "").split(",");
+      const allowedPrefixes = (building?.rbs_wifi_ip || "").split(",");
       const ipMatch = allowedPrefixes.some((p: string) =>
         ip.startsWith(p.trim()),
       );
@@ -200,8 +202,6 @@ export default function ReservationsPage() {
     }
   }
 
-  // --- DATA LOADING & INIT ---
-
   async function loadAllData() {
     setLoading(true);
     const {
@@ -233,6 +233,7 @@ export default function ReservationsPage() {
       supabase.from("equipment").select("*"),
     ]);
 
+    // aktuelle zeit für vergleiche
     const nowComp = new Date();
     const todayStr = nowComp.toISOString().split("T")[0];
     const currentMin = nowComp.getHours() * 60 + nowComp.getMinutes();
@@ -271,6 +272,9 @@ export default function ReservationsPage() {
     setLoading(false);
   }
 
+  // gefilterte buchungen
+
+  // buchungen filtern nach status, datum und gebäude
   const filteredBookings = useMemo(() => {
     let list = isAdmin
       ? bookings
@@ -288,10 +292,8 @@ export default function ReservationsPage() {
           (b.booking_date === todayStr &&
             timeToMinutes(b.start_time) + b.duration <= currentMin);
 
-        // 1. Datums-Filter (Oberste Instanz)
         if (filterDate && b.booking_date !== filterDate) return false;
 
-        // 2. Status-Filter (HEILIGES GEBOT: Nur bei Mismatch abbrechen, kein vorzeitiger Erfolg!)
         if (filterStatus === "open") {
           if (!(b.status === BOOKING_STATUS.ACTIVE && !isPast)) return false;
         } else if (filterStatus === "finished") {
@@ -305,17 +307,12 @@ export default function ReservationsPage() {
         } else if (filterStatus === "cancelled") {
           if (b.status !== BOOKING_STATUS.CANCELLED) return false;
         }
-        // Bei "all" wird dieser Block einfach übersprungen -> alle Stati bleiben im Rennen
 
-        // 3. Raum-Filter
         if (filterRoom !== "all" && b.room_id !== filterRoom) return false;
 
-        // 4. Gebäude-Filter
         if (filterBuilding !== "all" && room?.building_id !== filterBuilding)
           return false;
 
-        // 5. User-Filter (für Admin)
-        // Hinweis: Dieser Filter steht standardmäßig auf DEINER ID!
         if (isAdmin && filterUser !== "all" && b.user_id !== filterUser)
           return false;
 
@@ -338,13 +335,13 @@ export default function ReservationsPage() {
     user,
   ]);
 
+  // beim laden sprache setzen und daten initialisieren
   useEffect(() => {
-    const savedLang = localStorage.getItem("mci_lang") as Language;
+    const savedLang = localStorage.getItem("rbs_lang") as Language;
     if (SUPPORTED_LANGS.includes(savedLang)) setLang(savedLang);
     loadAllData();
   }, []);
 
-  // --- SYSTEM-WIDE LOADING SCREEN (SHIELDCHECK BRANDING) ---
   if (loading && !checkinFeedback) return <LoadingScreen />;
 
   return (
@@ -365,7 +362,7 @@ export default function ReservationsPage() {
           </div>
         </div>
       )}
-      {/* NAVBAR HEADER (wie rooms) */}
+      {/* navigation bar mit logo und user menu */}
       <nav className="rbs-navbar">
         <div className="flex items-center gap-2 md:gap-8">
           <img
@@ -394,8 +391,9 @@ export default function ReservationsPage() {
           </button>
         </div>
       </nav>
-      {/* PAGE CONTENT */}
+      {/* beginn page content */}
       <div className="rbs-main-layout">
+        {/* filter sidebar für buchungen */}
         <aside className="rbs-sidebar">
           <div className="rbs-sidebar-unit">
             <button
@@ -414,7 +412,7 @@ export default function ReservationsPage() {
             <div
               className={`rbs-sidebar-content ${showMobileFilters ? "block" : "hidden min-[1400px]:block"}`}
             >
-              {/* Desktop-Titel: Wird nur auf Desktop angezeigt */}
+              {/* desktop-titel wird nur auf sesktop angezeigt */}
               <div className="rbs-sidebar-desktop-title">
                 <FilterIcon size={20} />
                 <span>{t("filter_title")}</span>
@@ -422,13 +420,13 @@ export default function ReservationsPage() {
 
               <div className="px-4 lg:px-6 pt-2 pb-4 lg:pb-6 space-y-6">
                 <div>
-                  <label className="mci-label">
+                  <label className="rbs-label">
                     {t("archiv_filter_status")}
                   </label>
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="mci-select"
+                    className="rbs-select"
                   >
                     <option value="all">{t("archiv_opt_all")}</option>
                     <option value="open">{t("archiv_opt_open")}</option>
@@ -439,7 +437,7 @@ export default function ReservationsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mci-label">
+                  <label className="rbs-label">
                     {t("filter_time_label") || "Datum"}
                   </label>
                   <div className="relative group">
@@ -447,7 +445,7 @@ export default function ReservationsPage() {
                       type="date"
                       value={filterDate}
                       onChange={(e) => setFilterDate(e.target.value)}
-                      className="mci-input"
+                      className="rbs-input"
                     />
                     {filterDate && (
                       <button
@@ -455,7 +453,6 @@ export default function ReservationsPage() {
                           e.preventDefault();
                           setFilterDate("");
                         }}
-                        /* z-index erhöht, damit der Klick vor dem unsichtbaren Browser-Icon landet */
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 z-10 transition-colors"
                       >
                         <CircleX size={20} />
@@ -464,13 +461,13 @@ export default function ReservationsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="mci-label">
+                  <label className="rbs-label">
                     {t("admin_tab_buildings")}
                   </label>
                   <select
                     value={filterBuilding}
                     onChange={(e) => setFilterBuilding(e.target.value)}
-                    className="mci-select"
+                    className="rbs-select"
                   >
                     <option value="all">{t("filter_all")}</option>
                     {buildings
@@ -484,11 +481,11 @@ export default function ReservationsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mci-label">{t("archiv_filter_room")}</label>
+                  <label className="rbs-label">{t("archiv_filter_room")}</label>
                   <select
                     value={filterRoom}
                     onChange={(e) => setFilterRoom(e.target.value)}
-                    className="mci-select"
+                    className="rbs-select"
                   >
                     <option value="all">{t("archiv_opt_all_rooms")}</option>
                     {rooms
@@ -503,13 +500,13 @@ export default function ReservationsPage() {
                 </div>
                 {isAdmin && (
                   <div>
-                    <label className="mci-label">
+                    <label className="rbs-label">
                       {t("archiv_filter_user")}
                     </label>
                     <select
                       value={filterUser}
                       onChange={(e) => setFilterUser(e.target.value)}
-                      className="mci-select"
+                      className="rbs-select"
                     >
                       <option value="all">{t("archiv_opt_all_users")}</option>
                       {profiles.map((p) => (
@@ -538,6 +535,7 @@ export default function ReservationsPage() {
           </section>
 
           <main className="res-list">
+            {/* buchungs karten liste */}
             {filteredBookings.map((b) => {
               const room = rooms.find((r) => r.id === b.room_id);
               const building = room?.building;
@@ -562,11 +560,9 @@ export default function ReservationsPage() {
               const isFinished =
                 b.booking_date < new Date().toISOString().split("T")[0] ||
                 (b.booking_date === new Date().toISOString().split("T")[0] &&
-                  // HEILIGES GEBOT: b.duration direkt addieren (Minuten-Schema)
                   timeToMinutes(b.start_time) + b.duration <=
                     new Date().getHours() * 60 + new Date().getMinutes());
 
-              // Korrektur: getEndTimeParts benötigt Stunden (Minuten / 60)
               const { hh, mm } = getEndTimeParts(b.start_time, b.duration / 60);
               const formattedDate = new Date(b.booking_date).toLocaleDateString(
                 lang,
@@ -577,12 +573,13 @@ export default function ReservationsPage() {
                 },
               );
 
+              // hauptkomponente rendern
+
               return (
                 <div
                   key={b.id}
                   className={`res-card ${isExpanded ? "is-expanded" : ""} ${isCancelled || isReleased ? "opacity-60" : ""}`}
                 >
-                  {/* Mobile Identity */}
                   <div className="res-mobile-head-img">
                     <div className="res-image-wrapper !w-full !h-[180px]">
                       {room?.image_url ? (
@@ -604,13 +601,13 @@ export default function ReservationsPage() {
                       <div className="res-titles">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <h3
-                            className="res-room-title mci-card-title"
+                            className="res-room-title rbs-card-title"
                             title={room?.name}
                           >
                             {room?.name}
                           </h3>
                           {series.length > 1 && (
-                            <span className="mci-badge text-orange-500 border-orange-100 shadow-none">
+                            <span className="rbs-badge text-orange-500 border-orange-100 shadow-none">
                               <Repeat size={10} />{" "}
                               <span>
                                 {t("label_series")}{" "}
@@ -620,7 +617,7 @@ export default function ReservationsPage() {
                             </span>
                           )}
                         </div>
-                        <p className="res-header-meta text-[var(--mci-blue)]">
+                        <p className="res-header-meta text-[var(--rbs-blue)]">
                           {building?.name} • {room?.floor}. {t("label_floor")}
                         </p>
 
@@ -637,11 +634,11 @@ export default function ReservationsPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-2 mt-3">
-                          <div className="mci-info-tag !px-3">
+                          <div className="rbs-info-tag !px-3">
                             <Calendar size={14} className="text-orange-500" />
                             <span>{formattedDate}</span>
                           </div>
-                          <div className="mci-info-tag !px-3">
+                          <div className="rbs-info-tag !px-3">
                             <Clock size={14} className="text-orange-500" />
                             <span>
                               {b.start_time} - {hh}:{mm}
@@ -653,10 +650,10 @@ export default function ReservationsPage() {
                     <div className="res-col-actions-top">
                       {!isCancelled && !isReleased ? (
                         <div className="res-col-actions-btn">
-                          {/* SLOT 1: DYNAMISCHER STATUS / CHECK-IN */}
+                          {/* dynamischer status / checkin */}
                           {b.is_checked_in ? (
                             <div
-                              className="mci-action-btn-unified bg-green-50 text-green-600 shadow-sm"
+                              className="rbs-action-btn-unified bg-green-50 text-green-600 shadow-sm"
                               title={t("label_checked_in")}
                             >
                               <CheckCircle size={16} />
@@ -667,7 +664,7 @@ export default function ReservationsPage() {
                           ) : canCheckIn ? (
                             <button
                               onClick={() => handleSecureCheckIn(b)}
-                              className="mci-action-btn-unified !h-[3.2rem] !bg-green-600 text-white shadow-md animate-pulse"
+                              className="rbs-action-btn-unified !h-[3.2rem] !bg-green-600 text-white shadow-md animate-pulse"
                               title={t("btn_checkin")}
                             >
                               <Wifi size={16} />
@@ -677,7 +674,7 @@ export default function ReservationsPage() {
                             </button>
                           ) : (
                             <div
-                              className="mci-action-btn-unified bg-slate-50 text-slate-400 border border-slate-100 shadow-sm"
+                              className="rbs-action-btn-unified bg-slate-50 text-slate-400 border border-slate-100 shadow-sm"
                               title={t("label_waiting")}
                             >
                               <Clock size={16} />
@@ -687,10 +684,9 @@ export default function ReservationsPage() {
                             </div>
                           )}
 
-                          {/* SLOT 2: BEARBEITEN */}
+                          {/* bearbeiten */}
                           <button
                             onClick={() => handleEdit(b)}
-                            // Deaktiviert wenn beendet (Heilige Regel: Logik-Präzision)
                             disabled={isFinished}
                             className={`res-btn-edit ${isFinished ? "opacity-40 cursor-not-allowed grayscale shadow-none" : ""}`}
                             title={t("label_edit_booking")}
@@ -701,10 +697,10 @@ export default function ReservationsPage() {
                             </span>
                           </button>
 
-                          {/* SLOT 3: DETAILS TOGGLE */}
+                          {/* details ein/ausblenden */}
                           <button
                             onClick={() => toggleCard(b.id)}
-                            className="mci-action-btn-unified !h-[3.2rem] !bg-slate-50 text-slate-400 border border-slate-100 shadow-sm"
+                            className="rbs-action-btn-unified !h-[3.2rem] !bg-slate-50 text-slate-400 border border-slate-100 shadow-sm"
                           >
                             {isExpanded ? (
                               <ChevronUp size={20} />
@@ -714,7 +710,6 @@ export default function ReservationsPage() {
                           </button>
                         </div>
                       ) : (
-                        /* SLOT: STORNIERT / FREIGEGEBEN */
                         <div className="res-status-indicator">
                           {isCancelled ? (
                             <XCircle size={20} />
@@ -777,14 +772,14 @@ export default function ReservationsPage() {
                         </div>
                         <div className="res-details-right">
                           <div className="space-y-2">
-                            <div className="mci-info-tag !py-4">
+                            <div className="rbs-info-tag !py-4">
                               <Users size={18} />
                               <span>
                                 {room?.capacity} {t("admin_label_capacity")}
                               </span>
                             </div>
                             <div
-                              className="mci-info-tag !py-4"
+                              className="rbs-info-tag !py-4"
                               title={t(room?.seating_arrangement)}
                             >
                               <Armchair size={18} />
@@ -806,7 +801,7 @@ export default function ReservationsPage() {
                                       .eq("booking_code", b.booking_code)
                                       .then(() => loadAllData());
                                 }}
-                                className="mci-action-btn-unified !h-[3rem] !bg-red-50 !text-red-600 border border-red-200"
+                                className="rbs-action-btn-unified !h-[3rem] !bg-red-50 !text-red-600 border border-red-200"
                                 title={t("btn_cancel_series")}
                               >
                                 <Trash2 size={16} />{" "}
@@ -826,7 +821,7 @@ export default function ReservationsPage() {
                                     .eq("id", b.id)
                                     .then(() => loadAllData());
                               }}
-                              className="mci-action-btn-unified !h-[3rem] !bg-slate-100 !text-red-500 border border-red-100"
+                              className="rbs-action-btn-unified !h-[3rem] !bg-slate-100 !text-red-500 border border-red-100"
                               title={t("btn_cancel_single")}
                             >
                               <Trash2 size={16} />{" "}
@@ -844,9 +839,7 @@ export default function ReservationsPage() {
             })}
           </main>
         </div>{" "}
-        {/* Ende flex-1 */}
       </div>{" "}
-      {/* Ende res-main-content */}
       <BookingModal
         isOpen={showEditModal}
         onClose={() => {

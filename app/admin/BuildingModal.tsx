@@ -1,5 +1,7 @@
 "use client";
 
+// react hooks
+
 import { useEffect } from "react";
 import {
   Home,
@@ -20,7 +22,7 @@ interface Building {
   floors: number;
   latitude: number;
   longitude: number;
-  mci_wifi_ip: string;
+  rbs_wifi_ip: string;
   accessible: boolean;
   image_url: string;
   is_active: boolean;
@@ -35,6 +37,7 @@ interface BuildingModalProps {
   t: (key: string) => string;
 }
 
+// building modal komponente
 export default function BuildingModal({
   show,
   building,
@@ -53,14 +56,15 @@ export default function BuildingModal({
     return () => document.body.classList.remove('modal-open');
   }, [show]);
 
+
+  // modal nur anzeigen wenn aktiv
   if (!show || !building) return null;
 
   return (
-    <div className="mci-modal-overlay animate-in fade-in duration-300">
-      <div className="mci-modal-card animate-in zoom-in-95 duration-300">
-        {/* Modal CONTAINER mit max-h für Mobile Scroll */}
+    <div className="rbs-modal-overlay animate-in fade-in duration-300">
+      <div className="rbs-modal-card animate-in zoom-in-95 duration-300">
         <div className="flex flex-col md:flex-row max-h-[90vh] overflow-hidden">
-          {/* LEFT SIDE: BILD */}
+          {/* linke seite bild */}
           <div className="md:w-5/12 bg-slate-100 relative h-[280px] md:h-auto md:min-h-full">
             {building.image_url ? (
               <img
@@ -77,7 +81,6 @@ export default function BuildingModal({
               </div>
             )}
 
-            {/* Identity Badge Overlay */}
             <div className="absolute inset-0 flex flex-col justify-between p-8">
               <p className="text-white/80 text-xs font-bold uppercase flex items-center gap-2"></p>
               <div className="bg-gradient-to-t from-slate-900/80 to-transparent pt-8 -mx-8 -mb-8 px-8 pb-8">
@@ -91,9 +94,8 @@ export default function BuildingModal({
             </div>
           </div>
 
-          {/* RIGHT SIDE: SCROLLBARES FORMULAR */}
+          {/* rechte seite scrollbares formular */}
           <div className="md:w-7/12 flex flex-col overflow-hidden">
-            {/* HEADER - FIXED */}
             <div className="flex justify-between items-start p-6 md:p-8 border-b border-slate-100 shrink-0">
               <div>
                 <h2 className="text-[#004a87] text-2xl font-black italic uppercase tracking-tight leading-none mb-2">
@@ -111,12 +113,10 @@ export default function BuildingModal({
               </button>
             </div>
 
-            {/* SCROLLABLE CONTENT */}
             <div className="flex-1 overflow-y-auto p-6 md:p-8">
               <div className="space-y-6">
-                {/* Building Name */}
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
+                <div className="rbs-modal-form-group">
+                  <label className="rbs-label">
                     {t("admin_field_name")}
                   </label>
                   <input
@@ -125,15 +125,14 @@ export default function BuildingModal({
                     onChange={(e) =>
                       onChange({ ...building, name: e.target.value })
                     }
-                    className="mci-input"
+                    className="rbs-input"
                     placeholder="z.B. MCI 1"
                   />
                 </div>
 
-                {/* Grid: Distance & Floors */}
                 <div className="grid grid-cols-1 min-[500px]:grid-cols-2 gap-4">
-                  <div className="mci-modal-form-group">
-                    <label className="mci-label">
+                  <div className="rbs-modal-form-group">
+                    <label className="rbs-label">
                       {t("filter_dist")} (Min)
                     </label>
                     <input
@@ -145,11 +144,11 @@ export default function BuildingModal({
                           distance: parseInt(e.target.value),
                         })
                       }
-                      className="mci-input"
+                      className="rbs-input"
                     />
                   </div>
-                  <div className="mci-modal-form-group">
-                    <label className="mci-label">
+                  <div className="rbs-modal-form-group">
+                    <label className="rbs-label">
                       {t("admin_label_floor")} (Max)
                     </label>
                     <input
@@ -158,14 +157,13 @@ export default function BuildingModal({
                       onChange={(e) =>
                         onChange({ ...building, floors: parseInt(e.target.value) })
                       }
-                      className="mci-input"
+                      className="rbs-input"
                     />
                   </div>
                 </div>
 
-                {/* GPS Koordinaten */}
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
+                <div className="rbs-modal-form-group">
+                  <label className="rbs-label">
                     {t("admin_field_gps")}
                   </label>
                   <div className="grid grid-cols-1 min-[500px]:grid-cols-2 gap-4">
@@ -179,7 +177,7 @@ export default function BuildingModal({
                           latitude: parseFloat(e.target.value),
                         })
                       }
-                      className="mci-input"
+                      className="rbs-input"
                       placeholder="Latitude"
                     />
                     <input
@@ -192,29 +190,27 @@ export default function BuildingModal({
                           longitude: parseFloat(e.target.value),
                         })
                       }
-                      className="mci-input"
+                      className="rbs-input"
                       placeholder="Longitude"
                     />
                   </div>
                 </div>
 
-                {/* WiFi Config */}
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
+                <div className="rbs-modal-form-group">
+                  <label className="rbs-label">
                     {t("admin_label_wifi_ip")}
                   </label>
                   <input
                     type="text"
-                    value={building.mci_wifi_ip}
+                    value={building.rbs_wifi_ip}
                     onChange={(e) =>
-                      onChange({ ...building, mci_wifi_ip: e.target.value })
+                      onChange({ ...building, rbs_wifi_ip: e.target.value })
                     }
-                    className="mci-input"
+                    className="rbs-input"
                     placeholder="z.B. 138.232"
                   />
                 </div>
 
-                {/* Barrierefrei */}
                 <label className="admin-checkbox-card">
                   <input
                     type="checkbox"
@@ -229,9 +225,8 @@ export default function BuildingModal({
                   </div>
                 </label>
 
-                {/* Image URL */}
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">
+                <div className="rbs-modal-form-group">
+                  <label className="rbs-label">
                     {t("admin_field_image_url")}
                   </label>
                   <input
@@ -240,19 +235,18 @@ export default function BuildingModal({
                     onChange={(e) =>
                       onChange({ ...building, image_url: e.target.value })
                     }
-                    className="mci-input"
+                    className="rbs-input"
                     placeholder="https://..."
                   />
                 </div>
               </div>
             </div>
 
-            {/* FOOTER - FIXED */}
-            <div className="mci-modal-footer shrink-0">
-              <button onClick={onClose} className="btn-mci-secondary">
+            <div className="rbs-modal-footer shrink-0">
+              <button onClick={onClose} className="rbs-modal-btn-secondary">
                 {t("archiv_back")}
               </button>
-              <button onClick={onSave} className="btn-mci-main">
+              <button onClick={onSave} className="rbs-btn-main">
                 <Save size={18} />
                 {t("save_btn")}
               </button>

@@ -1,5 +1,7 @@
 "use client";
 
+// react und react hooks
+
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -42,8 +44,10 @@ import {
   Armchair,
 } from "lucide-react";
 
+// hauptkomponente für raum buchung seite
 export default function RoomBookingPage() {
   const router = useRouter();
+  // states für app funktionalität
   const [lang, setLang] = useState<Language>(APP_CONFIG.DEFAULT_LANG);
   const [dbTrans, setDbTrans] = useState<any>({});
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
@@ -62,7 +66,8 @@ export default function RoomBookingPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  // Track Desktop Breakpoint (≥1410px)
+  // desktop breakpoint tracking (≥1410px)
+  // background scroll lock für profil modal
   useEffect(() => {
     const checkDesktop = () => {
       setIsDesktop(window.innerWidth >= 1410);
@@ -72,7 +77,7 @@ export default function RoomBookingPage() {
     return () => window.removeEventListener("resize", checkDesktop);
   }, []);
 
-  // HEILIGES GEBOT: Background Scroll Lock für das Profil-Modal
+  // background scroll lock für profil modal
   useEffect(() => {
     if (showSettingsModal) {
       document.body.style.overflow = "hidden";
@@ -84,6 +89,7 @@ export default function RoomBookingPage() {
     };
   }, [showSettingsModal]);
 
+  // datum mit smart default (morgen ab gewisser zeit)
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     if (now.getHours() >= APP_CONFIG.SMART_TIME_THRESHOLD_HOUR) {
@@ -94,6 +100,8 @@ export default function RoomBookingPage() {
     return now.toISOString().split("T")[0];
   });
 
+
+  // zeit mit smart default (nächste 15min)
   const [selectedTime, setSelectedTime] = useState(() => {
     const now = new Date();
     const h = now.getHours();
@@ -109,6 +117,8 @@ export default function RoomBookingPage() {
     return `${nextH.toString().padStart(2, "0")}:${nextM.toString().padStart(2, "0")}`;
   });
 
+
+  // filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [minCapacity, setMinCapacity] = useState("0");
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
@@ -117,26 +127,34 @@ export default function RoomBookingPage() {
   const [selectedSeating, setSelectedSeating] = useState("all");
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
 
+
+  // helper variablen und funktionen
   const t = (key: string) => dbTrans[key?.toLowerCase()]?.[lang] || key;
   const nowComp = new Date();
   const currentHour = nowComp.getHours();
   const currentMin = nowComp.getMinutes();
   const isToday = selectedDate === nowComp.toISOString().split("T")[0];
 
+
+  // beim laden sprache setzen und app initialisieren
   useEffect(() => {
-    const savedLang = localStorage.getItem("mci_lang") as Language;
+    const savedLang = localStorage.getItem("rbs_lang") as Language;
     if (SUPPORTED_LANGS.includes(savedLang)) setLang(savedLang);
     initApp();
   }, [selectedDate]);
 
+
+  // sprache wechseln
   const handleLangToggle = () => {
     const currentIndex = SUPPORTED_LANGS.indexOf(lang);
     const nextIndex = (currentIndex + 1) % SUPPORTED_LANGS.length;
     const nextLang = SUPPORTED_LANGS[nextIndex];
     setLang(nextLang);
-    localStorage.setItem("mci_lang", nextLang);
+    localStorage.setItem("rbs_lang", nextLang);
   };
 
+
+  // app initialisierung - daten laden
   async function initApp() {
     setLoading(true);
     const {
@@ -165,7 +183,6 @@ export default function RoomBookingPage() {
           .single(),
       ]);
 
-    // HEILIGES GEBOT: AUTO-RELEASE FEATURE
     const todayStr = new Date().toISOString().split("T")[0];
     const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
     const overdue = bookingsRes.data?.filter(
@@ -251,12 +268,10 @@ export default function RoomBookingPage() {
       );
     const current = dayBookings.find((b) => {
       const start = timeToMinutes(b.start_time);
-      // HEILIGES GEBOT: duration sind bereits Minuten, keine Multiplikation nötig!
       const end = start + b.duration;
       return refMin >= start && refMin < end;
     });
     if (current) {
-      // HEILIGES GEBOT: getEndTimeParts erwartet Stunden als Float
       const endT = getEndTimeParts(
         current.start_time,
         current.duration / 60,
@@ -284,6 +299,8 @@ export default function RoomBookingPage() {
     };
   };
 
+
+  // gefilter te räume basierend auf suchkriterien
   const filteredRooms = useMemo(() => {
     const reqCap = parseInt(minCapacity) || 0;
     return rooms
@@ -353,6 +370,7 @@ export default function RoomBookingPage() {
 
   return (
     <div className="rbs-page-wrapper text-left">
+      {/* navigation bar */}
       <nav className="rbs-navbar">
         <div className="flex items-center gap-2 md:gap-8">
           <img
@@ -395,6 +413,8 @@ export default function RoomBookingPage() {
                 className="hidden md:inline text-gray-400"
               />
             </button>
+
+      {/* user menü dropdown */}
             {showUserMenu && (
               <div className="absolute right-0 mt-4 w-64 bg-white rounded-[2rem] shadow-2xl border p-2 z-[60] animate-in fade-in slide-in-from-top-2">
                 <button
@@ -431,8 +451,10 @@ export default function RoomBookingPage() {
       </nav>
 
       <main className="rbs-main-layout">
+
+      {/* filter sidebar */}
         <aside className="rbs-sidebar">
-          {/* Unitary Pattern Filter Container */}
+          {/* filter container */}
           <div className="rbs-sidebar-unit">
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
@@ -455,8 +477,8 @@ export default function RoomBookingPage() {
                 <Filter size={20} /> {t("filter_title")}
               </div>
               <div className="px-4 lg:px-6 pt-2 pb-4 lg:pb-6 space-y-6">
-                <div className="mci-field-group">
-                  <label className="mci-label">
+                <div className="rbs-field-group">
+                  <label className="rbs-label">
                     {t("filter_search_label")}
                   </label>
                   <input
@@ -464,11 +486,11 @@ export default function RoomBookingPage() {
                     placeholder={t("filter_search_placeholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="mci-input"
+                    className="rbs-input"
                   />
                 </div>
-                <div className="mci-field-group">
-                  <label className="mci-label">{t("filter_time_label")}</label>
+                <div className="rbs-field-group">
+                  <label className="rbs-label">{t("filter_time_label")}</label>
                   <div className="flex items-center gap-2 mb-2">
                     <button
                       onClick={() => {
@@ -480,7 +502,7 @@ export default function RoomBookingPage() {
                         )
                           setSelectedDate(d.toISOString().split("T")[0]);
                       }}
-                      className="mci-step-btn"
+                      className="rbs-step-btn"
                     >
                       <ChevronLeft size={20} />
                     </button>
@@ -489,7 +511,7 @@ export default function RoomBookingPage() {
                       value={selectedDate}
                       min={nowComp.toISOString().split("T")[0]}
                       onChange={(e) => setSelectedDate(e.target.value)}
-                      className="mci-input !text-center flex-1 min-w-0 !px-2"
+                      className="rbs-input !relative !text-center flex-1 min-w-0 !px-2"
                     />
                     <button
                       onClick={() => {
@@ -497,7 +519,7 @@ export default function RoomBookingPage() {
                         d.setDate(d.getDate() + 1);
                         setSelectedDate(d.toISOString().split("T")[0]);
                       }}
-                      className="mci-step-btn"
+                      className="rbs-step-btn"
                     >
                       <ChevronRight size={20} />
                     </button>
@@ -510,7 +532,7 @@ export default function RoomBookingPage() {
                           `${e.target.value}:${selectedTime.split(":")[1]}`,
                         )
                       }
-                      className="mci-select text-center flex-1"
+                      className="rbs-select text-center flex-1"
                     >
                       {Array.from({ length: 17 }, (_, i) =>
                         (i + 7).toString().padStart(2, "0"),
@@ -532,7 +554,7 @@ export default function RoomBookingPage() {
                           `${selectedTime.split(":")[0]}:${e.target.value}`,
                         )
                       }
-                      className="mci-select text-center flex-1"
+                      className="rbs-select text-center flex-1"
                     >
                       {["00", "15", "30", "45"].map((m) => (
                         <option
@@ -551,8 +573,8 @@ export default function RoomBookingPage() {
                     </select>
                   </div>
                 </div>
-                <div className="mci-field-group">
-                  <label className="mci-label">{t("filter_cap")}</label>
+                <div className="rbs-field-group">
+                  <label className="rbs-label">{t("filter_cap")}</label>
                   <div className="flex items-center gap-4">
                     <input
                       type="range"
@@ -580,12 +602,12 @@ export default function RoomBookingPage() {
                     />
                   </div>
                 </div>
-                <div className="mci-field-group">
-                  <label className="mci-label">{t("filter_location")}</label>
+                <div className="rbs-field-group">
+                  <label className="rbs-label">{t("filter_location")}</label>
                   <select
                     value={selectedBuildingId}
                     onChange={(e) => setSelectedBuildingId(e.target.value)}
-                    className="mci-select"
+                    className="rbs-select"
                   >
                     <option value="all">{t("filter_all")}</option>
                     {buildings.map((b) => (
@@ -595,12 +617,12 @@ export default function RoomBookingPage() {
                     ))}
                   </select>
                 </div>
-                <div className="mci-field-group">
-                  <label className="mci-label">{t("filter_seating")}</label>
+                <div className="rbs-field-group">
+                  <label className="rbs-label">{t("filter_seating")}</label>
                   <select
                     value={selectedSeating}
                     onChange={(e) => setSelectedSeating(e.target.value)}
-                    className="mci-select"
+                    className="rbs-select"
                   >
                     <option value="all">{t("filter_all")}</option>
                     {Array.from(
@@ -616,11 +638,11 @@ export default function RoomBookingPage() {
                     ))}
                   </select>
                 </div>
-                <div className="mci-field-group">
-                  <label className="mci-label">{t("filter_equip")}</label>
+                <div className="rbs-field-group">
+                  <label className="rbs-label">{t("filter_equip")}</label>
                   <div className="flex flex-col gap-1 mt-2">
                     <label
-                      className={`mci-filter-item accessible-filter ${onlyAccessible ? "active" : ""}`}
+                      className={`rbs-filter-item accessible-filter ${onlyAccessible ? "active" : ""}`}
                     >
                       <input
                         type="checkbox"
@@ -634,7 +656,7 @@ export default function RoomBookingPage() {
                       </span>
                     </label>
                     {equipmentList.map((eq) => (
-                      <label key={eq.id} className="mci-filter-item">
+                      <label key={eq.id} className="rbs-filter-item">
                         <input
                           type="checkbox"
                           checked={selectedEquipment.includes(eq.id)}
@@ -689,6 +711,8 @@ export default function RoomBookingPage() {
           <div className="room-grid">
             {filteredRooms.map((room, idx) => {
               const status = getRoomContextStatus(room.id);
+
+  // hauptkomponente rendern
               return (
                 <div
                   key={room.id}
@@ -700,7 +724,6 @@ export default function RoomBookingPage() {
                       className={`room-card-image ${status.isOccupiedNow ? "grayscale shadow-inner" : ""}`}
                       alt={room.name}
                     />
-                    {/* HEILIGES GEBOT: EQUIPMENT BADGES RENDERED ON IMAGE */}
                     <div className="room-badge-container">
                       {room.accessible && (
                         <div className="accessible-badge">
@@ -710,7 +733,7 @@ export default function RoomBookingPage() {
                       {room.equipment?.map((eqId: string) => (
                         <div
                           key={eqId}
-                          className="mci-badge flex items-center gap-1"
+                          className="rbs-badge flex items-center gap-1"
                           title={t("equip_" + eqId).toUpperCase()}
                         >
                           {getEquipmentIcon(eqId)}{" "}
@@ -731,7 +754,7 @@ export default function RoomBookingPage() {
                   </div>
                   <div className="room-card-content text-left">
                     <div className="room-card-header">
-                      <h3 className="room-card-name mci-card-title">
+                      <h3 className="room-card-name rbs-card-title">
                         {room.name}
                       </h3>
                       {idx === 0 && !status.isOccupiedNow && (
@@ -741,31 +764,31 @@ export default function RoomBookingPage() {
                       )}
                     </div>
                     <div className="room-info-container">
-                      <span className="mci-info-tag">
+                      <span className="rbs-info-tag">
                         <Users size={20} />{" "}
-                        <span className="mci-info-tag-text">
+                        <span className="rbs-info-tag-text">
                           {room.capacity} {t("admin_label_capacity")}
                         </span>
                       </span>
-                      <span className="mci-info-tag">
+                      <span className="rbs-info-tag">
                         <MapPin size={20} />{" "}
-                        <span className="mci-info-tag-text">
+                        <span className="rbs-info-tag-text">
                           {room.building?.name}
                         </span>
                       </span>
-                      <span className="mci-info-tag">
+                      <span className="rbs-info-tag">
                         <Layers size={20} />{" "}
-                        <span className="mci-info-tag-text">
+                        <span className="rbs-info-tag-text">
                           {room.floor}. OG
                         </span>
                       </span>
                       {room.seating_arrangement && (
                         <span
-                          className="mci-info-tag"
+                          className="rbs-info-tag"
                           title={t(room.seating_arrangement).toUpperCase()}
                         >
                           <Armchair size={20} />{" "}
-                          <span className="mci-info-tag-text truncate">
+                          <span className="rbs-info-tag-text truncate">
                             {t(room.seating_arrangement)}
                           </span>
                         </span>
@@ -777,7 +800,7 @@ export default function RoomBookingPage() {
                         setSelectedRoom(room);
                         setShowBookingModal(true);
                       }}
-                      className={`btn-mci-main ${status.isOccupiedNow ? "is-disabled" : ""}`}
+                      className={`rbs-btn-main ${status.isOccupiedNow ? "is-disabled" : ""}`}
                     >
                       {status.isOccupiedNow
                         ? t("btn_occupied")
@@ -791,57 +814,57 @@ export default function RoomBookingPage() {
         </div>
       </main>
 
-      {/* Settings Modal - Mobile & Layout Sanierung */}
+      {/* einstellungen modal */}
       {showSettingsModal && (
-        <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-xl">
-            <div className="mci-modal-header">
+        <div className="rbs-modal-overlay">
+          <div className="rbs-modal-card max-w-xl">
+            <div className="rbs-modal-header">
               <div className="flex flex-col text-left">
-                <p className="mci-modal-subtitle">{t("nav_profile")}</p>
-                <h3 className="mci-modal-title">
+                <p className="rbs-modal-subtitle">{t("nav_profile")}</p>
+                <h3 className="rbs-modal-title">
                   {firstName} {lastName}
                 </h3>
               </div>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="mci-modal-close"
+                className="rbs-modal-close"
               >
                 <X size={24} />
               </button>
             </div>
 
-            <div className="mci-modal-body">
-              <div className="mci-modal-form-group">
-                <label className="mci-label">E-MAIL</label>
+            <div className="rbs-modal-body">
+              <div className="rbs-modal-form-group">
+                <label className="rbs-label">E-MAIL</label>
                 <input
                   value={user?.email || ""}
                   readOnly
                   disabled
-                  className="mci-input !bg-slate-100 !cursor-not-allowed opacity-60"
+                  className="rbs-input !bg-slate-100 !cursor-not-allowed opacity-60"
                 />
               </div>
 
-              <div className="mci-modal-form-grid">
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">{t("admin_label_fname")}</label>
+              <div className="rbs-modal-form-grid">
+                <div className="rbs-modal-form-group">
+                  <label className="rbs-label">{t("admin_label_fname")}</label>
                   <input
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="mci-input"
+                    className="rbs-input"
                   />
                 </div>
-                <div className="mci-modal-form-group">
-                  <label className="mci-label">{t("admin_label_lname")}</label>
+                <div className="rbs-modal-form-group">
+                  <label className="rbs-label">{t("admin_label_lname")}</label>
                   <input
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="mci-input"
+                    className="rbs-input"
                   />
                 </div>
               </div>
 
-              <div className="mci-modal-form-group">
-                <label className="mci-label">
+              <div className="rbs-modal-form-group">
+                <label className="rbs-label">
                   {t("admin_label_password")} ({t("label_new_password")})
                 </label>
                 <input
@@ -849,22 +872,21 @@ export default function RoomBookingPage() {
                   placeholder="••••••••"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="mci-input"
+                  className="rbs-input"
                 />
               </div>
             </div>
 
-            <div className="mci-modal-footer">
+            <div className="rbs-modal-footer">
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="btn-mci-secondary"
+                className="rbs-modal-btn-secondary"
               >
                 <XCircle size={20} /> <span>{t("archiv_back")}</span>
               </button>
-              {/* Fix: Icon-Alignment durch explizites justify-center */}
               <button
                 onClick={handleUpdateProfile}
-                className="btn-mci-main !justify-center"
+                className="rbs-modal-btn-primary !justify-center"
               >
                 <Save size={20} /> <span>{t("save_btn")}</span>
               </button>

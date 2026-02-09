@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
-/* --- LAYOUT STABILITY FIX --- */
-/* Verhindert das seitliche Einrücken (10px Shift) bei Tab-Wechseln */
+/* ========================================
+   admin.css - admin bereich styles
+   ======================================== */
+
+/* layout stability fix */
 .rbs-main-layout {
   min-height: 0;
   width: 100%;
 }
 
-/* --- 1. RBS ADMIN TABS --- */
+/* admin tabs */
 .rbs-tab-btn {
   @apply flex items-center w-full gap-4 px-6 py-4 rounded-2xl font-bold text-sm text-slate-500 bg-transparent transition-all border-none cursor-pointer;
 }
@@ -17,17 +20,15 @@
   @apply text-white shadow-xl italic font-bold;
 }
 
-/* --- 2. ADMIN CHECKBOXES --- */
+/* admin checkboxes */
 .admin-checkbox-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.25rem 1rem;
-  /*background-color: rgb(248 250 252);*/
   border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
-  /*border: 1px solid rgb(226 232 240);*/
 }
 
 .admin-checkbox-item:hover {
@@ -47,17 +48,17 @@
   min-width: 0;
 }
 
-/* Checkbox Card (für Kombiraum) */
+/* checkbox card für kombiraum */
 .admin-checkbox-card {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  background-color: rgb(239 246 255); /* blue-50 */
+  background-color: rgb(239 246 255);
   border-radius: 1rem;
   cursor: pointer;
   transition: all 0.2s;
-  border: 2px solid rgb(219 234 254); /* blue-100 */
+  border: 2px solid rgb(219 234 254);
 }
 
 .admin-checkbox-card:hover {
@@ -73,7 +74,7 @@
   flex-shrink: 0;
 }
 
-/* --- 3. STATUS BUTTONS (Aktiv/Wartung) --- */
+/* status buttons aktiv/wartung */
 .admin-status-btn {
   flex: 1;
   display: flex;
@@ -83,9 +84,9 @@
   padding: 1rem;
   border-radius: 1rem;
   cursor: pointer;
-  border: 2px solid rgb(226 232 240); /* slate-200 */
-  background-color: rgb(248 250 252); /* slate-50 */
-  color: rgb(100 116 139); /* slate-500 */
+  border: 2px solid rgb(226 232 240);
+  background-color: rgb(248 250 252);
+  color: rgb(100 116 139);
   transition: all 0.2s;
 }
 
@@ -94,18 +95,18 @@
 }
 
 .admin-status-btn-active {
-  background-color: rgb(220 252 231) !important; /* green-50 */
-  border-color: rgb(34 197 94) !important; /* green-500 */
-  color: rgb(21 128 61) !important; /* green-700 */
+  background-color: rgb(220 252 231) !important;
+  border-color: rgb(34 197 94) !important;
+  color: rgb(21 128 61) !important;
 }
 
 .admin-status-btn-inactive {
-  background-color: rgb(255 237 213) !important; /* orange-50 */
-  border-color: rgb(249 115 22) !important; /* orange-500 */
-  color: rgb(194 65 12) !important; /* orange-700 */
+  background-color: rgb(255 237 213) !important;
+  border-color: rgb(249 115 22) !important;
+  color: rgb(194 65 12) !important;
 }
 
-/* --- 4. ADMIN TABLES --- */
+/* admin tables */
 .rbs-admin-table-container {
   @apply bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden w-full;
 }
@@ -126,8 +127,10 @@
   @apply border-b-0;
 }
 
-/* --- 5. PLANNING TIMELINE --- */
-.rbs-timeline-row { @apply flex items-center border-b border-gray-50 h-20 hover:bg-slate-50/50 transition-colors; }
+/* planning timeline */
+.rbs-timeline-row {
+  @apply flex items-center border-b border-gray-50 h-20 hover:bg-slate-50/50 transition-colors;
+}
 
 .rbs-timeline-room-info {
   @apply w-48 shrink-0 p-4 border-r border-gray-100 bg-white;
@@ -137,7 +140,7 @@
   @apply flex-1 relative h-full bg-slate-50/50;
 }
 
-/* --- 6. STATS --- */
+/* stats cards */
 .rbs-stat-card {
   @apply bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm text-center flex flex-col items-center justify-center;
 }
@@ -150,27 +153,24 @@
   @apply font-black uppercase italic text-[11px] text-slate-400 tracking-widest mt-4;
 }
 
-/* --- 7. GRID FOR ADMIN CARDS (Buildings/Rooms) --- */
+/* grid für admin cards */
 .rbs-admin-grid {
   @apply grid gap-4 md:gap-6 w-full;
   grid-template-columns: 1fr;
 }
 
 @media (min-width: 1199px) {
-  .rbs-admin-grid { grid-template-columns: repeat(2, 1fr); }
+  .rbs-admin-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .rbs-wide-card {
   @apply bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm p-4 md:p-6 flex items-center justify-between gap-4 transition-all;
-  min-width: 0; 
+  min-width: 0;
 }
 
-/* ==========================================
-   NEUE KLASSEN FÜR ADMIN.CSS
-   FIXED: @apply entfernt, Properties direkt
-   ========================================== */
-
-/* --- PLANNING: VIEW MODE TOGGLE --- */
+/* planning view mode toggle */
 .rbs-planning-toggle-wrapper {
   display: flex;
   gap: 0.5rem;
@@ -207,7 +207,7 @@
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-/* --- PLANNING: NAVIGATION BUTTONS --- */
+/* planning navigation buttons */
 .rbs-planning-nav-btn {
   padding: 0.75rem;
   background-color: white;
@@ -222,7 +222,7 @@
   background-color: rgb(248 250 252);
 }
 
-/* --- PLANNING: DATE INPUT --- */
+/* planning date input */
 .rbs-planning-date-input {
   width: auto;
   background-color: white;
@@ -241,7 +241,7 @@
   box-shadow: 0 0 0 4px rgb(59 130 246 / 0.1);
 }
 
-/* --- PLANNING: SEARCH --- */
+/* planning search */
 .rbs-planning-search-wrapper {
   position: relative;
   flex: 1;
@@ -274,7 +274,7 @@
   box-shadow: 0 0 0 4px rgb(59 130 246 / 0.1);
 }
 
-/* --- TIMELINE: WRAPPER & HEADER --- */
+/* timeline wrapper und header */
 .rbs-timeline-wrapper {
   min-width: 900px;
   padding: 2rem;
@@ -316,7 +316,7 @@
   height: 100%;
 }
 
-/* --- TIMELINE: ROW --- */
+/* timeline row */
 .rbs-timeline-row {
   display: flex;
   align-items: center;
@@ -382,7 +382,7 @@
   background-color: rgb(34 197 94);
 }
 
-/* --- CALENDAR: 14 DAYS VIEW --- */
+/* calendar 14 days view */
 .rbs-calendar-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -440,7 +440,7 @@
   border: 1px solid rgb(219 234 254);
 }
 
-/* --- LOCKPLAN: FILTER CARD --- */
+/* lockplan filter card */
 .rbs-lockplan-filter-card {
   background-color: white;
   border-radius: 1rem;
@@ -448,7 +448,7 @@
   padding: 1.5rem;
 }
 
-/* --- LOCKPLAN: BUILDING TITLE --- */
+/* lockplan building title */
 .rbs-lockplan-building-title {
   font-size: 1.25rem;
   font-weight: 900;
@@ -460,7 +460,7 @@
   gap: 0.75rem;
 }
 
-/* --- LOCKPLAN: TABLE COLUMNS --- */
+/* lockplan table columns */
 .rbs-lockplan-col-room {
   width: 20%;
 }
@@ -473,7 +473,7 @@
   width: 50%;
 }
 
-/* --- LOCKPLAN: TABLE CONTENT --- */
+/* lockplan table content */
 .rbs-lockplan-roomname {
   font-weight: 900;
   color: var(--rbs-blue);
@@ -519,7 +519,7 @@
   border: 1px solid rgb(254 202 202);
 }
 
-/* --- LOCKPLAN: EMPTY STATES --- */
+/* lockplan empty states */
 .rbs-lockplan-empty-row {
   text-align: center;
   color: rgb(148 163 184);
@@ -543,20 +543,19 @@
   opacity: 0.2;
 }
 
-/* --- SPERRPLAN: MOBILE SCALING (< 640px) --- */
+/* sperrplan mobile scaling */
 @media (max-width: 640px) {
-  /* Reduziert Schrift und Abstände, damit 4 Spalten auf 350px passen */
   .rbs-lockplan-table {
     font-size: 10px !important;
   }
   
-  .rbs-lockplan-table th, 
+  .rbs-lockplan-table th,
   .rbs-lockplan-table td {
-    padding: 0.75rem 0.4rem !important; /* Extrem schmale Paddings */
+    padding: 0.75rem 0.4rem !important;
     white-space: nowrap;
   }
 
-  .rbs-lockplan-badge-open, 
+  .rbs-lockplan-badge-open,
   .rbs-lockplan-badge-close {
     padding: 0.25rem 0.4rem !important;
     font-size: 8px !important;
@@ -568,31 +567,35 @@
   }
 }
 
-/* --- SPERRPLAN: PRINT OPTIMIZATION --- */
-/* --- PRINT OPTIMIZATION --- */
+/* print optimization */
 @media print {
   @page {
     size: portrait;
-    margin: 3cm; /* Heiliger Standard: 3cm Ränder für Dokumente */
+    margin: 3cm;
   }
 
-  /* KRITISCH: Erzwingt Farbdruck für Buchungs-Bubbles */
-  .rbs-timeline-booking, 
+  .rbs-timeline-booking,
   .rbs-timeline-booking.checked-in {
     -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important; /* Das ist der Standard */
+    print-color-adjust: exact !important;
   }
 
-  .no-print, 
-  .rbs-navbar, 
-  .rbs-sidebar, 
-  .rbs-planning-toggle-wrapper, 
+  .no-print,
+  .rbs-navbar,
+  .rbs-sidebar,
+  .rbs-planning-toggle-wrapper,
   .rbs-lockplan-filter-card,
   .rbs-btn-action,
   .rbs-planning-nav-btn {
     display: none !important;
   }
 
-  .rbs-page-wrapper { padding: 0 !important; }
-  .rbs-admin-table-container { border: 1px solid #eee !important; box-shadow: none !important; }
+  .rbs-page-wrapper {
+    padding: 0 !important;
+  }
+
+  .rbs-admin-table-container {
+    border: 1px solid #eee !important;
+    box-shadow: none !important;
+  }
 }

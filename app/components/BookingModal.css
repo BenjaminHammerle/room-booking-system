@@ -1,13 +1,4 @@
-/* ========================================
-   BOOKING MODAL - CLEAN VERSION
-   Nutzt maximal globals.css, nur Modal-spezifisches hier
-   ======================================== */
-
-/* ===========================================
-   1. MODAL-SPEZIFISCHE EXTENSIONS
-   =========================================== */
-
-/* Extension Box - WENIGER Padding! */
+/* extension box für buchungsverlängerung */
 .res-extension-box {
   display: flex;
   flex-direction: column;
@@ -15,58 +6,55 @@
   gap: 1rem;
   margin-top: 0.5rem;
   margin-bottom: 1.5rem;
-  padding: 1rem; /* REDUZIERT von 1.5rem */
+  padding: 1rem;
   background-color: white;
-  border-radius: 1.25rem; /* REDUZIERT von 1.5rem */
-  border: 2px solid rgb(254 215 170); /* orange-100 */
+  border-radius: 1.25rem;
+  border: 2px solid rgb(254 215 170);
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-  animation: mciPop 0.3s ease-out;
+  animation: rbsPop 0.3s ease-out;
 }
 
 @media (min-width: 768px) {
   .res-extension-box {
     flex-direction: row;
-    gap: 1.5rem; /* REDUZIERT von 2.5rem */
-    padding: 1.25rem; /* REDUZIERT von 2rem */
+    gap: 1.5rem;
+    padding: 1.25rem;
   }
 }
 
-/* NUMBER INPUT - Kompakt! */
-.mci-number-input-lg {
-  background-color: rgb(254 243 199); /* orange-50 */
+/* number input für stunden */
+.rbs-number-input-lg {
+  background-color: rgb(254 243 199);
   border: 2px solid rgba(249, 115, 22, 0.2);
-  border-radius: 0.75rem; /* REDUZIERT */
+  border-radius: 0.75rem;
   font-weight: 900;
   text-align: center;
   outline: none;
   box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
   transition: all 0.2s;
   color: var(--rbs-blue);
-  
-  /* MOBILE: KOMPAKT! */
-  width: 3.5rem;     /* 56px - NOCH kleiner! */
-  height: 2.5rem;    /* 40px - NOCH kleiner! */
-  font-size: 1.25rem; /* 20px */
+  width: 3.5rem;
+  height: 2.5rem;
+  font-size: 1.25rem;
   padding: 0.25rem;
 }
 
-.mci-number-input-lg:focus {
+.rbs-number-input-lg:focus {
   border-color: var(--rbs-orange);
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
 }
 
 @media (min-width: 768px) {
-  .mci-number-input-lg {
-    /* DESKTOP: Moderat! */
-    width: 5rem;      /* 80px - REDUZIERT von 128px */
-    height: 4rem;     /* 64px - REDUZIERT von 96px */
-    font-size: 2rem;  /* 32px - REDUZIERT von 48px */
+  .rbs-number-input-lg {
+    width: 5rem;
+    height: 4rem;
+    font-size: 2rem;
     border-radius: 1rem;
     padding: 0.5rem;
   }
 }
 
-/* Extension Text Group - KOMPAKT! */
+/* extension text gruppe */
 .res-extension-text-group {
   display: flex;
   flex-direction: column;
@@ -74,7 +62,7 @@
   text-align: center;
   min-width: 0;
   flex: 1;
-  padding-top: 0.75rem; /* REDUZIERT von 1rem */
+  padding-top: 0.75rem;
   border-top: 2px solid rgba(249, 115, 22, 0.2);
 }
 
@@ -82,20 +70,18 @@
   .res-extension-text-group {
     text-align: left;
     padding-top: 0;
-    padding-left: 1rem; /* REDUZIERT von 2rem */
+    padding-left: 1rem;
     border-top: none;
     border-left: 2px solid rgba(249, 115, 22, 0.2);
   }
 }
 
-/* ===========================================
-   2. SERIES GRID (Desktop Table Style)
-   =========================================== */
-
+/* series liste container */
 .series-list-container {
   margin-top: 1.5rem;
 }
 
+/* series grid im desktop table style */
 .series-grid {
   display: grid;
   grid-template-columns: 1.2fr 1.8fr 0.6fr 0.8fr 1.5fr;
@@ -105,6 +91,7 @@
   border-bottom: 1px solid rgb(241 245 249);
 }
 
+/* header row */
 .series-header-row {
   background-color: rgb(248 250 252);
   border-bottom: 1px solid rgb(226 232 240);
@@ -115,6 +102,7 @@
   color: rgb(148 163 184);
 }
 
+/* data row */
 .series-data-row {
   transition: all 0.2s;
 }
@@ -123,7 +111,7 @@
   background-color: rgb(248 250 252);
 }
 
-/* Mobile: Von Grid auf Block */
+/* mobile: von grid auf block */
 @media (max-width: 768px) {
   .series-grid {
     display: block;
@@ -151,10 +139,7 @@
   }
 }
 
-/* ===========================================
-   3. FORM HELPERS
-   =========================================== */
-
+/* booking form grid */
 .booking-form-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -168,45 +153,40 @@
   }
 }
 
+/* form gruppe */
 .booking-form-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-/* ===========================================
-   4. RECURRING TOGGLE - Gestylter!
-   =========================================== */
-
+/* recurring toggle checkbox */
 .recurring-toggle {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem 1.25rem; /* Mehr horizontal padding */
-  background-color: rgb(239 246 255); /* blue-50 */
-  border-radius: 1rem; /* REDUZIERT von 0.75rem */
-  border: 1px solid rgb(219 234 254); /* blue-100 */
+  padding: 1rem 1.25rem;
+  background-color: rgb(239 246 255);
+  border-radius: 1rem;
+  border: 1px solid rgb(219 234 254);
   cursor: pointer;
   transition: all 0.2s;
-  font-weight: 600; /* Medium bold */
+  font-weight: 600;
 }
 
 .recurring-toggle:hover {
-  background-color: rgb(219 234 254); /* blue-100 */
-  border-color: rgb(191 219 254); /* blue-200 */
+  background-color: rgb(219 234 254);
+  border-color: rgb(191 219 254);
 }
 
 .recurring-toggle input[type="checkbox"] {
   width: 1.25rem;
   height: 1.25rem;
-  accent-color: rgb(37 99 235); /* blue-600 */
+  accent-color: rgb(37 99 235);
   cursor: pointer;
 }
 
-/* ===========================================
-   5. MODAL ACTIONS
-   =========================================== */
-
+/* modal actions buttons */
 .modal-actions {
   display: flex;
   flex-direction: column;
@@ -224,14 +204,7 @@
   flex: 1;
 }
 
-/* ===========================================
-   6. FEEDBACK OVERLAY (Success/Error Squares)
-   =========================================== */
-
-/* ===========================================
-   6. FEEDBACK OVERLAY (Success/Error Squares)
-   =========================================== */
-
+/* feedback overlay für success/error */
 .booking-feedback {
   position: fixed;
   inset: 0;
@@ -246,6 +219,7 @@
   animation: rbsFade 0.3s ease-out;
 }
 
+/* kompaktes feedback viereck */
 .booking-feedback-card {
   text-align: center;
   display: flex;
@@ -253,24 +227,22 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  /* Heiliges Gebot: Kleines kompaktes Viereck */
   width: 280px;
   height: 280px;
   border-radius: 3rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  /* Animation aus globals.css */
   animation: rbsPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Erfolg-Styling (wie Check-In OK) */
+/* erfolg styling */
 .booking-feedback-success {
-  background-color: #16a34a; /* green-600 */
+  background-color: #16a34a;
   color: white;
 }
 
-/* Abbruch-Styling (wie Check-In Fehler) */
+/* fehler styling */
 .booking-feedback-error {
-  background-color: #dc2626; /* red-600 */
+  background-color: #dc2626;
   color: white;
 }
 
@@ -284,16 +256,12 @@
   margin-top: 1rem;
 }
 
-/* ===========================================
-   7. STATUS BADGES (für Series Liste)
-   =========================================== */
-
-/* Base Badge - Verbessert für Icons */
+/* status badges für series liste */
 .series-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem; /* Mehr gap für Icons */
-  padding: 0.25rem 0.5rem; /* Mehr padding */
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
   border-radius: 0.375rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -301,52 +269,46 @@
   line-height: 1;
 }
 
-/* Icon innerhalb Badge */
 .series-status-badge > svg {
   flex-shrink: 0;
   width: 10px;
   height: 10px;
 }
 
-/* Text innerhalb Badge */
 .series-status-badge > span {
   display: inline-flex;
   align-items: center;
   line-height: 1;
 }
 
-/* Specific Status Types */
+/* status typen */
 .series-status-active {
-  background-color: rgb(37 99 235); /* blue-600 */
+  background-color: rgb(37 99 235);
   color: white;
 }
 
 .series-status-pending {
-  background-color: rgb(241 245 249); /* slate-100 */
-  color: rgb(71 85 105); /* slate-600 */
+  background-color: rgb(241 245 249);
+  color: rgb(71 85 105);
 }
 
 .series-status-confirmed {
-  background-color: rgb(220 252 231); /* green-100 */
-  color: rgb(21 128 61); /* green-700 */
+  background-color: rgb(220 252 231);
+  color: rgb(21 128 61);
 }
 
 .series-status-cancelled {
-  background-color: rgb(254 226 226); /* red-100 */
-  color: rgb(185 28 28); /* red-700 */
+  background-color: rgb(254 226 226);
+  color: rgb(185 28 28);
   text-decoration: line-through;
 }
 
 .series-status-conflict {
-  background-color: rgb(185 28 28); /* red-600 */
+  background-color: rgb(185 28 28);
   color: white;
 }
 
-/* ===========================================
-   8. UTILITY OVERRIDES
-   =========================================== */
-
-/* Scrollbar ausblenden */
+/* scrollbar ausblenden */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -355,7 +317,3 @@
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
-/* ========================================
-   ENDE BOOKING MODAL
-   ======================================== */

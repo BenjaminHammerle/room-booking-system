@@ -1,38 +1,34 @@
 @import "tailwindcss";
 
 /* ========================================
-   ROOM.CSS - NUR ROOM-SPEZIFIKA
-   Alle Layout-Klassen kommen aus globals.css!
+   room.css - nur room-spezifische styles
+   alle layout-klassen kommen aus globals.css
    ======================================== */
 
-/* --- 1. ROOM GRID (Mathematische Breakpoints) --- */
+/* room grid mit mathematischen breakpoints */
 .room-grid {
   @apply flex-1 grid gap-8 auto-rows-max;
   grid-template-columns: 1fr;
 }
 
-/* 1) DESKTOP XL: 3 Cards (> 1880px) */
 @media (min-width: 1880px) {
   .room-grid {
     grid-template-columns: repeat(3, 440px);
   }
 }
 
-/* 2) DESKTOP: 2 Cards (1410px - 1880px) */
 @media (min-width: 1410px) and (max-width: 1879px) {
   .room-grid {
     grid-template-columns: repeat(2, 440px);
   }
 }
 
-/* 3) TABLET: 2 Cards (1024px - 1410px) */
 @media (min-width: 1024px) and (max-width: 1409px) {
   .room-grid {
     grid-template-columns: repeat(2, 440px);
   }
 }
 
-/* 4) MOBILE: 1 Card (< 1024px) */
 @media (max-width: 1023px) {
   .room-grid {
     grid-template-columns: 1fr;
@@ -40,11 +36,12 @@
   }
 }
 
-/* --- 2. FILTER SPEZIFIKA --- */
+/* kapazitäts slider im filter */
 .filter-capacity-bar {
   @apply flex-1 accent-[#f7941d] cursor-pointer h-2 bg-gray-100 rounded-lg appearance-none;
 }
 
+/* nummer input für kapazität */
 .filter-capacity-number {
   @apply bg-gray-50 border border-gray-100 rounded-xl text-center font-bold text-slate-700;
   padding: 0.5rem;
@@ -67,33 +64,35 @@
   -moz-appearance: textfield;
 }
 
-.mci-step-btn {
+/* step buttons für zeit einstellung */
+.rbs-step-btn {
   @apply p-3 bg-gray-50 rounded-xl border border-gray-100 transition-colors hover:bg-gray-100;
 }
 
+/* reset button im filter */
 .filter-reset-btn {
   @apply w-full py-4 text-[9px] font-black text-gray-300 uppercase hover:text-red-400 transition border-t border-dashed mt-4;
 }
 
-/* Barrierefrei Filter - grünlich wenn aktiv */
-.mci-filter-item.accessible-filter {
+/* barrierfrei filter styling */
+.rbs-filter-item.accessible-filter {
   @apply transition-all rounded-xl -mx-2 px-2;
 }
 
-.mci-filter-item.accessible-filter.active {
+.rbs-filter-item.accessible-filter.active {
   @apply bg-green-50 py-3;
   border: 1px solid #d1fae5;
 }
 
-.mci-filter-item.accessible-filter.active input[type="checkbox"] {
+.rbs-filter-item.accessible-filter.active input[type="checkbox"] {
   accent-color: #10b981;
 }
 
-.mci-filter-item.accessible-filter.active span {
+.rbs-filter-item.accessible-filter.active span {
   @apply text-green-700 font-bold;
 }
 
-/* --- 3. ROOM CARDS --- */
+/* room card container */
 .room-card {
   @apply bg-white rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1;
   width: 440px;
@@ -116,17 +115,20 @@
   }
 }
 
+/* bild wrapper in der card */
 .room-card-image-wrapper {
   @apply relative h-60 md:h-72 w-full overflow-hidden shrink-0 bg-slate-100;
   position: relative;
 }
 
+/* das eigentliche raum bild */
 .room-card-image {
   @apply w-full h-full object-cover transition-transform duration-1000;
   position: relative;
   z-index: 1;
 }
 
+/* badge container über dem bild */
 .room-badge-container {
   position: absolute !important;
   bottom: 1rem;
@@ -143,6 +145,7 @@
   pointer-events: auto;
 }
 
+/* mobile badge anpassungen */
 @media (max-width: 768px) {
   .room-badge-container {
     left: 0 !important;
@@ -164,7 +167,7 @@
     display: none;
   }
 
-  .room-badge-container .mci-badge,
+  .room-badge-container .rbs-badge,
   .room-badge-container .accessible-badge {
     padding: 0.5rem;
     min-width: 2.5rem;
@@ -173,7 +176,7 @@
     gap: 0;
   }
 
-  .room-badge-container .mci-badge svg,
+  .room-badge-container .rbs-badge svg,
   .room-badge-container .accessible-badge svg {
     margin: 0;
     width: 18px;
@@ -181,19 +184,23 @@
   }
 }
 
+/* status overlay oben rechts im bild */
 .room-status-overlay {
   @apply absolute top-6 right-6 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 shadow-xl backdrop-blur-md;
   z-index: 25;
 }
 
+/* wenn raum belegt ist */
 .room-occupied-until {
   @apply bg-red-500/90 text-white animate-pulse;
 }
 
+/* wenn raum verfügbar ist */
 .room-available-until {
   @apply bg-[#D1FAE5]/90 text-[#065F46] border border-white/20;
 }
 
+/* content bereich der card */
 .room-card-content {
   @apply flex flex-col flex-1;
   padding: 2rem 2.5rem;
@@ -205,6 +212,7 @@
   }
 }
 
+/* header bereich mit titel */
 .room-card-header {
   @apply flex flex-row justify-between items-start mb-6 gap-2;
 }
@@ -213,6 +221,7 @@
   @apply pr-4;
 }
 
+/* info grid unter dem titel */
 .room-info-container {
   @apply grid gap-3 md:gap-4 mb-8;
   grid-template-columns: 1fr;
@@ -224,25 +233,26 @@
   }
 }
 
+/* best match badge */
 .best-match {
   @apply bg-blue-50 text-[var(--rbs-light-blue)] px-3 py-1.5 rounded-xl border border-blue-100 flex items-center gap-2 font-black uppercase text-[10px] italic shadow-sm whitespace-nowrap;
 }
 
-/* CHECKBOX */
-.mci-filter-item {
+/* filter item mit checkbox */
+.rbs-filter-item {
   @apply flex items-center gap-3 py-2;
-  white-space: nowrap; /* Verhindert Zeilenumbruch */
+  white-space: nowrap;
 }
 
-.mci-filter-item input[type="checkbox"] {
-  @apply shrink-0; /* Checkbox bleibt bei fester Größe */
+.rbs-filter-item input[type="checkbox"] {
+  @apply shrink-0;
   width: 18px;
   height: 18px;
 }
 
-.mci-filter-item span {
+.rbs-filter-item span {
   @apply flex items-center gap-2;
-  white-space: nowrap; /* Text bricht nicht um */
-  overflow: hidden; /* Falls zu lang */
-  text-overflow: ellipsis; /* ... bei overflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

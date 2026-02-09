@@ -1,5 +1,7 @@
 "use client";
 
+// react components
+
 import { X, Save, ShieldCheck, UserPlus } from "lucide-react";
 
 interface EditUser {
@@ -33,6 +35,7 @@ interface UserModalsProps {
   t: (key: string) => string;
 }
 
+// user modals komponente (bearbeiten + hinzufügen)
 export default function UserModals({
   showEdit,
   showAdd,
@@ -48,74 +51,71 @@ export default function UserModals({
 }: UserModalsProps) {
   return (
     <>
-      {/* EDIT USER MODAL */}
+      {/* user ändern modal */}
       {showEdit && editUser && (
-        <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-2xl">
-            {/* Modal mit max-h für Scroll */}
+        <div className="rbs-modal-overlay">
+          <div className="rbs-modal-card max-w-2xl">
             <div className="flex flex-col max-h-[90vh] overflow-hidden">
-              {/* HEADER - FIXED */}
-              <div className="mci-modal-header shrink-0">
+              <div className="rbs-modal-header shrink-0">
                 <div>
-                  <p className="mci-modal-subtitle">
+                  <p className="rbs-modal-subtitle">
                     {t("admin_sidebar_users")}
                   </p>
-                  <h3 className="mci-modal-title">
+                  <h3 className="rbs-modal-title">
                     {editUser.first_name} {editUser.last_name}
                   </h3>
                 </div>
-                <button onClick={onCloseEdit} className="mci-modal-close">
+                <button onClick={onCloseEdit} className="rbs-modal-close">
                   <X size={24} />
                 </button>
               </div>
               
-              {/* SCROLLABLE CONTENT */}
               <div className="flex-1 overflow-y-auto p-6 md:p-10">
                 <div className="space-y-6">
-                  <div className="mci-modal-form-grid">
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                  <div className="rbs-modal-form-grid">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_fname")} *
                       </label>
                       <input
                         type="text"
                         value={editUser.first_name}
                         onChange={(e) => onEditChange({ ...editUser, first_name: e.target.value })}
-                        className="mci-input"
+                        className="rbs-input"
                       />
                     </div>
                     
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_lname")} *
                       </label>
                       <input
                         type="text"
                         value={editUser.last_name}
                         onChange={(e) => onEditChange({ ...editUser, last_name: e.target.value })}
-                        className="mci-input"
+                        className="rbs-input"
                       />
                     </div>
                   </div>
                   
-                  <div className="mci-modal-form-group">
-                    <label className="mci-label">{t("admin_label_email")} *</label>
+                  <div className="rbs-modal-form-group">
+                    <label className="rbs-label">{t("admin_label_email")} *</label>
                     <input
                       type="email"
                       value={editUser.email}
                       onChange={(e) => onEditChange({ ...editUser, email: e.target.value })}
-                      className="mci-input"
+                      className="rbs-input"
                     />
                   </div>
                   
-                  <div className="mci-modal-form-group">
-                    <label className="mci-label">
+                  <div className="rbs-modal-form-group">
+                    <label className="rbs-label">
                       {t("admin_label_password")} (optional)
                     </label>
                     <input
                       type="password"
                       onChange={(e) => onEditChange({ ...editUser, password: e.target.value })}
-                      className="mci-input"
+                      className="rbs-input"
                     />
                   </div>
 
@@ -133,12 +133,11 @@ export default function UserModals({
                 </div>
               </div>
               
-              {/* FOOTER - FIXED */}
-              <div className="mci-modal-footer shrink-0">
-                <button onClick={onCloseEdit} className="btn-mci-secondary">
+              <div className="rbs-modal-footer shrink-0">
+                <button onClick={onCloseEdit} className="rbs-modal-btn-secondary">
                   {t("archiv_back")}
                 </button>
-                <button onClick={onUpdateUser} className="btn-mci-main">
+                <button onClick={onUpdateUser} className="rbs-btn-main">
                   <Save size={20} />
                   {t("save_btn")}
                 </button>
@@ -148,34 +147,31 @@ export default function UserModals({
         </div>
       )}
 
-      {/* ADD USER MODAL */}
+      {/* user hinzufügen modal */}
       {showAdd && (
-        <div className="mci-modal-overlay">
-          <div className="mci-modal-card max-w-2xl">
+        <div className="rbs-modal-overlay">
+          <div className="rbs-modal-card max-w-2xl">
             <form onSubmit={onCreateUser}>
-              {/* Modal mit max-h für Scroll */}
               <div className="flex flex-col max-h-[90vh] overflow-hidden">
-                {/* HEADER - FIXED */}
-                <div className="mci-modal-header shrink-0">
+                <div className="rbs-modal-header shrink-0">
                   <div>
-                    <p className="mci-modal-subtitle">
+                    <p className="rbs-modal-subtitle">
                       {t("admin_sidebar_users")}
                     </p>
-                    <h3 className="mci-modal-title">
+                    <h3 className="rbs-modal-title">
                       {t("admin_modal_add_user_title")}
                     </h3>
                   </div>
-                  <button type="button" onClick={onCloseAdd} className="mci-modal-close">
+                  <button type="button" onClick={onCloseAdd} className="rbs-modal-close">
                     <X size={24} />
                   </button>
                 </div>
                 
-                {/* SCROLLABLE CONTENT */}
                 <div className="flex-1 overflow-y-auto p-6 md:p-10">
                   <div className="space-y-6">
-                    <div className="mci-modal-form-grid">
-                      <div className="mci-modal-form-group">
-                        <label className="mci-label">
+                    <div className="rbs-modal-form-grid">
+                      <div className="rbs-modal-form-group">
+                        <label className="rbs-label">
                           {t("admin_label_fname")} *
                         </label>
                         <input
@@ -183,12 +179,12 @@ export default function UserModals({
                           type="text"
                           value={newUser.first_name}
                           onChange={(e) => onNewChange({ ...newUser, first_name: e.target.value })}
-                          className="mci-input"
+                          className="rbs-input"
                         />
                       </div>
                       
-                      <div className="mci-modal-form-group">
-                        <label className="mci-label">
+                      <div className="rbs-modal-form-group">
+                        <label className="rbs-label">
                           {t("admin_label_lname")} *
                         </label>
                         <input
@@ -196,24 +192,24 @@ export default function UserModals({
                           type="text"
                           value={newUser.last_name}
                           onChange={(e) => onNewChange({ ...newUser, last_name: e.target.value })}
-                          className="mci-input"
+                          className="rbs-input"
                         />
                       </div>
                     </div>
                     
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">{t("admin_label_email")} *</label>
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">{t("admin_label_email")} *</label>
                       <input
                         required
                         type="email"
                         value={newUser.email}
                         onChange={(e) => onNewChange({ ...newUser, email: e.target.value })}
-                        className="mci-input"
+                        className="rbs-input"
                       />
                     </div>
                     
-                    <div className="mci-modal-form-group">
-                      <label className="mci-label">
+                    <div className="rbs-modal-form-group">
+                      <label className="rbs-label">
                         {t("admin_label_password")} *
                       </label>
                       <input
@@ -221,7 +217,7 @@ export default function UserModals({
                         type="password"
                         value={newUser.password}
                         onChange={(e) => onNewChange({ ...newUser, password: e.target.value })}
-                        className="mci-input"
+                        className="rbs-input"
                       />
                     </div>
                     
@@ -239,12 +235,11 @@ export default function UserModals({
                   </div>
                 </div>
                 
-                {/* FOOTER - FIXED */}
-                <div className="mci-modal-footer shrink-0">
-                  <button type="button" onClick={onCloseAdd} className="btn-mci-secondary">
+                <div className="rbs-modal-footer shrink-0">
+                  <button type="button" onClick={onCloseAdd} className="rbs-modal-btn-secondary">
                     {t("archiv_back")}
                   </button>
-                  <button type="submit" className="btn-mci-main">
+                  <button type="submit" className="rbs-btn-main">
                     <UserPlus size={20} />
                     {t("admin_btn_add_user")}
                   </button>

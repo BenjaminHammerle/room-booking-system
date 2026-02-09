@@ -6,8 +6,9 @@ interface LoadingScreenProps {
   text?: string;
 }
 
+// globale loading komponente
 export default function LoadingScreen({ 
-  text = "mci system check..." 
+  text = "rbs system check..." 
 }: LoadingScreenProps) {
   return (
     <div className="rbs-loading-screen">
