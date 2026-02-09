@@ -625,7 +625,10 @@
   color: var(--rbs-orange);
 }
 
-/* Reservation Datumsfilter */
+.mci-input[type="date"] {
+  position: relative !important;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator {
   background: transparent;
   bottom: 0;
@@ -637,9 +640,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   right: 0;
   top: 0;
   width: auto;
+  z-index: 1; /* Bleibt innerhalb des Feldes */
 }
 
-/* Platz für den CircleX-Button schaffen */
+/* Platz für den CircleX-Button im Archiv-Filter lassen */
 .mci-input[type="date"] {
   padding-right: 3.5rem !important;
 }
